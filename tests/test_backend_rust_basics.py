@@ -93,8 +93,10 @@ def test_bool_logic(a: bool, b: bool) -> bool:
     return a and b or not a
 """
         rust_code = self.converter.convert_code(python_code)
-        # Note: Python's 'and'/'or' don't directly map to Rust's &&/||
-        # This will need more sophisticated handling
+        # Python's 'and'/'or'/'not' map to Rust's &&/||/!
+        assert "&&" in rust_code
+        assert "||" in rust_code
+        assert "!a" in rust_code
 
     def test_comparison_expressions(self):
         """Test comparison expression conversion."""
@@ -462,5 +464,7 @@ def test_complex(x: int, y: int) -> bool:
     return x > y and x < 100
 """
         rust_code = self.converter.convert_code(python_code)
-        # Note: This will require more sophisticated boolean logic handling
-        # For now, we're focusing on basic functionality
+        # Complex conditions with comparison and boolean operators
+        assert "(x > y)" in rust_code
+        assert "(x < 100)" in rust_code
+        assert "&&" in rust_code

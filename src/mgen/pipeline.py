@@ -147,6 +147,39 @@ class PipelineConfig:
 
 
 @dataclass
+class ContainerMapping:
+    """Mapping for a Python container type to target language type."""
+
+    python_type: str  # e.g., "list[int]", "dict[str, int]"
+    target_type: str  # e.g., "vec_int", "HashMap<String, i64>"
+    element_types: list[str] = field(default_factory=list)  # Resolved element types
+    requires_imports: list[str] = field(default_factory=list)  # Imports needed
+
+
+@dataclass
+class SemanticMapping:
+    """Semantic mapping from Python to target language.
+
+    This dataclass captures the mapping decisions made during Phase 4,
+    providing structured information for the code generation phase.
+    """
+
+    target_language: str
+    # Type mappings: Python type name -> target language type
+    type_mappings: dict[str, str] = field(default_factory=dict)
+    # Container mappings: variable name -> ContainerMapping
+    container_mappings: dict[str, ContainerMapping] = field(default_factory=dict)
+    # Function return type mappings: function name -> target return type
+    function_return_types: dict[str, str] = field(default_factory=dict)
+    # Variable type mappings: variable name -> target type
+    variable_types: dict[str, str] = field(default_factory=dict)
+    # Required imports for the target language
+    required_imports: list[str] = field(default_factory=list)
+    # Semantic notes for code generation hints
+    semantic_notes: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass
 class PipelineResult:
     """Result from pipeline execution."""
 
@@ -161,6 +194,8 @@ class PipelineResult:
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     generated_files: list[str] = field(default_factory=list)
+    # Semantic mapping from Phase 4 (optional, for advanced usage)
+    semantic_mapping: Optional[SemanticMapping] = None
 
 
 def _map_optimization_level(pipeline_level: OptimizationLevel) -> "FrontendOptimizationLevel":
@@ -637,25 +672,142 @@ class MGenPipeline:
             return analysis_result  # Continue with unoptimized version
 
     def _mapping_phase(self, analysis_result: Any, result: PipelineResult) -> Any:
-        """Phase 4: Map Python semantics to target language semantics."""
-        try:
-            # This phase handles language-agnostic to language-specific mapping
-            # For now, pass through the analysis result
-            # In a full implementation, this would transform Python concepts
-            # to target language concepts (e.g., Python dicts -> C structs vs Rust HashMap)
+        """Phase 4: Map Python semantics to target language semantics.
 
-            mapping_info = {
+        This phase transforms Python type information into target language types,
+        computing container mappings, function return types, and variable types
+        using the backend's type system and container system.
+        """
+        try:
+            # Create semantic mapping structure
+            semantic_mapping = SemanticMapping(target_language=self.config.target_language)
+
+            # Standard Python type mappings using backend's emitter
+            python_types = ["int", "float", "bool", "str", "None", "Any"]
+            for py_type in python_types:
+                try:
+                    target_type = self.emitter.map_python_type(py_type)
+                    semantic_mapping.type_mappings[py_type] = target_type
+                except Exception:
+                    # Fallback for types the backend doesn't explicitly handle
+                    semantic_mapping.type_mappings[py_type] = py_type
+
+            # Extract type information from analysis result if available
+            if analysis_result is not None:
+                self._extract_function_types(analysis_result, semantic_mapping)
+                self._extract_variable_types(analysis_result, semantic_mapping, result)
+                self._extract_container_types(analysis_result, semantic_mapping, result)
+
+            # Get required imports from container system
+            try:
+                semantic_mapping.required_imports = self.container_system.get_required_imports()
+            except Exception:
+                pass  # Container system may not have imports
+
+            # Add backend-specific semantic notes
+            semantic_mapping.semantic_notes["backend"] = self.backend.get_name()
+            semantic_mapping.semantic_notes["extension"] = self.backend.get_file_extension()
+
+            # Store mapping in result
+            result.semantic_mapping = semantic_mapping
+            result.phase_results[PipelinePhase.MAPPING] = {
                 "target_language": self.config.target_language,
-                "type_mappings": {},  # Could contain Python->Target type mappings
-                "container_mappings": {},  # Container transformation info
+                "type_mappings": semantic_mapping.type_mappings,
+                "container_mappings": {
+                    k: {"python_type": v.python_type, "target_type": v.target_type}
+                    for k, v in semantic_mapping.container_mappings.items()
+                },
+                "function_return_types": semantic_mapping.function_return_types,
+                "variable_count": len(semantic_mapping.variable_types),
+                "required_imports": semantic_mapping.required_imports,
             }
 
-            result.phase_results[PipelinePhase.MAPPING] = mapping_info
+            self.log.debug(
+                f"Phase 4 mapping complete: {len(semantic_mapping.type_mappings)} types, "
+                f"{len(semantic_mapping.container_mappings)} containers, "
+                f"{len(semantic_mapping.function_return_types)} functions"
+            )
+
             return analysis_result
 
         except Exception as e:
             result.warnings.append(f"Mapping phase warning: {str(e)}")
             return analysis_result
+
+    def _extract_function_types(self, analysis_result: Any, semantic_mapping: SemanticMapping) -> None:
+        """Extract function return types from analysis result."""
+        # Try to get function information from analysis result
+        if hasattr(analysis_result, "functions"):
+            for func_name, func_info in analysis_result.functions.items():
+                if hasattr(func_info, "return_type") and func_info.return_type:
+                    py_return_type = str(func_info.return_type)
+                    try:
+                        target_return_type = self.emitter.map_python_type(py_return_type)
+                        semantic_mapping.function_return_types[func_name] = target_return_type
+                    except Exception:
+                        semantic_mapping.function_return_types[func_name] = py_return_type
+
+    def _extract_variable_types(
+        self, analysis_result: Any, semantic_mapping: SemanticMapping, result: PipelineResult
+    ) -> None:
+        """Extract variable types from analysis result."""
+        # Try type inference results from advanced analysis
+        analysis_phase = result.phase_results.get(PipelinePhase.ANALYSIS, {})
+        advanced = analysis_phase.get("advanced", {})
+        type_inference = advanced.get("type_inference", {})
+
+        for func_name, func_inference in type_inference.items():
+            if isinstance(func_inference, dict):
+                # Extract parameter types
+                param_types = func_inference.get("parameter_types", {})
+                for param_name, param_type in param_types.items():
+                    var_key = f"{func_name}.{param_name}"
+                    try:
+                        target_type = self.emitter.map_python_type(str(param_type))
+                        semantic_mapping.variable_types[var_key] = target_type
+                    except Exception:
+                        semantic_mapping.variable_types[var_key] = str(param_type)
+
+    def _extract_container_types(
+        self, analysis_result: Any, semantic_mapping: SemanticMapping, result: PipelineResult
+    ) -> None:
+        """Extract container type mappings from analysis result."""
+        # Common container patterns to look for
+        container_patterns = {
+            "list[int]": ("int",),
+            "list[str]": ("str",),
+            "list[float]": ("float",),
+            "dict[str, int]": ("str", "int"),
+            "dict[str, str]": ("str", "str"),
+            "dict[int, int]": ("int", "int"),
+            "set[int]": ("int",),
+            "set[str]": ("str",),
+        }
+
+        # Map containers using the backend's container system
+        for py_type, element_types in container_patterns.items():
+            try:
+                if py_type.startswith("list["):
+                    elem_type = self.emitter.map_python_type(element_types[0])
+                    target_type = self.container_system.get_list_type(elem_type)
+                elif py_type.startswith("dict["):
+                    key_type = self.emitter.map_python_type(element_types[0])
+                    val_type = self.emitter.map_python_type(element_types[1])
+                    target_type = self.container_system.get_dict_type(key_type, val_type)
+                elif py_type.startswith("set["):
+                    elem_type = self.emitter.map_python_type(element_types[0])
+                    target_type = self.container_system.get_set_type(elem_type)
+                else:
+                    continue
+
+                semantic_mapping.container_mappings[py_type] = ContainerMapping(
+                    python_type=py_type,
+                    target_type=target_type,
+                    element_types=[self.emitter.map_python_type(t) for t in element_types],
+                )
+            except Exception:
+                # Backend may not support all container types
+                pass
 
     def _target_optimization_phase(self, analysis_result: Any, result: PipelineResult) -> Any:
         """Phase 5: Target language-specific optimizations."""

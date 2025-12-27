@@ -17,9 +17,12 @@ Supported Features:
 - Comprehensions (list, dict, set) with range iteration and conditional filtering
 """
 
+from __future__ import annotations
+
 import ast
 from typing import Any, Optional
 
+from .string_methods import CStringMethodConverter, CFStringConverter, is_string_method
 from ..converter_utils import (
     get_augmented_assignment_operator,
     get_standard_binary_operator,
@@ -81,6 +84,9 @@ class MGenPythonToCConverter:
 
         # Track function return types for better inference
         self.function_return_types: dict[str, str] = {}
+
+        # String method converter (extracted for maintainability)
+        self._string_converter = CStringMethodConverter()
 
     def convert_code(self, source_code: str) -> str:
         """Convert Python source code to C code."""
@@ -1475,47 +1481,14 @@ class MGenPythonToCConverter:
         return False
 
     def _convert_string_method(self, obj: str, method_name: str, args: list[str]) -> str:
-        """Convert string method calls to appropriate C code."""
-        self.includes_needed.add('#include "mgen_string_ops.h"')
+        """Convert string method calls to appropriate C code.
 
-        if method_name == "upper":
-            if args:
-                raise UnsupportedFeatureError("str.upper() takes no arguments")
-            return f"mgen_str_upper({obj})"
-
-        elif method_name == "lower":
-            if args:
-                raise UnsupportedFeatureError("str.lower() takes no arguments")
-            return f"mgen_str_lower({obj})"
-
-        elif method_name == "strip":
-            if len(args) == 0:
-                return f"mgen_str_strip({obj})"
-            elif len(args) == 1:
-                return f"mgen_str_strip_chars({obj}, {args[0]})"
-            else:
-                raise UnsupportedFeatureError("str.strip() takes at most one argument")
-
-        elif method_name == "find":
-            if len(args) != 1:
-                raise UnsupportedFeatureError("str.find() requires exactly one argument")
-            return f"mgen_str_find({obj}, {args[0]})"
-
-        elif method_name == "replace":
-            if len(args) != 2:
-                raise UnsupportedFeatureError("str.replace() requires exactly two arguments")
-            return f"mgen_str_replace({obj}, {args[0]}, {args[1]})"
-
-        elif method_name == "split":
-            if len(args) == 0:
-                return f"mgen_str_split({obj}, NULL)"
-            elif len(args) == 1:
-                return f"mgen_str_split({obj}, {args[0]})"
-            else:
-                raise UnsupportedFeatureError("str.split() takes at most one argument")
-
-        else:
-            raise UnsupportedFeatureError(f"Unsupported string method: {method_name}")
+        Delegates to CStringMethodConverter for the actual conversion.
+        """
+        result = self._string_converter.convert_string_method(obj, method_name, args)
+        # Merge includes needed by string converter
+        self.includes_needed.update(self._string_converter.includes_needed)
+        return result
 
     def _is_list_type(self, expr: ast.expr) -> bool:
         """Check if expression represents a list/vector type."""

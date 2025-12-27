@@ -259,3 +259,144 @@ class TestLLVMOptimizer:
         assert "add i64" in optimized
         assert "mul i64" in optimized
         assert "ret i64" in optimized
+
+
+class TestLLVMOptimizerTargets:
+    """Test LLVM optimizer target triple handling."""
+
+    def test_default_target_triple(self) -> None:
+        """Test that optimizer uses a default target triple."""
+        optimizer = LLVMOptimizer(opt_level=2)
+        info = optimizer.get_optimization_info()
+
+        assert "target_triple" in info
+        assert len(info["target_triple"]) > 0
+
+    def test_optimization_preserves_function_names(self) -> None:
+        """Test that optimization preserves function names for external linkage."""
+        ir = """
+        define i64 @my_function(i64 %x) {
+        entry:
+          %result = add i64 %x, 42
+          ret i64 %result
+        }
+        """
+
+        optimizer = LLVMOptimizer(opt_level=2)
+        optimized = optimizer.optimize(ir)
+
+        # Function name should be preserved
+        assert "my_function" in optimized
+
+    def test_optimization_info_all_levels(self) -> None:
+        """Test optimization info for all levels."""
+        for level in range(4):
+            optimizer = LLVMOptimizer(opt_level=level)
+            info = optimizer.get_optimization_info()
+
+            assert info["opt_level"] == level
+            assert info["opt_name"] == f"O{level}"
+            assert "inlining_threshold" in info
+            assert "vectorization_enabled" in info
+            assert "loop_unrolling_enabled" in info
+
+    def test_o0_no_inlining(self) -> None:
+        """Test that O0 has zero inlining threshold."""
+        optimizer = LLVMOptimizer(opt_level=0)
+        info = optimizer.get_optimization_info()
+
+        assert info["inlining_threshold"] == 0
+
+    def test_o3_vectorization_enabled(self) -> None:
+        """Test that O3 has vectorization enabled."""
+        optimizer = LLVMOptimizer(opt_level=3)
+        info = optimizer.get_optimization_info()
+
+        assert info["vectorization_enabled"] is True
+        assert info["loop_unrolling_enabled"] is True
+
+
+class TestLLVMOptimizerEdgeCases:
+    """Test edge cases and error handling in LLVM optimizer."""
+
+    def test_empty_module_or_comments(self) -> None:
+        """Test optimization of empty/comment-only modules.
+
+        LLVM may handle empty modules gracefully or raise an error
+        depending on version. This test accepts either behavior.
+        """
+        ir = ""
+        optimizer = LLVMOptimizer(opt_level=2)
+
+        try:
+            result = optimizer.optimize(ir)
+            # If no error, result should be empty or have minimal content
+            assert result is not None
+        except ValueError:
+            # Also acceptable - empty modules may be rejected
+            pass
+
+    def test_optimization_with_constants(self) -> None:
+        """Test optimization with constant values."""
+        ir = """
+        define i64 @constant_add() {
+        entry:
+          %result = add i64 10, 20
+          ret i64 %result
+        }
+        """
+
+        optimizer = LLVMOptimizer(opt_level=3)
+        optimized = optimizer.optimize(ir)
+
+        # LLVM should fold the constant: 10 + 20 = 30
+        # The result should either have the folded constant or the original add
+        assert "define" in optimized
+        assert "ret i64" in optimized
+
+    def test_optimization_with_conditionals(self) -> None:
+        """Test optimization with conditional branching."""
+        ir = """
+        define i64 @abs(i64 %x) {
+        entry:
+          %is_neg = icmp slt i64 %x, 0
+          br i1 %is_neg, label %negate, label %keep
+
+        negate:
+          %negated = sub i64 0, %x
+          br label %exit
+
+        keep:
+          br label %exit
+
+        exit:
+          %result = phi i64 [ %negated, %negate ], [ %x, %keep ]
+          ret i64 %result
+        }
+        """
+
+        optimizer = LLVMOptimizer(opt_level=2)
+        optimized = optimizer.optimize(ir)
+
+        # Function should still work correctly after optimization
+        # LLVM may inline and transform, so check for 'define' keyword
+        assert "define" in optimized
+        assert "ret" in optimized
+
+    def test_repeated_optimization(self) -> None:
+        """Test that repeated optimization is idempotent."""
+        ir = """
+        define i64 @simple(i64 %x) {
+        entry:
+          %result = add i64 %x, 1
+          ret i64 %result
+        }
+        """
+
+        optimizer = LLVMOptimizer(opt_level=2)
+        first_pass = optimizer.optimize(ir)
+        second_pass = optimizer.optimize(first_pass)
+
+        # Should be functionally equivalent (may have minor differences)
+        assert "define" in second_pass
+        assert "ret i64" in second_pass

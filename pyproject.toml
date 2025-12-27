@@ -47,6 +47,7 @@ dev = [
     "sphinx>=7.0.0",
     "sphinx-rtd-theme>=2.0.0",
     "myst-parser>=2.0.0",
+    "pytest-review>=0.1.1",
 ]
 extra = [
     "z3-solver>=4.15.3.0",
@@ -69,6 +70,8 @@ mgen = "mgen.cli.main:main"
 minversion = "7.0"
 addopts = "-ra -q --strict-markers --strict-config"
 testpaths = ["tests"]
+# Ignore translation/ - contains Python source files for MGen translation, not pytest tests
+norecursedirs = ["tests/translation"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

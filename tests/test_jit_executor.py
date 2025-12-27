@@ -61,11 +61,15 @@ def test_jit_fibonacci():
     # Generate LLVM IR using mgen
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
-        ll_file = output_dir / "fibonacci.ll"
+        ll_file = output_dir / "src" / "fibonacci.ll"
 
-        # Run mgen to generate LLVM IR
+        # Run mgen to generate LLVM IR (outputs to <build-dir>/src/)
         result = subprocess.run(
-            ["uv", "run", "mgen", "--target", "llvm", "convert", str(benchmark_file)],
+            [
+                "uv", "run", "mgen",
+                "--build-dir", str(output_dir),
+                "convert", "-t", "llvm", str(benchmark_file),
+            ],
             capture_output=True,
             text=True,
             cwd=project_root,
@@ -73,11 +77,6 @@ def test_jit_fibonacci():
 
         if result.returncode != 0:
             pytest.skip(f"Could not generate LLVM IR: {result.stderr}")
-
-        # The output should be fibonacci.ll in current directory
-        # Move it to temp directory
-        if Path("fibonacci.ll").exists():
-            Path("fibonacci.ll").rename(ll_file)
 
         if not ll_file.exists():
             pytest.skip("LLVM IR file not generated")

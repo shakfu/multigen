@@ -190,13 +190,38 @@ recurse:
             # Should have at least wasm32-unknown-unknown
             assert "wasm32" in info["available_targets"]
 
-    @pytest.mark.skipif(
-        not Path("/Users/sa/projects/mgen/build/src/simple_fib_no_print.ll").exists(),
-        reason="Test IR file not available",
-    )
     def test_compile_mgen_ir_integration(self, tmp_path):
-        """Integration test with actual MGen-generated IR."""
-        ir_path = Path("/Users/sa/projects/mgen/build/src/simple_fib_no_print.ll")
+        """Integration test with MGen-style IR (fibonacci without I/O)."""
+        # Create fibonacci IR file dynamically (pure function, no I/O)
+        ir_path = tmp_path / "fibonacci.ll"
+        ir_path.write_text(
+            """
+; ModuleID = "mgen_fibonacci"
+target triple = ""
+
+define i64 @fibonacci(i64 %n) {
+entry:
+  %cmp = icmp sle i64 %n, 1
+  br i1 %cmp, label %base, label %recurse
+base:
+  ret i64 %n
+recurse:
+  %n1 = sub i64 %n, 1
+  %fib1 = call i64 @fibonacci(i64 %n1)
+  %n2 = sub i64 %n, 2
+  %fib2 = call i64 @fibonacci(i64 %n2)
+  %result = add i64 %fib1, %fib2
+  ret i64 %result
+}
+
+define i64 @main() {
+entry:
+  %result = call i64 @fibonacci(i64 10)
+  ret i64 %result
+}
+"""
+        )
+
         compiler = WebAssemblyCompiler()
 
         wasm_path = tmp_path / "fibonacci.wasm"
@@ -284,4 +309,8 @@ class TestWebAssemblyCompilerNoLLVMLite:
         """Test that compiler raises ImportError without llvmlite."""
         # This test only runs if llvmlite is NOT available
         # In practice, this is hard to test since the test suite requires llvmlite
-        pass
+        # When llvmlite is unavailable, WebAssemblyCompiler.__init__ raises ImportError
+        from mgen.backends.llvm.wasm_compiler import WebAssemblyCompiler
+
+        with pytest.raises(ImportError, match="llvmlite is required"):
+            WebAssemblyCompiler()

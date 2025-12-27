@@ -249,7 +249,7 @@ mgen build -t llvm -O0 algorithm.py
 - [x] **Type-safe** (strong Haskell type system)
 - [x] **Visitor pattern** (separates main/IO from pure functions)
 - [x] **Comprehensive features** (all Python constructs work)
-- [!]  **Quicksort benchmark needs optimization** (6/7 passing)
+- [!]  **In-place mutations not supported** (6/7 benchmarks, see note below)
 
 **Performance**:
 - Compile time: 513ms
@@ -262,7 +262,11 @@ mgen build -t llvm -O0 algorithm.py
 - Academic research
 - Learning Haskell through Python
 
-**Status**: All features work, quicksort optimization in progress
+**Known Limitation**: The quicksort benchmark uses in-place array mutations
+(`arr[i] = arr[j]`), which cannot be translated to pure Haskell. Use functional
+patterns instead (list comprehensions, recursive decomposition). See
+[Haskell Backend Limitations](haskell_backend_limitations.md) for details and
+working examples.
 
 **Example**:
 ```bash
