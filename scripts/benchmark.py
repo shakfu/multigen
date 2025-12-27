@@ -222,6 +222,7 @@ class BenchmarkRunner:
                 project_root = Path(__file__).parent.parent
                 runtime_path = project_root / "src" / "mgen" / "backends" / "c" / "runtime"
                 c_backend_path = project_root / "src" / "mgen" / "backends" / "c"
+                stc_include_path = project_root / "src" / "mgen" / "backends" / "c" / "ext" / "stc" / "include"
 
                 # Find non-container runtime .c files (containers are header-only now)
                 runtime_c_files = [
@@ -236,6 +237,7 @@ class BenchmarkRunner:
                     f"-I{output_dir.absolute()}",
                     f"-I{runtime_path.absolute()}",
                     f"-I{c_backend_path.absolute()}",
+                    f"-I{stc_include_path.absolute()}",
                     str(source_file.absolute()),
                     *[str(f.absolute()) for f in runtime_c_files],
                     "-o", str((output_dir / executable_name).absolute())

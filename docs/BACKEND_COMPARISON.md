@@ -272,8 +272,8 @@ MGen supports **7 backends** with varying levels of maturity:
 
 **Strengths:**
 
-- [x] **Fastest execution** (64.5ms average) 
-- [x] **Fastest compilation** (82ms) 
+- [x] **Fastest execution** (64.5ms average)
+- [x] **Fastest compilation** (82ms)
 - [x] Generics (Go 1.18+)
 - [x] Reflection-based comprehensions
 - [x] Idiomatic Go patterns
@@ -315,7 +315,7 @@ MGen supports **7 backends** with varying levels of maturity:
 
 **Strengths:**
 
-- [x] **Most concise code** (27 LOC) 
+- [x] **Most concise code** (27 LOC)
 - [x] **Fastest compile time** among functional languages (258ms)
 - [x] Mutable references system with smart scoping
 - [x] Type-aware generation

@@ -68,10 +68,10 @@ arm-linux-gnueabi-gcc -std=c99 \
 ```
 
 **Benefits**:
-- ✅ Prototype in Python (fast iteration)
-- ✅ Deploy to embedded device (C binary)
-- ✅ No runtime dependencies (static linking)
-- ✅ Small binary size (fits in limited flash memory)
+- [x] Prototype in Python (fast iteration)
+- [x] Deploy to embedded device (C binary)
+- [x] No runtime dependencies (static linking)
+- [x] Small binary size (fits in limited flash memory)
 
 ---
 
@@ -151,10 +151,10 @@ async fn main() -> std::io::Result<()> {
 ```
 
 **Benefits**:
-- ✅ 10x performance improvement
-- ✅ Memory safety (Rust borrow checker)
-- ✅ Easy integration with Rust web frameworks
-- ✅ Incremental migration (port bottlenecks first)
+- [x] 10x performance improvement
+- [x] Memory safety (Rust borrow checker)
+- [x] Easy integration with Rust web frameworks
+- [x] Incremental migration (port bottlenecks first)
 
 ---
 
@@ -200,11 +200,11 @@ def main() -> int:
     config: dict = parse_config(lines)
 
     if validate_deployment(config):
-        print("✓ Configuration valid")
+        print("[x] Configuration valid")
         # Proceed with deployment...
         return 0
     else:
-        print("✗ Configuration invalid")
+        print(" Configuration invalid")
         return 1
 ```
 
@@ -212,7 +212,7 @@ def main() -> int:
 ```bash
 # Instant compilation
 time mgen build -t go deploy_tool.py
-# real    0m0.063s  ⚡ INSTANT
+# real    0m0.063s   INSTANT
 
 # Run
 ./build/deploy_tool
@@ -223,10 +223,10 @@ scp build/deploy_tool prod-server:/usr/local/bin/
 ```
 
 **Benefits**:
-- ✅ Instant compilation (edit-compile-test loop < 100ms)
-- ✅ Single binary deployment
-- ✅ No runtime dependencies
-- ✅ Great for internal tools with frequent changes
+- [x] Instant compilation (edit-compile-test loop < 100ms)
+- [x] Single binary deployment
+- [x] No runtime dependencies
+- [x] Great for internal tools with frequent changes
 
 ---
 
@@ -302,10 +302,10 @@ time python matrix_ops.py
 ```
 
 **Benefits**:
-- ✅ 36.5% speedup with O3
-- ✅ 45x faster than Python
-- ✅ Industry-standard LLVM optimizations
-- ✅ Small binary (37KB)
+- [x] 36.5% speedup with O3
+- [x] 45x faster than Python
+- [x] Industry-standard LLVM optimizations
+- [x] Small binary (37KB)
 
 ---
 
@@ -388,10 +388,10 @@ ENTRYPOINT ["/usr/local/bin/log_processor"]
 ```
 
 **Benefits**:
-- ✅ 21x faster than Python
-- ✅ Tiny binary (36KB) for containers
-- ✅ STL containers (set, map) for efficiency
-- ✅ Easy integration with existing C++ pipelines
+- [x] 21x faster than Python
+- [x] Tiny binary (36KB) for containers
+- [x] STL containers (set, map) for efficiency
+- [x] Easy integration with existing C++ pipelines
 
 ---
 
@@ -455,10 +455,10 @@ console.log(`Fibonacci(40) = ${result}`);
 ```
 
 **Benefits**:
-- ✅ Python algorithm runs in browser
-- ✅ No server required
-- ✅ 80% smaller than native binary
-- ✅ Near-native performance in browser
+- [x] Python algorithm runs in browser
+- [x] No server required
+- [x] 80% smaller than native binary
+- [x] Near-native performance in browser
 
 ---
 
@@ -509,10 +509,10 @@ llc -march=wasm32 -filetype=obj build/crypto_hash.ll -o build/crypto_hash.wasm
 ```
 
 **Benefits**:
-- ✅ Write once, compile for any platform
-- ✅ Single source of truth
-- ✅ LLVM handles target-specific optimizations
-- ✅ No manual porting required
+- [x] Write once, compile for any platform
+- [x] Single source of truth
+- [x] LLVM handles target-specific optimizations
+- [x] No manual porting required
 
 ---
 
@@ -591,10 +591,10 @@ quicksort arr =
 ```
 
 **Benefits**:
-- ✅ Learn functional programming patterns
-- ✅ Python syntax → Haskell semantics
-- ✅ Type-safe functional code
-- ✅ Academic research tool
+- [x] Learn functional programming patterns
+- [x] Python syntax → Haskell semantics
+- [x] Type-safe functional code
+- [x] Academic research tool
 
 ---
 
@@ -720,11 +720,11 @@ jobs:
 ## Summary
 
 **MGen enables**:
-- ✅ Rapid prototyping in Python
-- ✅ Production deployment in compiled languages
-- ✅ Performance optimization without rewrites
-- ✅ Cross-platform development
-- ✅ Educational tools for language learning
+- [x] Rapid prototyping in Python
+- [x] Production deployment in compiled languages
+- [x] Performance optimization without rewrites
+- [x] Cross-platform development
+- [x] Educational tools for language learning
 
 **Choose backend based on**:
 - Target platform (embedded → C, web → Rust/Go, research → Haskell)
