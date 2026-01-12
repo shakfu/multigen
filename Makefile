@@ -57,35 +57,35 @@ help:
 
 # Installation
 install:
-	uv run pip install -e .
+	@uv run pip install -e .
 
 install-dev:
-	uv run pip install -e .
+	@uv run pip install -e .
 
 # Testing
 test: test-pytest
 
 test-pytest:
-	uv run pytest tests/ -v --ignore=tests/test_demos.py --ignore=tests/translation
+	@uv run pytest tests/ -v --ignore=tests/test_demos.py --ignore=tests/translation
 
 test-unit:
-	uv run pytest -m "unit" tests/ -v
+	@uv run pytest -m "unit" tests/ -v
 
 test-translation:
-	uv run multigen batch --continue-on-error --source-dir tests/translation
+	@uv run multigen batch --continue-on-error --source-dir tests/translation
 
 test-build:
-	uv run multigen batch --build --continue-on-error --source-dir tests/translation
+	@uv run multigen batch --build --continue-on-error --source-dir tests/translation
 
 test-integration:
-	uv run pytest -m "integration" tests/ -v
+	@uv run pytest -m "integration" tests/ -v
 
 test-py2c:
-	uv run pytest -m "py2c" tests/ -v
+	@uv run pytest -m "py2c" tests/ -v
 
 test-benchmark:
-	uv run pytest -m "benchmark" tests/ -v
-	uv run python tests/benchmarks.py
+	@uv run pytest -m "benchmark" tests/ -v
+	@uv run python tests/benchmarks.py
 
 test-memory-llvm:
 	@echo "Running LLVM memory leak tests with AddressSanitizer..."
@@ -93,7 +93,7 @@ test-memory-llvm:
 	@./scripts/test_llvm_memory.sh
 
 test-coverage:
-	uv run pytest --cov=src/multigen --cov-branch --cov-report=html --cov-report=term-missing --ignore=tests/test_demos.py --ignore=tests/translation tests/
+	@uv run pytest --cov=src/multigen --cov-branch --cov-report=html --cov-report=term-missing --ignore=tests/test_demos.py --ignore=tests/translation tests/
 	@echo ""
 	@echo "Coverage report generated in htmlcov/index.html"
 
@@ -106,53 +106,53 @@ snap:
 
 # Code quality
 lint:
-	uv run ruff check src tests
+	@uv run ruff check src tests
 
 format:
-	uv run ruff check --fix src tests
-	uv run ruff format src tests
-	uv run isort --profile=black --line-length=120 src tests
+	@uv run ruff check --fix src tests
+	@uv run ruff format src tests
+	@uv run isort --profile=black --line-length=120 src tests
 
 format-check:
-	uv run ruff check src tests
-	uv run ruff format --check src tests
+	@uv run ruff check src tests
+	@uv run ruff format --check src tests
 
 type-check:
-	uv run mypy src/multigen
+	@uv run mypy src/multigen
 
 pre-commit:
-	pre-commit install
-	pre-commit run --all-files
+	@pre-commit install
+	@pre-commit run --all-files
 
 # Build and distribution
 build: clean
-	uv build
+	@uv build
 
 clean:
-	rm -rf build/
-	rm -rf dist/
-	rm -rf *.egg-info/
-	rm -rf .pytest_cache/
-	rm -rf .coverage
-	rm -rf htmlcov/
-	find . -type d -name __pycache__ -exec rm -rf {} +
-	find . -type f -name "*.pyc" -delete
+	@rm -rf build/
+	@rm -rf dist/
+	@rm -rf *.egg-info/
+	@rm -rf .pytest_cache/
+	@rm -rf .coverage
+	@rm -rf htmlcov/
+	@find . -type d -name __pycache__ -exec rm -rf {} +
+	@find . -type f -name "*.pyc" -delete
 
 # PyPI publishing
-check-wheel: build
+check-wheel:
 	@echo "Checking wheel with twine..."
-	uv run twine check dist/*
+	@uv run twine check dist/*
 
 publish-test: check-wheel
 	@echo "Publishing to TestPyPI..."
-	uv run twine upload --repository testpypi dist/*
+	@uv run twine upload --repository testpypi dist/*
 	@echo ""
 	@echo "Package published to TestPyPI"
 	@echo "Install with: pip install --index-url https://test.pypi.org/simple/ multigen"
 
 publish: check-wheel
 	@echo "Publishing to PyPI..."
-	uv run twine upload dist/*
+	@uv run twine upload dist/*
 	@echo ""
 	@echo "Package published to PyPI"
 	@echo "Install with: pip install multigen"
@@ -166,7 +166,7 @@ docs:
 	@echo "Open docs/sphinx/build/index.html in your browser"
 
 docs-clean:
-	cd docs/sphinx && $(MAKE) clean
+	@cd docs/sphinx && $(MAKE) clean
 
 docs-serve:
 	@echo "Opening documentation in browser..."
@@ -175,21 +175,21 @@ docs-serve:
 # Development utilities
 run-examples:
 	@echo "Running example scripts..."
-	uv run python examples/hello_world.py
-	uv run python examples/variables.py
+	@uv run python examples/hello_world.py
+	@uv run python examples/variables.py
 
 # CI simulation
 ci-test: install-dev lint format-check type-check test
 
 # Performance monitoring
 perf-monitor:
-	uv run python scripts/run_tests.py --category benchmark --verbose
+	@uv run python scripts/run_tests.py --category benchmark --verbose
 
 # Package verification
 verify-package: build
-	uv run python -m twine check dist/*
-	uv run pip install dist/*.whl
-	uv run python -c "import multigen; print(f'MultiGen version: {multigen.__version__}')"
+	@uv run python -m twine check dist/*
+	@uv run pip install dist/*.whl
+	@uv run python -c "import multigen; print(f'MultiGen version: {multigen.__version__}')"
 
 # Development server (for future web interface)
 dev-server:
@@ -200,30 +200,30 @@ dev-server:
 benchmark:
 	@echo "Running all benchmarks across all backends..."
 	@mkdir -p $(BENCHMARK_RESULTS_DIR)
-	uv run python scripts/benchmark.py --category all --output $(BENCHMARK_RESULTS_DIR)
+	@uv run python scripts/benchmark.py --category all --output $(BENCHMARK_RESULTS_DIR)
 	@echo ""
 	@echo "Generating report..."
-	uv run python scripts/generate_benchmark_report.py $(BENCHMARK_RESULTS_DIR)/benchmark_results.json --output $(BENCHMARK_RESULTS_DIR)/benchmark_report.md
+	@uv run python scripts/generate_benchmark_report.py $(BENCHMARK_RESULTS_DIR)/benchmark_results.json --output $(BENCHMARK_RESULTS_DIR)/benchmark_report.md
 	@echo ""
 	@echo "Results saved to: $(BENCHMARK_RESULTS_DIR)/"
 	@echo "View report: $(BENCHMARK_RESULTS_DIR)/benchmark_report.md"
 
 benchmark-algorithms:
 	@echo "Running algorithm benchmarks..."
-	uv run python scripts/benchmark.py --category algorithms --output $(BENCHMARK_RESULTS_DIR)
-	uv run python scripts/generate_benchmark_report.py $(BENCHMARK_RESULTS_DIR)/benchmark_results.json --output $(BENCHMARK_RESULTS_DIR)/benchmark_report.md
+	@uv run python scripts/benchmark.py --category algorithms --output $(BENCHMARK_RESULTS_DIR)
+	@uv run python scripts/generate_benchmark_report.py $(BENCHMARK_RESULTS_DIR)/benchmark_results.json --output $(BENCHMARK_RESULTS_DIR)/benchmark_report.md
 
 benchmark-data-structures:
 	@echo "Running data structure benchmarks..."
-	uv run python scripts/benchmark.py --category data_structures --output $(BENCHMARK_RESULTS_DIR)
-	uv run python scripts/generate_benchmark_report.py $(BENCHMARK_RESULTS_DIR)/benchmark_results.json --output $(BENCHMARK_RESULTS_DIR)/benchmark_report.md
+	@uv run python scripts/benchmark.py --category data_structures --output $(BENCHMARK_RESULTS_DIR)
+	@uv run python scripts/generate_benchmark_report.py $(BENCHMARK_RESULTS_DIR)/benchmark_results.json --output $(BENCHMARK_RESULTS_DIR)/benchmark_report.md
 
 benchmark-report:
 	@echo "Generating benchmark report..."
-	uv run python scripts/generate_benchmark_report.py $(BENCHMARK_RESULTS_DIR)/benchmark_results.json --output $(BENCHMARK_RESULTS_DIR)/benchmark_report.md
+	@uv run python scripts/generate_benchmark_report.py $(BENCHMARK_RESULTS_DIR)/benchmark_results.json --output $(BENCHMARK_RESULTS_DIR)/benchmark_report.md
 	@echo "Report saved to: $(BENCHMARK_RESULTS_DIR)/benchmark_report.md"
 
 benchmark-clean:
 	@echo "Cleaning benchmark results..."
-	rm -rf $(BENCHMARK_RESULTS_DIR)
+	@rm -rf $(BENCHMARK_RESULTS_DIR)
 	@echo "Benchmark results cleaned"
