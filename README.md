@@ -33,8 +33,15 @@ MultiGen extends the CGen (Python-to-C) project into a multi-language translatio
 
 ### Installation
 
+Install from pypi
+
+```sh
+pip install multigen
+```
+
+Install from source
+
 ```bash
-# Install from source
 git clone https://github.com/shakfu/multigen
 cd multigen
 pip install -e .
