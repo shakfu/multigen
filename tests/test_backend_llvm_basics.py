@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from mgen.backends.llvm import IRToLLVMConverter
-from mgen.frontend.static_ir import IRBuilder
+from multigen.backends.llvm import IRToLLVMConverter
+from multigen.frontend.static_ir import IRBuilder
 
 # Check if LLVM tools are available
 LLVM_LLC_PATH = shutil.which("llc")
@@ -1314,7 +1314,7 @@ def main() -> int:
         llvm_ir = self._convert_to_llvm(python_code)
 
         # Use llvmlite compiler
-        from mgen.backends.llvm import LLVMCompiler
+        from multigen.backends.llvm import LLVMCompiler
         compiler = LLVMCompiler()
 
         # Compile and run
@@ -1331,7 +1331,7 @@ def main() -> int:
         llvm_ir = self._convert_to_llvm(python_code)
 
         # Use llvmlite compiler
-        from mgen.backends.llvm import LLVMCompiler
+        from multigen.backends.llvm import LLVMCompiler
         import tempfile
         compiler = LLVMCompiler()
 

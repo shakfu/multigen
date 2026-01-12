@@ -2,8 +2,8 @@
 
 import pytest
 
-from mgen.backends.rust.converter import MGenPythonToRustConverter
-from mgen.backends.errors import UnsupportedFeatureError
+from multigen.backends.rust.converter import MultiGenPythonToRustConverter
+from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestRustStringMethods:
@@ -11,7 +11,7 @@ class TestRustStringMethods:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToRustConverter()
+        self.converter = MultiGenPythonToRustConverter()
 
     def test_string_upper_method(self):
         """Test string upper() method conversion."""
@@ -122,7 +122,7 @@ class TestRustStringMethodsInClasses:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToRustConverter()
+        self.converter = MultiGenPythonToRustConverter()
 
     def test_string_methods_on_instance_variables(self):
         """Test string methods on instance variables."""
@@ -235,7 +235,7 @@ class TestRustStringMethodsAdvanced:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToRustConverter()
+        self.converter = MultiGenPythonToRustConverter()
 
     def test_nested_string_method_calls(self):
         """Test deeply nested string method calls."""

@@ -1,15 +1,15 @@
 Contributing Guide
 ==================
 
-Thank you for considering contributing to MGen!
+Thank you for considering contributing to MultiGen!
 
 Development Setup
 -----------------
 
 1. Clone the repository::
 
-      git clone https://github.com/shakfu/mgen.git
-      cd mgen
+      git clone https://github.com/shakfu/multigen.git
+      cd multigen
 
 2. Install development dependencies::
 
@@ -120,7 +120,7 @@ Adding a New Backend
 
 1. Create backend directory::
 
-      mkdir -p src/mgen/backends/newlang
+      mkdir -p src/multigen/backends/newlang
 
 2. Implement core classes::
 
@@ -138,7 +138,7 @@ Adding a New Backend
 
 3. Create runtime library::
 
-      mkdir -p src/mgen/backends/newlang/runtime
+      mkdir -p src/multigen/backends/newlang/runtime
       # Implement runtime helper functions
 
 4. Write tests::
@@ -169,7 +169,7 @@ Run all benchmarks::
 
 Run specific backend::
 
-   uv run mgen convert -t newlang tests/benchmarks/algorithms/fibonacci.py
+   uv run multigen convert -t newlang tests/benchmarks/algorithms/fibonacci.py
 
 Generate benchmark report::
 
@@ -258,8 +258,8 @@ Include:
 Community
 ---------
 
-- GitHub Issues: https://github.com/shakfu/mgen/issues
-- Discussions: https://github.com/shakfu/mgen/discussions
+- GitHub Issues: https://github.com/shakfu/multigen/issues
+- Discussions: https://github.com/shakfu/multigen/discussions
 
 Code of Conduct
 ---------------
@@ -269,4 +269,4 @@ Be respectful, constructive, and professional in all interactions.
 License
 -------
 
-MGen is MIT licensed. All contributions must be compatible with MIT license.
+MultiGen is MIT licensed. All contributions must be compatible with MIT license.

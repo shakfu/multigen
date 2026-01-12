@@ -13,7 +13,7 @@ if str(src_path) not in sys.path:
 
 HAS_PYTEST = True
 
-from mgen.frontend import (
+from multigen.frontend import (
     AnalysisContext,
     AnalysisLevel,
     BoundsChecker,
@@ -305,7 +305,7 @@ def loop_function(n: int) -> int:
 
     def test_ir_type_mapping(self):
         """Test correct type mapping in IR."""
-        from mgen.frontend.static_ir import IRDataType, IRType
+        from multigen.frontend.static_ir import IRDataType, IRType
 
         int_type = IRType(IRDataType.INT)
         float_type = IRType(IRDataType.FLOAT)

@@ -2,7 +2,7 @@
 
 ## Current Status (Updated: October 10, 2025)
 
-**Benchmark Progress: 7/7 (100%)** 
+**Benchmark Progress: 7/7 (100%)**
 
 The LLVM backend generates LLVM IR from Python code and compiles to native executables using `llc` and `clang`. Currently supports most Python features with minimal runtime dependencies.
 
@@ -36,7 +36,7 @@ The LLVM backend generates LLVM IR from Python code and compiles to native execu
   - Enables proper `map_str_int` vs `map_int_int` selection
 - **Set Constructor**: Added `set()` empty constructor support
 - **Benchmark Fix**: Updated `set_ops.py` to use int values instead of bool for compatibility
-- **Status**: All 7/7 benchmarks passing! 
+- **Status**: All 7/7 benchmarks passing!
 
 ### [x] Set Comprehensions Implemented (Oct 9, 2025)
 
@@ -57,7 +57,7 @@ The LLVM backend generates LLVM IR from Python code and compiles to native execu
 
 ### [x] String Operations Fixed (Oct 9, 2025)
 
-- **Fixed**: `split()` now returns `vec_str*` via bitcast from `mgen_string_array_t*`
+- **Fixed**: `split()` now returns `vec_str*` via bitcast from `multigen_string_array_t*`
 - **Working**: String list iteration, indexing, all string methods
 - **Runtime**: Full string runtime with split, lower, strip, concat
 
@@ -384,10 +384,10 @@ The LLVM backend generates LLVM IR from Python code and compiles to native execu
 ### Quick Start
 
 1. Understand the pipeline: `Python AST → Static IR → LLVM IR → Binary`
-2. Read `src/mgen/backends/llvm/ir_to_llvm.py` (main IR generator)
-3. Check runtime in `src/mgen/backends/llvm/runtime/*.c`
+2. Read `src/multigen/backends/llvm/ir_to_llvm.py` (main IR generator)
+3. Check runtime in `src/multigen/backends/llvm/runtime/*.c`
 4. Run tests: `make test`
-5. Test specific benchmark: `uv run mgen build -t llvm tests/benchmarks/algorithms/fibonacci.py`
+5. Test specific benchmark: `uv run multigen build -t llvm tests/benchmarks/algorithms/fibonacci.py`
 
 ### Adding New Features
 
@@ -399,9 +399,9 @@ The LLVM backend generates LLVM IR from Python code and compiles to native execu
    void set_int_clear(set_int* set) {
        if (!set) return;
        for (size_t i = 0; i < set->bucket_count; i++) {
-           mgen_set_int_entry_t* entry = set->buckets[i];
+           multigen_set_int_entry_t* entry = set->buckets[i];
            while (entry) {
-               mgen_set_int_entry_t* next = entry->next;
+               multigen_set_int_entry_t* next = entry->next;
                set_int_entry_free(entry);
                entry = next;
            }
@@ -434,9 +434,9 @@ The LLVM backend generates LLVM IR from Python code and compiles to native execu
 
 - **LLVM IR Language Reference**: <https://llvm.org/docs/LangRef.html>
 - **llvmlite Documentation**: <https://llvmlite.readthedocs.io/>
-- **MGen Architecture**: See `CLAUDE.md`
-- **Static IR Definition**: `src/mgen/frontend/static_ir.py`
-- **LLVM Backend**: `src/mgen/backends/llvm/ir_to_llvm.py`
+- **MultiGen Architecture**: See `CLAUDE.md`
+- **Static IR Definition**: `src/multigen/frontend/static_ir.py`
+- **LLVM Backend**: `src/multigen/backends/llvm/ir_to_llvm.py`
 
 ---
 

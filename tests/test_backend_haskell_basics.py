@@ -2,8 +2,8 @@
 
 import pytest
 
-from mgen.backends.haskell.converter import MGenPythonToHaskellConverter
-from mgen.backends.errors import UnsupportedFeatureError
+from multigen.backends.haskell.converter import MultiGenPythonToHaskellConverter
+from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestHaskellBasics:
@@ -11,7 +11,7 @@ class TestHaskellBasics:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToHaskellConverter()
+        self.converter = MultiGenPythonToHaskellConverter()
 
     def test_simple_function(self):
         """Test simple function conversion."""
@@ -257,6 +257,6 @@ def main() -> None:
         haskell_code = self.converter.convert_code(python_code)
 
         assert "module Main where" in haskell_code
-        assert "import MGenRuntime" in haskell_code
+        assert "import MultiGenRuntime" in haskell_code
         assert "add :: Int -> Int -> Int" in haskell_code
         assert "main :: IO ()" in haskell_code

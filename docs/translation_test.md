@@ -11,12 +11,14 @@
 The initial evaluation **incorrectly classified** 6 tests as "runtime failures" when they were actually successful runs that returned non-zero values (intentional design).
 
 **Actual Results**:
+
 - **C Backend: 92.6% success rate** (25/27 tests)
   - [x] All 25 compiled tests run to completion without crashes
   - [X] Only 2 build failures (both due to untyped container annotations)
-  -  18/27 return exit code 0, 7/27 return computed values (still successful)
+  - 18/27 return exit code 0, 7/27 return computed values (still successful)
 
 **Critical Discovery**: Tests return computed values, not 0/1 status codes
+
 ```python
 def main() -> int:
     result = test_dict_comprehension()  # Returns 5
@@ -25,6 +27,7 @@ def main() -> int:
 ```
 
 **Key Blocker**: Missing **assert statement support** blocks evaluation of 5 backends:
+
 - C++, Rust, Go, Haskell, OCaml all fail at 0% due to this single missing feature
 - These backends likely work fine but cannot be tested with current test suite
 
@@ -53,6 +56,7 @@ def main() -> int:
 ### 1. C Backend - Production Ready [x] (92.6%)
 
 **Actually Passing Tests (25/27)** - All tests that successfully build also run without crashes:
+
 - container_iteration_test (exit 60)
 - simple_infer_test (exit 1)
 - simple_test (exit 1)
@@ -62,6 +66,7 @@ def main() -> int:
 - test_struct_field_access (exit 78)
 
 **Fully Passing Tests (18/27)** - Tests that build and return 0:
+
 - nested_2d_params
 - nested_2d_return
 - nested_2d_simple
@@ -82,6 +87,7 @@ def main() -> int:
 - test_string_split_simple
 
 **Build Failures (2/27)** - Due to untyped container annotations:
+
 - nested_containers_comprehensive (uses `list` instead of `list[int]`)
 - nested_dict_list (uses `dict` and `list` without type parameters)
 
@@ -124,6 +130,7 @@ def main() -> int:
 ### 2. LLVM Backend - Early Stage [!] (14.8%)
 
 **Passing Tests (4/27)**:
+
 - test_2d_simple
 - test_control_flow
 - test_simple_string_ops
@@ -131,6 +138,7 @@ def main() -> int:
 
 **Build Failures (20/27)**: Various feature gaps
 **Runtime Failures (3/27)**:
+
 - container_iteration_test
 - simple_test
 - test_list_comprehension
@@ -142,11 +150,13 @@ def main() -> int:
 **UPDATE 2025-10-24**: **Build system has been fixed!**
 
 **Test Results**: 11/27 passing (40.7%)
+
 - [x] All compiled tests run without crashes
 - [X] 2 build failures due to untyped container annotations (same as C backend)
 - [X] 14 build failures due to code generation issues (set methods, missing features)
 
 **Build System Fix**: Fixed path resolution and subprocess call in `builder.py`
+
 - Changed to absolute paths instead of relative paths
 - Removed `cwd` parameter from subprocess.run()
 - Added error reporting for compilation failures
@@ -158,12 +168,14 @@ def main() -> int:
 **UPDATE 2025-10-24**: **Build system has been fixed!**
 
 **Test Results**: 12/27 passing (44.4%)
+
 - [x] All compiled tests run without crashes
 - [x] All successful tests exit with code 0 (Rust main returns unit type)
 - [X] 2 build failures due to untyped container annotations (same as C/C++)
 - [X] 13 build failures due to code generation issues
 
 **Build System Fix**: Fixed path resolution and runtime module location in `builder.py`
+
 - Changed to absolute paths instead of relative paths
 - Fixed runtime module copy location (source dir, not output dir)
 - Removed `cwd` parameter from subprocess.run()
@@ -176,17 +188,19 @@ def main() -> int:
 **UPDATE 2025-10-24**: **Build system has been fixed!**
 
 **Test Results**: 12/27 passing (44.4%) - **Tied with Rust for best non-C backend!**
+
 - [x] All compiled tests run without crashes
 - [x] All successful tests exit with code 0 (Go main returns successfully)
 - [X] 1 build failure due to untyped container annotations (same as C/C++/Rust)
 - [X] 14 build failures due to code generation issues or missing features
 
 **Build System Fix**: Fixed path resolution, module isolation, and test file naming in `builder.py`
+
 - Created isolated Go build directories to avoid conflicts with C files
 - Renamed `*_test.go` files to `*_main.go` (Go treats `*_test.go` as test files)
 - Changed to absolute paths instead of relative paths
 - Fixed module-based build (build directory, not single file)
-- Runtime module placed in `mgen/` subdirectory for proper imports
+- Runtime module placed in `multigen/` subdirectory for proper imports
 - Added error reporting for compilation failures
 
 **Verdict**: Build system is **working**. Go now **ties with Rust** as best non-C backends with 44.4% success rate. The key innovation was isolating Go builds in separate directories and handling Go's special treatment of `*_test.go` files. Remaining failures are code generation bugs and missing features (dataclasses, namedtuples, slicing). See `GO_BUILD_FIX.md` for details.
@@ -196,12 +210,14 @@ def main() -> int:
 **UPDATE 2025-10-24**: **Build system has been fixed!**
 
 **Test Results**: 6/27 passing (22.2%) - **Outperforms Haskell by 2x!**
+
 - [x] All compiled tests run without crashes
 - [x] All successful tests exit with code 0 or computed values
 - [X] 1 build failure due to untyped container annotations (same as other backends)
 - [X] 20 build failures due to code generation issues or missing features
 
 **Build System Fix**: Fixed path resolution, runtime location, and module resolution in `builder.py`
+
 - Changed to absolute paths instead of relative paths
 - Fixed runtime module copy location (source dir, not output dir)
 - **Critical fix**: Added `-I` include flag for OCaml module resolution with absolute paths
@@ -215,12 +231,14 @@ def main() -> int:
 **UPDATE 2025-10-24**: **Build system has been fixed!**
 
 **Test Results**: 3/27 passing (11.1%)
+
 - [x] All compiled tests run without crashes
 - [x] Successful tests exit with code 0 or computed values
 - [X] 1 build failure due to untyped container annotations (same as other backends)
 - [X] 23 build failures due to code generation issues or missing features
 
 **Build System Fix**: Fixed path resolution and runtime module location in `builder.py`
+
 - Changed to absolute paths instead of relative paths
 - Fixed runtime module copy location (source dir, not output dir)
 - Removed `cwd` parameter from subprocess.run()
@@ -251,6 +269,7 @@ def main() -> int:
 ### Discrepancy: Benchmark vs Translation Tests
 
 **Benchmark Suite** (`tests/benchmarks/`):
+
 - C++: 7/7 (100%)
 - C: 7/7 (100%)
 - Rust: 7/7 (100%)
@@ -260,6 +279,7 @@ def main() -> int:
 - Haskell: 6/7 (86%)
 
 **Translation Suite** (`tests/translation/`) - **CORRECTED**:
+
 - C: 25/27 (92.6%) - All compiled tests run successfully
 - LLVM: TBD (re-evaluation needed with corrected methodology)
 - Others: 0/27 (0.0%) - blocked by missing assert statement support
@@ -295,6 +315,7 @@ The test framework was checking `exit_code == 0`, but the tests return computed 
 **STATUS**: [x] **COMPLETE** (2025-10-24)
 
 All backends now support assert statements:
+
 - **C++**: `assert(condition)` with `<cassert>` [x]
 - **Rust**: `assert!(condition)` [x]
 - **Go**: `if !condition { panic("assertion failed") }` [x]
@@ -310,6 +331,7 @@ See `ASSERT_IMPLEMENTATION.md` for implementation details.
 **Fix Build Systems for All Backends**
 
 Now that assert support is complete, the next blocker is build system issues:
+
 - Fix C++ build system (runtime paths, compilation)
 - Fix Rust build system (Cargo integration, runtime)
 - Fix Go build system (module system, runtime)
@@ -328,7 +350,6 @@ Now that assert support is complete, the next blocker is build system issues:
 2. **Expand LLVM backend feature coverage** (TBD build failures)
    - Prioritize: Comprehensions, dataclasses, namedtuples
    - Target: 50%+ pass rate (14/27)
-
 
 ### Long-term (P2)
 
@@ -351,7 +372,7 @@ for test in tests/translation/*.py; do
   echo -n "BACKEND $testname: "
 
   # Try to build
-  if ! timeout 10 uv run mgen build -t BACKEND "$test" > /dev/null 2>&1; then
+  if ! timeout 10 uv run multigen build -t BACKEND "$test" > /dev/null 2>&1; then
     echo "BUILD_FAIL"
     continue
   fi
@@ -373,7 +394,7 @@ done
 ### Classification (Corrected)
 
 - **SUCCESS**: Build succeeded + program ran to completion (any exit code, including non-zero)
-- **BUILD_FAIL**: MGen compilation failed (syntax error, unsupported feature)
+- **BUILD_FAIL**: MultiGen compilation failed (syntax error, unsupported feature)
 - **CRASH**: Build succeeded but executable crashed with signal (exit code >= 128)
 - **TIMEOUT**: Program didn't complete within 5 seconds
 

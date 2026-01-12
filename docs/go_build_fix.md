@@ -7,6 +7,7 @@
 ## Problem
 
 The Go backend had multiple build system issues preventing compilation:
+
 - `compile_direct()` method was failing due to path issues
 - Go module system conflicted with C files in same directory
 - Files ending in `_test.go` were treated as test files by Go
@@ -14,19 +15,22 @@ The Go backend had multiple build system issues preventing compilation:
 
 ## Solution
 
-Fixed `src/mgen/backends/go/builder.py` with a multi-step approach:
+Fixed `src/multigen/backends/go/builder.py` with a multi-step approach:
 
 ### Changes Made
 
 **1. Isolated Go Build Directory**
+
 ```python
 # Create a temporary Go-specific build directory to avoid conflicts with C files
 go_build_dir = out_dir / f"go_build_{executable_name}"
 go_build_dir.mkdir(exist_ok=True)
 ```
+
 **Why**: Go's module system treats all `.c` files in a directory as cgo sources, but we had C/C++/Rust files from other backends in `build/src/`, causing "C source files not allowed" errors.
 
 **2. Renamed `*_test.go` Files**
+
 ```python
 # IMPORTANT: If filename ends with _test.go, Go treats it as a test file
 source_name = source_path.name
@@ -34,46 +38,57 @@ if source_name.endswith("_test.go"):
     # Rename to avoid Go treating it as a test file
     source_name = source_name.replace("_test.go", "_main.go")
 ```
+
 **Why**: Go's build system automatically excludes `*_test.go` files from regular builds, causing "no non-test Go files" errors.
 
 **3. Module-Based Build**
+
 ```python
 # Build the module (current directory) which includes our renamed source and runtime
 cmd = ["go", "build", "-o", str(out_dir / executable_name), "."]
 ```
-**Why**: Building single files doesn't properly resolve module imports like `"mgenproject/mgen"`.
+
+**Why**: Building single files doesn't properly resolve module imports like `"multigenproject/multigen"`.
 
 **4. Fixed Path Resolution**
+
 ```python
 source_path = Path(source_file).absolute()
 out_dir = Path(output_dir).absolute()
 ```
+
 **Why**: Consistent with C++/Rust fixes - absolute paths prevent issues with working directory changes.
 
 **5. Runtime Module Placement**
+
 ```python
 # Copy runtime package to Go build directory
-mgen_pkg_dir = go_build_dir / "mgen"
-mgen_pkg_dir.mkdir(exist_ok=True)
-runtime_dst = mgen_pkg_dir / "mgen.go"
+multigen_pkg_dir = go_build_dir / "multigen"
+multigen_pkg_dir.mkdir(exist_ok=True)
+runtime_dst = multigen_pkg_dir / "multigen.go"
 shutil.copy2(runtime_src, runtime_dst)
 ```
-**Why**: Go's module import `"mgenproject/mgen"` requires the mgen package to be in a subdirectory.
+
+**Why**: Go's module import `"multigenproject/multigen"` requires the multigen package to be in a subdirectory.
 
 **6. Added Error Reporting**
+
 ```python
 if result.returncode != 0:
     if result.stderr:
         print(f"Go compilation error: {result.stderr}")
     return False
 ```
+
 **Why**: Makes debugging compilation failures much easier.
 
 **7. Cleanup**
+
 ```python
 # Clean up temporary Go build directory after successful build
 shutil.rmtree(go_build_dir, ignore_errors=True)
 ```
+
 **Why**: Keeps build directory clean, only leaves final executable.
 
 ## Test Results
@@ -111,6 +126,7 @@ shutil.rmtree(go_build_dir, ignore_errors=True)
 | test_struct_field_access | [X] BUILD_FAIL | - | Feature not implemented |
 
 **Summary**:
+
 - [x] **12 tests PASS** (44.4%)
 - [X] **15 tests FAIL** (55.6%)
   - 1 due to untyped container annotations
@@ -119,11 +135,13 @@ shutil.rmtree(go_build_dir, ignore_errors=True)
 ## Impact
 
 ### Before Fix
+
 - [X] 0/27 tests passing (0%)
 - Build system completely broken
 - All tests failed with module/path errors
 
 ### After Fix
+
 - [x] 12/27 tests passing (44.4%)
 - Build system working correctly
 - Compilation errors now visible for debugging
@@ -133,26 +151,32 @@ shutil.rmtree(go_build_dir, ignore_errors=True)
 ## Go-Specific Details
 
 ### Exit Codes
+
 Go's `main()` function in this translation returns nothing (just runs), so all successful programs exit with code 0. This is consistent with idiomatic Go and different from C/C++ where tests return computed values.
 
 ### Module System
+
 Go requires proper module structure:
-```
+
+```text
 go_build_simple_test/
-├── go.mod (module mgenproject)
+├── go.mod (module multigenproject)
 ├── simple_main.go (renamed from simple_test.go)
-└── mgen/
-    └── mgen.go (runtime)
+└── multigen/
+    └── multigen.go (runtime)
 ```
 
 The fix ensures:
+
 - `go.mod` is created in build directory
 - Source files don't conflict with test naming (`*_test.go`)
 - Runtime module is in correct location for imports
 - No C/C++/Rust files in same directory to confuse Go
 
 ### Test File Naming Issue
+
 Go's build tool has special behavior for `*_test.go` files:
+
 - Excluded from regular builds (`go build`)
 - Only included in test builds (`go test`)
 
@@ -196,7 +220,7 @@ The Go backend now **ties with Rust** as the best non-C backend at 44.4%!
 
 ## Files Modified
 
-- `src/mgen/backends/go/builder.py` - Complete rewrite of compile_direct() method
+- `src/multigen/backends/go/builder.py` - Complete rewrite of compile_direct() method
 
 **Total Changes**: ~45 lines in 1 file
 
@@ -204,14 +228,14 @@ The Go backend now **ties with Rust** as the best non-C backend at 44.4%!
 
 ```bash
 # Test single file
-uv run mgen build -t go tests/translation/simple_test.py
+uv run multigen build -t go tests/translation/simple_test.py
 ./build/simple_test  # Exit code: 0 (Go main returns successfully)
 
 # Test all files
 for test in tests/translation/*.py; do
   testname=$(basename "$test" .py)
   echo -n "$testname: "
-  if uv run mgen build -t go "$test" > /dev/null 2>&1; then
+  if uv run multigen build -t go "$test" > /dev/null 2>&1; then
     if timeout 5 build/"$testname" > /dev/null 2>&1; then
       echo "PASS"
     else

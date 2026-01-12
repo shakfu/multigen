@@ -3,8 +3,8 @@
 
 import pytest
 
-from mgen.backends.c.converter import MGenPythonToCConverter
-from mgen.backends.errors import UnsupportedFeatureError
+from multigen.backends.c.converter import MultiGenPythonToCConverter
+from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestPy2CBasicConversion:
@@ -12,7 +12,7 @@ class TestPy2CBasicConversion:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_simple_arithmetic(self):
         """Test simple arithmetic operations."""
@@ -120,7 +120,7 @@ class TestPy2CBuiltinFunctions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_abs_function(self):
         """Test abs() function conversion."""
@@ -130,7 +130,7 @@ def test_abs(x: int) -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "mgen_abs_int(x)" in c_code
+        assert "multigen_abs_int(x)" in c_code
 
     def test_bool_function(self):
         """Test bool() function conversion."""
@@ -140,7 +140,7 @@ def test_bool(x: int) -> bool:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "mgen_bool_int(x)" in c_code
+        assert "multigen_bool_int(x)" in c_code
 
     def test_len_function(self):
         """Test len() function conversion."""
@@ -158,7 +158,7 @@ class TestPy2CTypeInference:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_integer_inference(self):
         """Test integer type inference."""
@@ -210,7 +210,7 @@ class TestPy2CExpressions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_arithmetic_precedence(self):
         """Test arithmetic operator precedence."""
@@ -258,7 +258,7 @@ class TestPy2CErrorHandling:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_invalid_syntax(self):
         """Test handling of invalid Python syntax."""
@@ -325,7 +325,7 @@ def func2(y: int) -> int:
 ])
 def test_operator_conversion(python_op, c_op):
     """Test that Python operators are correctly converted to C operators."""
-    converter = MGenPythonToCConverter()
+    converter = MultiGenPythonToCConverter()
 
     python_code = f"""
 def test_op(a: int, b: int) -> int:
@@ -345,7 +345,7 @@ def test_op(a: int, b: int) -> int:
 ])
 def test_type_conversion_parametrized(python_type, c_type):
     """Test parametrized type conversion."""
-    converter = MGenPythonToCConverter()
+    converter = MultiGenPythonToCConverter()
 
     if python_type == "None":
         python_code = """

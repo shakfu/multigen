@@ -2,8 +2,8 @@
 
 import pytest
 
-from mgen.backends.haskell.converter import MGenPythonToHaskellConverter 
-from mgen.backends.errors import UnsupportedFeatureError
+from multigen.backends.haskell.converter import MultiGenPythonToHaskellConverter 
+from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestHaskellIntegrationComplete:
@@ -11,7 +11,7 @@ class TestHaskellIntegrationComplete:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToHaskellConverter()
+        self.converter = MultiGenPythonToHaskellConverter()
 
     def test_complete_class_with_all_features(self):
         """Test class with all advanced features integrated."""

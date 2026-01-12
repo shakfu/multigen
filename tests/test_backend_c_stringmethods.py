@@ -2,8 +2,8 @@
 
 import pytest
 
-from mgen.backends.c.converter import MGenPythonToCConverter
-from mgen.backends.errors import UnsupportedFeatureError
+from multigen.backends.c.converter import MultiGenPythonToCConverter
+from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestStringMethodsBasics:
@@ -11,7 +11,7 @@ class TestStringMethodsBasics:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_string_upper_method(self):
         """Test str.upper() method."""
@@ -23,8 +23,8 @@ def test_upper() -> str:
         c_code = self.converter.convert_code(python_code)
 
         assert 'char* text = "hello";' in c_code
-        assert "mgen_str_upper(text)" in c_code
-        assert '#include "mgen_string_ops.h"' in c_code
+        assert "multigen_str_upper(text)" in c_code
+        assert '#include "multigen_string_ops.h"' in c_code
 
     def test_string_lower_method(self):
         """Test str.lower() method."""
@@ -36,8 +36,8 @@ def test_lower() -> str:
         c_code = self.converter.convert_code(python_code)
 
         assert 'char* text = "WORLD";' in c_code
-        assert "mgen_str_lower(text)" in c_code
-        assert '#include "mgen_string_ops.h"' in c_code
+        assert "multigen_str_lower(text)" in c_code
+        assert '#include "multigen_string_ops.h"' in c_code
 
     def test_string_strip_method(self):
         """Test str.strip() method."""
@@ -49,8 +49,8 @@ def test_strip() -> str:
         c_code = self.converter.convert_code(python_code)
 
         assert 'char* text = "  hello  ";' in c_code
-        assert "mgen_str_strip(text)" in c_code
-        assert '#include "mgen_string_ops.h"' in c_code
+        assert "multigen_str_strip(text)" in c_code
+        assert '#include "multigen_string_ops.h"' in c_code
 
     def test_string_strip_with_chars(self):
         """Test str.strip(chars) method."""
@@ -62,7 +62,7 @@ def test_strip_chars() -> str:
         c_code = self.converter.convert_code(python_code)
 
         assert 'char* text = "!!!hello!!!";' in c_code
-        assert 'mgen_str_strip_chars(text, "!")' in c_code
+        assert 'multigen_str_strip_chars(text, "!")' in c_code
 
     def test_string_find_method(self):
         """Test str.find() method."""
@@ -74,7 +74,7 @@ def test_find() -> int:
         c_code = self.converter.convert_code(python_code)
 
         assert 'char* text = "hello world";' in c_code
-        assert 'mgen_str_find(text, "world")' in c_code
+        assert 'multigen_str_find(text, "world")' in c_code
 
     def test_string_replace_method(self):
         """Test str.replace() method."""
@@ -86,7 +86,7 @@ def test_replace() -> str:
         c_code = self.converter.convert_code(python_code)
 
         assert 'char* text = "hello world";' in c_code
-        assert 'mgen_str_replace(text, "world", "python")' in c_code
+        assert 'multigen_str_replace(text, "world", "python")' in c_code
 
     def test_string_split_method(self):
         """Test str.split() method."""
@@ -98,7 +98,7 @@ def test_split() -> str:
         c_code = self.converter.convert_code(python_code)
 
         assert 'char* text = "hello world";' in c_code
-        assert "mgen_str_split(text, NULL)" in c_code
+        assert "multigen_str_split(text, NULL)" in c_code
 
     def test_string_split_with_delimiter(self):
         """Test str.split(delimiter) method."""
@@ -110,7 +110,7 @@ def test_split_delimiter() -> str:
         c_code = self.converter.convert_code(python_code)
 
         assert 'char* text = "a,b,c";' in c_code
-        assert 'mgen_str_split(text, ",")' in c_code
+        assert 'multigen_str_split(text, ",")' in c_code
 
 
 class TestStringMethodsWithVariables:
@@ -118,7 +118,7 @@ class TestStringMethodsWithVariables:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_string_method_on_variable(self):
         """Test string method on a variable."""
@@ -129,7 +129,7 @@ def test_variable_method(input_text: str) -> str:
         c_code = self.converter.convert_code(python_code)
 
         assert "char* test_variable_method(char* input_text)" in c_code
-        assert "mgen_str_upper(input_text)" in c_code
+        assert "multigen_str_upper(input_text)" in c_code
 
     def test_string_method_chaining_concept(self):
         """Test concept of string method results being used."""
@@ -141,8 +141,8 @@ def test_method_result() -> str:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "mgen_str_strip(text)" in c_code
-        assert "mgen_str_lower(stripped)" in c_code
+        assert "multigen_str_strip(text)" in c_code
+        assert "multigen_str_lower(stripped)" in c_code
 
     def test_string_method_with_parameters(self):
         """Test string methods with parameterized arguments."""
@@ -152,7 +152,7 @@ def test_with_params(text: str, old_val: str, new_val: str) -> str:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "mgen_str_replace(text, old_val, new_val)" in c_code
+        assert "multigen_str_replace(text, old_val, new_val)" in c_code
 
     def test_find_with_variable_search(self):
         """Test find method with variable search term."""
@@ -162,7 +162,7 @@ def test_find_variable(text: str, search_term: str) -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "mgen_str_find(text, search_term)" in c_code
+        assert "multigen_str_find(text, search_term)" in c_code
 
 
 class TestStringMethodsLiterals:
@@ -170,7 +170,7 @@ class TestStringMethodsLiterals:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_literal_string_upper(self):
         """Test upper() on string literal."""
@@ -180,7 +180,7 @@ def test_literal_upper() -> str:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert 'mgen_str_upper("hello")' in c_code
+        assert 'multigen_str_upper("hello")' in c_code
 
     def test_literal_string_lower(self):
         """Test lower() on string literal."""
@@ -190,7 +190,7 @@ def test_literal_lower() -> str:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert 'mgen_str_lower("HELLO")' in c_code
+        assert 'multigen_str_lower("HELLO")' in c_code
 
     def test_literal_string_find(self):
         """Test find() on string literal."""
@@ -200,7 +200,7 @@ def test_literal_find() -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert 'mgen_str_find("hello world", "world")' in c_code
+        assert 'multigen_str_find("hello world", "world")' in c_code
 
     def test_literal_string_replace(self):
         """Test replace() on string literal."""
@@ -210,7 +210,7 @@ def test_literal_replace() -> str:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert 'mgen_str_replace("hello world", "world", "python")' in c_code
+        assert 'multigen_str_replace("hello world", "world", "python")' in c_code
 
 
 class TestStringMethodsErrorHandling:
@@ -218,7 +218,7 @@ class TestStringMethodsErrorHandling:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_upper_with_arguments_error(self):
         """Test error when upper() is called with arguments."""
@@ -296,7 +296,7 @@ class TestStringMethodsIntegration:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_string_methods_in_conditionals(self):
         """Test string methods used in conditional statements."""
@@ -309,9 +309,9 @@ def test_conditional(text: str) -> str:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "if ((mgen_str_find(text, \"hello\") >= 0))" in c_code
-        assert "return mgen_str_upper(text);" in c_code
-        assert "return mgen_str_lower(text);" in c_code
+        assert "if ((multigen_str_find(text, \"hello\") >= 0))" in c_code
+        assert "return multigen_str_upper(text);" in c_code
+        assert "return multigen_str_lower(text);" in c_code
 
     def test_string_methods_in_loops(self):
         """Test string methods used in loops."""
@@ -325,7 +325,7 @@ def test_loop() -> str:
         c_code = self.converter.convert_code(python_code)
 
         assert "for (int i = 0; i < 3; i += 1)" in c_code
-        assert "result = mgen_str_upper(result);" in c_code
+        assert "result = multigen_str_upper(result);" in c_code
 
     def test_string_methods_with_oop(self):
         """Test string methods used with object-oriented features."""
@@ -346,17 +346,17 @@ def test_oop() -> str:
         # Check that string methods work within class methods
         assert "typedef struct TextProcessor" in c_code
         assert "TextProcessor_process" in c_code
-        assert "mgen_str_strip(self->text)" in c_code
+        assert "multigen_str_strip(self->text)" in c_code
 
 
 @pytest.mark.parametrize("method,expected_func", [
-    ("upper", "mgen_str_upper"),
-    ("lower", "mgen_str_lower"),
-    ("strip", "mgen_str_strip"),
+    ("upper", "multigen_str_upper"),
+    ("lower", "multigen_str_lower"),
+    ("strip", "multigen_str_strip"),
 ])
 def test_string_methods_parametrized(method, expected_func):
     """Test parametrized string methods."""
-    converter = MGenPythonToCConverter()
+    converter = MultiGenPythonToCConverter()
 
     python_code = f"""
 def test_method() -> str:
@@ -371,7 +371,7 @@ def test_method() -> str:
 @pytest.mark.integration
 def test_string_methods_comprehensive():
     """Comprehensive test of string methods working together."""
-    converter = MGenPythonToCConverter()
+    converter = MultiGenPythonToCConverter()
 
     python_code = """
 def text_processing(input_text: str) -> str:
@@ -398,9 +398,9 @@ def test_processing() -> str:
     # Basic sanity checks
     assert c_code is not None
     assert len(c_code) > 200  # Should be substantial
-    assert "mgen_str_strip(" in c_code
-    assert "mgen_str_lower(" in c_code
-    assert "mgen_str_find(" in c_code
-    assert "mgen_str_replace(" in c_code
-    assert "mgen_str_upper(" in c_code
-    assert '#include "mgen_string_ops.h"' in c_code
+    assert "multigen_str_strip(" in c_code
+    assert "multigen_str_lower(" in c_code
+    assert "multigen_str_find(" in c_code
+    assert "multigen_str_replace(" in c_code
+    assert "multigen_str_upper(" in c_code
+    assert '#include "multigen_string_ops.h"' in c_code

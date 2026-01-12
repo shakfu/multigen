@@ -1,18 +1,18 @@
-# CGen vs MGen C Backend Analysis - Executive Summary
+# CGen vs MultiGen C Backend Analysis - Executive Summary
 
 **Date**: 2025-10-03
 **Analyst**: Claude Code
-**Purpose**: Identify CGen code to accelerate MGen C backend (2/7 → 7/7 benchmarks)
+**Purpose**: Identify CGen code to accelerate MultiGen C backend (2/7 → 7/7 benchmarks)
 
 ---
 
 ## Key Findings
 
-CGen has **three production-ready systems** that can be directly ported to MGen:
+CGen has **three production-ready systems** that can be directly ported to MultiGen:
 
 ### 1. EnhancedTypeInferenceEngine (527 lines)
 
-**What it does**: Multi-pass type analysis with 90%+ accuracy vs MGen's ~40%
+**What it does**: Multi-pass type analysis with 90%+ accuracy vs MultiGen's ~40%
 
 **Key Features**:
 
@@ -21,7 +21,7 @@ CGen has **three production-ready systems** that can be directly ported to MGen:
 - Method-based inference: detects `.append()` → infers list type
 - Confidence scoring: 0.0-1.0 for each inference
 
-**Impact on MGen**:
+**Impact on MultiGen**:
 
 - [x] Fixes empty container initialization (`data: list = []` → `vec_int data = {0};`)
 - [x] Fixes dict key type detection (`counts[word]` → `hmap_cstr_int`)
@@ -42,7 +42,7 @@ CGen has **three production-ready systems** that can be directly ported to MGen:
 - Topological sort (ensures inner types instantiated before outer)
 - STC template generation in correct order
 
-**Impact on MGen**:
+**Impact on MultiGen**:
 
 - [x] Fixes matmul benchmark (matrix multiplication with 2D arrays)
 - [x] Fixes quicksort benchmark (array of arrays operations)
@@ -61,7 +61,7 @@ CGen has **three production-ready systems** that can be directly ported to MGen:
 - Type narrowing in if/else branches
 - Loop-aware type tracking
 
-**Impact on MGen**:
+**Impact on MultiGen**:
 
 - Edge case handling
 - Better type accuracy in complex functions
@@ -74,11 +74,11 @@ CGen has **three production-ready systems** that can be directly ported to MGen:
 
 **Files to create**:
 
-- `/Users/sa/projects/mgen/src/mgen/backends/c/enhanced_type_inference.py` (527 lines from CGen)
+- `/Users/sa/projects/multigen/src/multigen/backends/c/enhanced_type_inference.py` (527 lines from CGen)
 
 **Files to modify**:
 
-- `/Users/sa/projects/mgen/src/mgen/backends/c/converter.py`
+- `/Users/sa/projects/multigen/src/multigen/backends/c/converter.py`
   - Add `self.type_engine = EnhancedTypeInferenceEngine()`
   - Call `type_engine.analyze_module()` in `_convert_module()`
   - Update `_convert_annotated_assignment()` to use inferred types
@@ -97,11 +97,11 @@ CGen has **three production-ready systems** that can be directly ported to MGen:
 
 **Files to create**:
 
-- `/Users/sa/projects/mgen/src/mgen/backends/c/nested_containers.py` (356 lines from CGen)
+- `/Users/sa/projects/multigen/src/multigen/backends/c/nested_containers.py` (356 lines from CGen)
 
 **Files to modify**:
 
-- `/Users/sa/projects/mgen/src/mgen/backends/c/converter.py`
+- `/Users/sa/projects/multigen/src/multigen/backends/c/converter.py`
   - Add `self.nested_manager = NestedContainerManager()`
   - Update `_generate_container_declarations()` to use dependency order
   - Add nested subscript handling (`a[i][j]`)
@@ -122,7 +122,7 @@ CGen has **three production-ready systems** that can be directly ported to MGen:
 3. [x] Comprehensive error handling
 4. [x] Well-documented inference sources
 
-**MGen Compatibility**:
+**MultiGen Compatibility**:
 
 1. [x] Both use AST-based analysis
 2. [x] Similar architecture (converters, emitters)
@@ -184,7 +184,7 @@ The C++ backend recently achieved 7/7 using similar patterns:
 
 **Synergy**: C backend can benefit from both:
 
-1. C++ backend's patterns (proven in MGen context)
+1. C++ backend's patterns (proven in MultiGen context)
 2. CGen's mature implementations (battle-tested)
 
 ---
@@ -194,7 +194,7 @@ The C++ backend recently achieved 7/7 using similar patterns:
 ### Immediate Actions
 
 1. [x] Review comparison documents:
-   - `/tmp/cgen_mgen_comparison.md` (detailed technical analysis)
+   - `/tmp/cgen_multigen_comparison.md` (detailed technical analysis)
    - `/tmp/c_backend_improvement_plan.md` (step-by-step implementation plan)
 
 2. **Decide on approach**:
@@ -211,7 +211,7 @@ The C++ backend recently achieved 7/7 using similar patterns:
 
 ## Conclusion
 
-**Bottom Line**: CGen has production-ready code that directly solves MGen C backend's current failures.
+**Bottom Line**: CGen has production-ready code that directly solves MultiGen C backend's current failures.
 
 **Recommendation**:
 
@@ -227,7 +227,7 @@ This is a **low-risk, high-reward** path leveraging mature, tested code.
 
 ## Related Documents
 
-1. **Detailed Technical Analysis**: `/tmp/cgen_mgen_comparison.md`
+1. **Detailed Technical Analysis**: `/tmp/cgen_multigen_comparison.md`
    - Line-by-line code comparisons
    - Algorithm explanations
    - Integration examples

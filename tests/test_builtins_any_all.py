@@ -5,7 +5,7 @@ Test any() and all() built-in functions across backends.
 import pytest
 import tempfile
 from pathlib import Path
-from mgen.pipeline import MGenPipeline
+from multigen.pipeline import MultiGenPipeline
 
 
 def test_any_basic_cpp():
@@ -26,11 +26,11 @@ def main() -> None:
 
     try:
         with tempfile.TemporaryDirectory() as temp_dir:
-            pipeline = MGenPipeline(target_language="cpp")
+            pipeline = MultiGenPipeline(target_language="cpp")
             result = pipeline.convert(temp_file, temp_dir)
 
             assert result.success, f"Conversion failed: {result.errors}"
-            assert "mgen::any" in Path(result.generated_files[0]).read_text()
+            assert "multigen::any" in Path(result.generated_files[0]).read_text()
     finally:
         Path(temp_file).unlink()
 
@@ -53,11 +53,11 @@ def main() -> None:
 
     try:
         with tempfile.TemporaryDirectory() as temp_dir:
-            pipeline = MGenPipeline(target_language="cpp")
+            pipeline = MultiGenPipeline(target_language="cpp")
             result = pipeline.convert(temp_file, temp_dir)
 
             assert result.success, f"Conversion failed: {result.errors}"
-            assert "mgen::all" in Path(result.generated_files[0]).read_text()
+            assert "multigen::all" in Path(result.generated_files[0]).read_text()
     finally:
         Path(temp_file).unlink()
 
@@ -84,13 +84,13 @@ def main() -> None:
 
     try:
         with tempfile.TemporaryDirectory() as temp_dir:
-            pipeline = MGenPipeline(target_language="cpp")
+            pipeline = MultiGenPipeline(target_language="cpp")
             result = pipeline.convert(temp_file, temp_dir)
 
             assert result.success, f"Conversion failed: {result.errors}"
             generated_code = Path(result.generated_files[0]).read_text()
-            assert "mgen::any" in generated_code
-            assert "mgen::all" in generated_code
+            assert "multigen::any" in generated_code
+            assert "multigen::all" in generated_code
     finally:
         Path(temp_file).unlink()
 

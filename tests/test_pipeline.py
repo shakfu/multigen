@@ -1,26 +1,26 @@
-"""Tests for MGen pipeline system."""
+"""Tests for MultiGen pipeline system."""
 
 import tempfile
 from pathlib import Path
 
 import pytest
 
-from mgen.pipeline import MGenPipeline, PipelineConfig, BuildMode, OptimizationLevel
-from mgen.backends.registry import registry
+from multigen.pipeline import MultiGenPipeline, PipelineConfig, BuildMode, OptimizationLevel
+from multigen.backends.registry import registry
 
 
-class TestMGenPipeline:
+class TestMultiGenPipeline:
     """Test the multi-language pipeline."""
 
     def test_pipeline_initialization(self):
         """Test pipeline initialization with different targets."""
         # Test default initialization
-        pipeline = MGenPipeline()
+        pipeline = MultiGenPipeline()
         assert pipeline.config.target_language == "c"
 
         # Test with specific target
         if registry.has_backend("rust"):
-            pipeline = MGenPipeline(target_language="rust")
+            pipeline = MultiGenPipeline(target_language="rust")
             assert pipeline.config.target_language == "rust"
 
     def test_pipeline_with_config(self):
@@ -30,14 +30,14 @@ class TestMGenPipeline:
             optimization_level=OptimizationLevel.AGGRESSIVE,
             build_mode=BuildMode.DIRECT
         )
-        pipeline = MGenPipeline(config)
+        pipeline = MultiGenPipeline(config)
         assert pipeline.config.target_language == "c"
         assert pipeline.config.optimization_level == OptimizationLevel.AGGRESSIVE
 
     def test_unsupported_language_raises_error(self):
         """Test that unsupported language raises error."""
         with pytest.raises(ValueError, match="Unsupported target language"):
-            MGenPipeline(target_language="nonexistent")
+            MultiGenPipeline(target_language="nonexistent")
 
     @pytest.mark.parametrize("target", ["c", "rust", "go"])
     def test_pipeline_conversion(self, target):
@@ -55,7 +55,7 @@ class TestMGenPipeline:
         try:
             # Create temporary output directory
             with tempfile.TemporaryDirectory() as temp_dir:
-                pipeline = MGenPipeline(target_language=target)
+                pipeline = MultiGenPipeline(target_language=target)
                 result = pipeline.convert(temp_python_file, temp_dir)
 
                 # Check result
@@ -98,7 +98,7 @@ class TestMGenPipeline:
                     target_language=target,
                     build_mode=BuildMode.MAKEFILE
                 )
-                pipeline = MGenPipeline(config)
+                pipeline = MultiGenPipeline(config)
                 result = pipeline.convert(temp_python_file, temp_dir)
 
                 # Check result
@@ -121,7 +121,7 @@ class TestMGenPipeline:
 
     def test_pipeline_error_handling(self):
         """Test pipeline error handling."""
-        pipeline = MGenPipeline(target_language="c")
+        pipeline = MultiGenPipeline(target_language="c")
 
         # Test with non-existent file
         result = pipeline.convert("nonexistent.py")
@@ -134,7 +134,7 @@ class TestPipelineIntegration:
 
     def test_convert_python_to_language_function(self):
         """Test the convenience function for conversion."""
-        from mgen.pipeline import convert_python_to_language
+        from multigen.pipeline import convert_python_to_language
 
         # Create a simple Python file
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
@@ -189,7 +189,7 @@ class TestPipelineIntegration:
 
             try:
                 with tempfile.TemporaryDirectory() as temp_dir:
-                    pipeline = MGenPipeline(target_language=target)
+                    pipeline = MultiGenPipeline(target_language=target)
                     result = pipeline.convert(temp_python_file, temp_dir)
 
                     assert result.success, f"Case {i} failed for {target}: {result.errors}"

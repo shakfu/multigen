@@ -12,7 +12,7 @@ src_path = project_root / "src"
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
-from mgen.frontend.verifiers.z3_formula_generator import Z3FormulaGenerator
+from multigen.frontend.verifiers.z3_formula_generator import Z3FormulaGenerator
 
 # Check if Z3 is available
 try:

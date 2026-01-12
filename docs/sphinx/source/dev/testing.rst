@@ -1,7 +1,7 @@
 Testing Guide
 =============
 
-MGen has a comprehensive test suite with 961 tests covering all aspects of code generation.
+MultiGen has a comprehensive test suite with 961 tests covering all aspects of code generation.
 
 Running Tests
 -------------
@@ -81,7 +81,7 @@ Test end-to-end pipeline::
            input_file.write_text("def foo(): pass")
 
            config = PipelineConfig(target_language="c")
-           pipeline = MGenPipeline(config=config)
+           pipeline = MultiGenPipeline(config=config)
            result = pipeline.convert(input_file)
 
            assert result.success
@@ -180,7 +180,7 @@ Common fixtures::
    def pipeline():
        """Configured pipeline instance"""
        config = PipelineConfig(target_language="c")
-       return MGenPipeline(config=config)
+       return MultiGenPipeline(config=config)
 
 Test Markers
 ------------
@@ -291,7 +291,7 @@ Coverage goals:
 Benchmark Suite
 ---------------
 
-MGen includes 7 comprehensive benchmarks:
+MultiGen includes 7 comprehensive benchmarks:
 
 Algorithms
 ~~~~~~~~~~
@@ -317,7 +317,7 @@ Run all benchmarks::
 
 Run specific backend::
 
-   uv run mgen convert -t c tests/benchmarks/algorithms/fibonacci.py
+   uv run multigen convert -t c tests/benchmarks/algorithms/fibonacci.py
    gcc fibonacci.c -o fibonacci
    ./fibonacci
 
@@ -399,7 +399,7 @@ Troubleshooting
 **Import errors**::
 
    # Ensure PYTHONPATH is set
-   export PYTHONPATH=/Users/sa/projects/mgen/src
+   export PYTHONPATH=/Users/sa/projects/multigen/src
    pytest
 
 **Z3 not available**::

@@ -2,15 +2,15 @@
 
 import pytest
 
-from mgen.backends.cpp.converter import MGenPythonToCppConverter
-from mgen.backends.errors import UnsupportedFeatureError
+from multigen.backends.cpp.converter import MultiGenPythonToCppConverter
+from multigen.backends.errors import UnsupportedFeatureError
 
 class TestCppIntegrationBasic:
     """Test basic integration scenarios."""
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCppConverter()
+        self.converter = MultiGenPythonToCppConverter()
 
     def test_complete_simple_program(self):
         """Test conversion of a complete simple program."""
@@ -30,7 +30,7 @@ def main() -> None:
         # Check includes and namespace
         assert "#include <iostream>" in cpp_code
         assert "using namespace std;" in cpp_code
-        assert "using namespace mgen;" in cpp_code
+        assert "using namespace multigen;" in cpp_code
 
         # Check factorial function
         assert "int factorial(int n)" in cpp_code
@@ -93,7 +93,7 @@ class TestCppIntegrationOOP:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCppConverter()
+        self.converter = MultiGenPythonToCppConverter()
 
     def test_complete_class_with_methods(self):
         """Test complete class with constructor and methods."""
@@ -179,7 +179,7 @@ class TestCppIntegrationAdvanced:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCppConverter()
+        self.converter = MultiGenPythonToCppConverter()
 
     def test_program_with_comprehensions(self):
         """Test program using comprehensions."""
@@ -262,7 +262,7 @@ def count_primes_up_to(n: int) -> int:
 
         # Note: Complex list operations would need more sophisticated handling
         assert "find_primes(n)" in cpp_code
-        assert "mgen::len(prime_list)" in cpp_code
+        assert "multigen::len(prime_list)" in cpp_code
 
 
 class TestCppIntegrationErrorHandling:
@@ -270,7 +270,7 @@ class TestCppIntegrationErrorHandling:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCppConverter()
+        self.converter = MultiGenPythonToCppConverter()
 
     def test_unsupported_features_raise_errors(self):
         """Test that unsupported features raise appropriate errors."""

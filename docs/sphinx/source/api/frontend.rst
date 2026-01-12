@@ -6,7 +6,7 @@ Frontend analysis components for AST analysis, type inference, and optimization.
 AST Analyzer
 ------------
 
-.. automodule:: mgen.frontend.ast_analyzer
+.. automodule:: multigen.frontend.ast_analyzer
    :members:
    :undoc-members:
    :show-inheritance:
@@ -14,7 +14,7 @@ AST Analyzer
 Type Inference
 --------------
 
-.. automodule:: mgen.frontend.type_inference
+.. automodule:: multigen.frontend.type_inference
    :members:
    :undoc-members:
    :show-inheritance:
@@ -25,7 +25,7 @@ Intelligence Layer
 Base Classes
 ~~~~~~~~~~~~
 
-.. automodule:: mgen.frontend.base
+.. automodule:: multigen.frontend.base
    :members:
    :undoc-members:
    :show-inheritance:
@@ -33,7 +33,7 @@ Base Classes
 Analyzers
 ~~~~~~~~~
 
-.. autoclass:: mgen.frontend.base.BaseAnalyzer
+.. autoclass:: multigen.frontend.base.BaseAnalyzer
    :members:
    :undoc-members:
    :show-inheritance:
@@ -41,7 +41,7 @@ Analyzers
 Optimizers
 ~~~~~~~~~~
 
-.. autoclass:: mgen.frontend.base.BaseOptimizer
+.. autoclass:: multigen.frontend.base.BaseOptimizer
    :members:
    :undoc-members:
    :show-inheritance:
@@ -49,7 +49,7 @@ Optimizers
 Verifiers
 ~~~~~~~~~
 
-.. autoclass:: mgen.frontend.base.BaseVerifier
+.. autoclass:: multigen.frontend.base.BaseVerifier
    :members:
    :undoc-members:
    :show-inheritance:
@@ -57,7 +57,7 @@ Verifiers
 Intelligence Pipeline
 ~~~~~~~~~~~~~~~~~~~~~
 
-.. autoclass:: mgen.frontend.base.IntelligencePipeline
+.. autoclass:: multigen.frontend.base.IntelligencePipeline
    :members:
    :undoc-members:
    :show-inheritance:
@@ -65,7 +65,7 @@ Intelligence Pipeline
 Analysis Context
 ----------------
 
-.. autoclass:: mgen.frontend.base.AnalysisContext
+.. autoclass:: multigen.frontend.base.AnalysisContext
    :members:
    :undoc-members:
    :show-inheritance:
@@ -73,17 +73,17 @@ Analysis Context
 Analysis Results
 ----------------
 
-.. autoclass:: mgen.frontend.base.AnalysisReport
+.. autoclass:: multigen.frontend.base.AnalysisReport
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. autoclass:: mgen.frontend.base.OptimizationResult
+.. autoclass:: multigen.frontend.base.OptimizationResult
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. autoclass:: mgen.frontend.base.VerificationResult
+.. autoclass:: multigen.frontend.base.VerificationResult
    :members:
    :undoc-members:
    :show-inheritance:
@@ -93,7 +93,7 @@ Example Usage
 
 Using the AST analyzer::
 
-   from mgen.frontend.ast_analyzer import ASTAnalyzer
+   from multigen.frontend.ast_analyzer import ASTAnalyzer
    import ast
 
    code = "def foo(x: int) -> int: return x * 2"
@@ -106,7 +106,7 @@ Using the AST analyzer::
 
 Using the intelligence pipeline::
 
-   from mgen.frontend.base import (
+   from multigen.frontend.base import (
        IntelligencePipeline,
        AnalysisContext,
    )

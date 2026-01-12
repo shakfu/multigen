@@ -4,10 +4,10 @@ import ast
 
 import pytest
 
-from mgen.error_formatter import ErrorFormatter, format_error
-from mgen.errors import (
+from multigen.error_formatter import ErrorFormatter, format_error
+from multigen.errors import (
     ErrorCode,
-    MGenError,
+    MultiGenError,
     SourceLocation,
     TypeMappingError,
     UnsupportedFeatureError,
@@ -248,7 +248,7 @@ class TestBackwardCompatibility:
 
     def test_import_from_backends_errors(self):
         """Test importing from backends.errors module for compatibility."""
-        from mgen.backends.errors import TypeMappingError, UnsupportedFeatureError
+        from multigen.backends.errors import TypeMappingError, UnsupportedFeatureError
 
         error1 = UnsupportedFeatureError("Test 1")
         error2 = TypeMappingError("Test 2")

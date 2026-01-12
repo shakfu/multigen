@@ -1,6 +1,6 @@
-# MGen Benchmark Suite
+# MultiGen Benchmark Suite
 
-This directory contains benchmarks for evaluating the performance of MGen-generated code across all supported backends (C, C++, Rust, Go, Haskell, OCaml).
+This directory contains benchmarks for evaluating the performance of MultiGen-generated code across all supported backends (C, C++, Rust, Go, Haskell, OCaml).
 
 ## Structure
 
@@ -159,7 +159,7 @@ A human-readable Markdown report is generated showing:
 To add a new benchmark:
 
 1. Create a Python file in the appropriate directory
-2. Implement using MGen-supported features only
+2. Implement using MultiGen-supported features only
 3. Include type annotations for all variables
 4. Ensure main() returns int (0 for success)
 5. Print expected output for verification
@@ -207,7 +207,7 @@ def main() -> int:
 
 ## Notes
 
-- Benchmarks are designed to use only MGen-supported Python features
+- Benchmarks are designed to use only MultiGen-supported Python features
 - Each benchmark includes expected output for verification
 - Iteration counts are tuned to produce measurable timing differences
 - All benchmarks should complete in < 30 seconds

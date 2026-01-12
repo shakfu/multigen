@@ -2,8 +2,8 @@
 
 import pytest
 
-from mgen.backends.haskell.converter import MGenPythonToHaskellConverter
-from mgen.backends.errors import UnsupportedFeatureError
+from multigen.backends.haskell.converter import MultiGenPythonToHaskellConverter
+from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestHaskellFunctionalQuicksort:
@@ -11,7 +11,7 @@ class TestHaskellFunctionalQuicksort:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToHaskellConverter()
+        self.converter = MultiGenPythonToHaskellConverter()
 
     def test_functional_quicksort(self):
         """Test that functional quicksort (without mutations) translates correctly."""

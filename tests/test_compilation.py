@@ -14,8 +14,8 @@ from typing import Optional
 
 import pytest
 
-from mgen.pipeline import MGenPipeline, PipelineConfig, BuildMode
-from mgen.backends.registry import registry
+from multigen.pipeline import MultiGenPipeline, PipelineConfig, BuildMode
+from multigen.backends.registry import registry
 
 
 class CompilationTestHelper:
@@ -47,7 +47,7 @@ class CompilationTestHelper:
 
             # Generate code
             try:
-                pipeline = MGenPipeline(
+                pipeline = MultiGenPipeline(
                     target_language=backend,
                     config=PipelineConfig(
                         target_language=backend,

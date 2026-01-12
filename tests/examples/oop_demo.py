@@ -1,4 +1,4 @@
-"""Demonstration of OOP features in MGen C backend."""
+"""Demonstration of OOP features in MultiGen C backend."""
 
 class Rectangle:
     def __init__(self, width: int, height: int):

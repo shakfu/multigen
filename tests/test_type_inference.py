@@ -2,8 +2,8 @@
 
 import ast
 
-from mgen.frontend.flow_sensitive_inference import FLOW_BOOL, FLOW_FLOAT, FLOW_INT, FlowSensitiveInferencer, TypeUnifier
-from mgen.frontend.type_inference import TypeInferenceEngine
+from multigen.frontend.flow_sensitive_inference import FLOW_BOOL, FLOW_FLOAT, FLOW_INT, FlowSensitiveInferencer, TypeUnifier
+from multigen.frontend.type_inference import TypeInferenceEngine
 
 
 class TestTypeUnifier:
@@ -17,7 +17,7 @@ class TestTypeUnifier:
         assert unifier.unify(FLOW_INT, FLOW_INT) == FLOW_INT
 
         # Unknown types unify to known type
-        from mgen.frontend.flow_sensitive_inference import FLOW_UNKNOWN
+        from multigen.frontend.flow_sensitive_inference import FLOW_UNKNOWN
         assert unifier.unify(FLOW_INT, FLOW_UNKNOWN) == FLOW_INT
 
         # Numeric coercion
@@ -174,7 +174,7 @@ class TestLocalVariableInference:
 
     def test_local_variable_without_annotation_allowed(self):
         """Test that local variables without annotations are allowed to pass analysis."""
-        from mgen.frontend.ast_analyzer import ASTAnalyzer
+        from multigen.frontend.ast_analyzer import ASTAnalyzer
 
         code = """
 def test_func() -> int:
@@ -307,13 +307,13 @@ def test_func() -> int:
 
 
 class TestEndToEndInference:
-    """End-to-end tests using the full MGen pipeline."""
+    """End-to-end tests using the full MultiGen pipeline."""
 
     def test_simple_infer_test_file(self):
         """Test the simple_infer_test.py example works end-to-end."""
         import tempfile
         from pathlib import Path
-        from mgen.pipeline import MGenPipeline, PipelineConfig
+        from multigen.pipeline import MultiGenPipeline, PipelineConfig
 
         code = """
 def simple_test() -> int:
@@ -337,7 +337,7 @@ def main() -> int:
                 target_language="cpp",
                 enable_advanced_analysis=True
             )
-            pipeline = MGenPipeline(config)
+            pipeline = MultiGenPipeline(config)
 
             # Should convert without errors
             result = pipeline.convert(temp_path)
@@ -352,7 +352,7 @@ def main() -> int:
 
     def test_global_variable_still_requires_annotation(self):
         """Test that global variables still require explicit annotations."""
-        from mgen.frontend.ast_analyzer import ASTAnalyzer
+        from multigen.frontend.ast_analyzer import ASTAnalyzer
 
         code = """
 global_var = 10

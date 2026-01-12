@@ -1,10 +1,10 @@
-# MGen: Multi-Language Code Generator
+# MultiGen: Multi-Language Code Generator
 
-MGen is a sophisticated Python-to-multiple-languages code generator that translates Python code to C, C++, Rust, Go, Haskell, and OCaml while preserving semantics and performance characteristics.
+MultiGen is a sophisticated Python-to-multiple-languages code generator that translates Python code to C, C++, Rust, Go, Haskell, and OCaml while preserving semantics and performance characteristics.
 
 ## Overview
 
-MGen extends the CGen (Python-to-C) project into a comprehensive multi-language translation system with enhanced runtime libraries, sophisticated code generation, and a clean backend architecture.
+MultiGen extends the CGen (Python-to-C) project into a comprehensive multi-language translation system with enhanced runtime libraries, sophisticated code generation, and a clean backend architecture.
 
 ## Key Features
 
@@ -35,8 +35,8 @@ MGen extends the CGen (Python-to-C) project into a comprehensive multi-language 
 
 ```bash
 # Install from source
-git clone https://github.com/shakfu/mgen
-cd mgen
+git clone https://github.com/shakfu/multigen
+cd multigen
 pip install -e .
 ```
 
@@ -44,28 +44,28 @@ pip install -e .
 
 ```bash
 # List available backends
-mgen backends
+multigen backends
 
 # Convert Python to C (with advanced features)
-mgen --target c convert my_script.py
+multigen --target c convert my_script.py
 
 # Convert Python to C++ (with STL support)
-mgen --target cpp convert my_script.py
+multigen --target cpp convert my_script.py
 
 # Convert Python to Rust with build
-mgen --target rust build my_script.py
+multigen --target rust build my_script.py
 
 # Convert Python to Go (with enhanced features)
-mgen --target go convert my_script.py
+multigen --target go convert my_script.py
 
 # Convert Python to Haskell (with functional programming features)
-mgen --target haskell convert my_script.py
+multigen --target haskell convert my_script.py
 
 # Convert Python to OCaml (with functional programming and pattern matching)
-mgen --target ocaml convert my_script.py
+multigen --target ocaml convert my_script.py
 
 # Batch convert all Python files
-mgen --target cpp batch --source-dir ./examples
+multigen --target cpp batch --source-dir ./examples
 ```
 
 ### Backend Preferences
@@ -74,25 +74,25 @@ Customize code generation for each target language with the `--prefer` flag:
 
 ```bash
 # Haskell with native comprehensions (idiomatic)
-mgen --target haskell convert my_script.py --prefer use_native_comprehensions=true
+multigen --target haskell convert my_script.py --prefer use_native_comprehensions=true
 
 # C with custom settings
-mgen --target c convert my_script.py --prefer use_stc_containers=false --prefer indent_size=2
+multigen --target c convert my_script.py --prefer use_stc_containers=false --prefer indent_size=2
 
 # C++ with modern features
-mgen --target cpp convert my_script.py --prefer cpp_standard=c++20 --prefer use_modern_cpp=true
+multigen --target cpp convert my_script.py --prefer cpp_standard=c++20 --prefer use_modern_cpp=true
 
 # Rust with specific edition
-mgen --target rust convert my_script.py --prefer rust_edition=2018 --prefer clone_strategy=explicit
+multigen --target rust convert my_script.py --prefer rust_edition=2018 --prefer clone_strategy=explicit
 
 # Go with version targeting
-mgen --target go convert my_script.py --prefer go_version=1.19 --prefer use_generics=false
+multigen --target go convert my_script.py --prefer go_version=1.19 --prefer use_generics=false
 
 # OCaml with functional programming preferences
-mgen --target ocaml convert my_script.py --prefer prefer_immutable=true --prefer use_pattern_matching=true
+multigen --target ocaml convert my_script.py --prefer prefer_immutable=true --prefer use_pattern_matching=true
 
 # Multiple preferences
-mgen --target haskell build my_script.py \
+multigen --target haskell build my_script.py \
   --prefer use_native_comprehensions=true \
   --prefer camel_case_conversion=false \
   --prefer strict_data_types=true
@@ -100,7 +100,7 @@ mgen --target haskell build my_script.py \
 
 ## Preference System
 
-MGen features a comprehensive preference system that allows you to choose between **cross-language consistency** (default) and **language-specific idiomatic optimizations**.
+MultiGen features a comprehensive preference system that allows you to choose between **cross-language consistency** (default) and **language-specific idiomatic optimizations**.
 
 ### Design Philosophy
 
@@ -186,10 +186,10 @@ def main() -> None:
 #include <iostream>
 #include <vector>
 #include <unordered_map>
-#include "runtime/mgen_cpp_runtime.hpp"
+#include "runtime/multigen_cpp_runtime.hpp"
 
 using namespace std;
-using namespace mgen;
+using namespace multigen;
 
 int add(int x, int y) {
     return (x + y);
@@ -205,7 +205,7 @@ void main() {
 
 ```c
 #include <stdio.h>
-#include "mgen_runtime.h"
+#include "multigen_runtime.h"
 
 int add(int x, int y) {
     return (x + y);
@@ -222,7 +222,7 @@ void main() {
 ```go
 package main
 
-import "mgen"
+import "multigen"
 
 func add(x int, y int) int {
     return (x + y)
@@ -230,16 +230,16 @@ func add(x int, y int) int {
 
 func main() {
     result := add(5, 3)
-    mgen.Print(result)
+    multigen.Print(result)
 }
 ```
 
 **Generated Rust:**
 
 ```rust
-// Include MGen Rust runtime
-mod mgen_rust_runtime;
-use mgen_rust_runtime::*;
+// Include MultiGen Rust runtime
+mod multigen_rust_runtime;
+use multigen_rust_runtime::*;
 
 fn add(x: i32, y: i32) -> i32 {
     (x + y)
@@ -256,7 +256,7 @@ fn main() {
 ```haskell
 module Main where
 
-import MGenRuntime
+import MultiGenRuntime
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Map (Map)
@@ -314,10 +314,10 @@ def process() -> list:
 #include <iostream>
 #include <string>
 #include <vector>
-#include "runtime/mgen_cpp_runtime.hpp"
+#include "runtime/multigen_cpp_runtime.hpp"
 
 using namespace std;
-using namespace mgen;
+using namespace multigen;
 
 class Calculator {
 public:
@@ -352,7 +352,7 @@ std::vector<std::string> process() {
 ```go
 package main
 
-import "mgen"
+import "multigen"
 
 type Calculator struct {
     Name string
@@ -371,13 +371,13 @@ func (obj *Calculator) Add(value int) {
 }
 
 func (obj *Calculator) GetResult() string {
-    return (mgen.StrOps.Upper(obj.Name) + (": " + mgen.ToStr(obj.Total)))
+    return (multigen.StrOps.Upper(obj.Name) + (": " + multigen.ToStr(obj.Total)))
 }
 
 func process() []interface{} {
     calc := NewCalculator("math")
     calc.Add(10)
-    return mgen.Comprehensions.ListComprehension(mgen.NewRange(2), func(item interface{}) interface{} {
+    return multigen.Comprehensions.ListComprehension(multigen.NewRange(2), func(item interface{}) interface{} {
         _ := item.(int)
         return calc.GetResult()
     })
@@ -389,9 +389,9 @@ func process() []interface{} {
 ```rust
 use std::collections::{HashMap, HashSet};
 
-// Include MGen Rust runtime
-mod mgen_rust_runtime;
-use mgen_rust_runtime::*;
+// Include MultiGen Rust runtime
+mod multigen_rust_runtime;
+use multigen_rust_runtime::*;
 
 #[derive(Clone)]
 struct Calculator {
@@ -431,7 +431,7 @@ fn process() -> Vec<String> {
 
 module Main where
 
-import MGenRuntime
+import MultiGenRuntime
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Map (Map)
@@ -490,7 +490,7 @@ let process () =
 
 ## Architecture
 
-MGen follows a clean, extensible architecture with well-defined components:
+MultiGen follows a clean, extensible architecture with well-defined components:
 
 ### 7-Phase Translation Pipeline
 
@@ -519,11 +519,11 @@ Each backend implements abstract interfaces:
 
 ### Runtime Libraries (C Backend)
 
-- **Error Handling** (`mgen_error_handling.h/.c`): Python-like exception system
-- **Memory Management** (`mgen_memory_ops.h/.c`): Safe allocation and cleanup
-- **Python Operations** (`mgen_python_ops.h/.c`): Python built-ins and semantics
-- **String Operations** (`mgen_string_ops.h/.c`): String methods with memory safety
-- **STC Integration** (`mgen_stc_bridge.h/.c`): Smart Template Container bridge
+- **Error Handling** (`multigen_error_handling.h/.c`): Python-like exception system
+- **Memory Management** (`multigen_memory_ops.h/.c`): Safe allocation and cleanup
+- **Python Operations** (`multigen_python_ops.h/.c`): Python built-ins and semantics
+- **String Operations** (`multigen_string_ops.h/.c`): String methods with memory safety
+- **STC Integration** (`multigen_stc_bridge.h/.c`): Smart Template Container bridge
 
 ## CLI Commands
 
@@ -532,8 +532,8 @@ Each backend implements abstract interfaces:
 Convert Python files to target language:
 
 ```bash
-mgen --target <language> convert <input.py>
-mgen --target rust convert example.py
+multigen --target <language> convert <input.py>
+multigen --target rust convert example.py
 ```
 
 ### Build
@@ -541,9 +541,9 @@ mgen --target rust convert example.py
 Convert and compile/build the result:
 
 ```bash
-mgen --target <language> build <input.py>
-mgen --target go build --makefile example.py  # Generate build file
-mgen --target c build example.py              # Direct compilation
+multigen --target <language> build <input.py>
+multigen --target go build --makefile example.py  # Generate build file
+multigen --target c build example.py              # Direct compilation
 ```
 
 ### Batch
@@ -551,8 +551,8 @@ mgen --target c build example.py              # Direct compilation
 Process multiple files:
 
 ```bash
-mgen --target <language> batch --source-dir <dir>
-mgen --target rust batch --source-dir ./src --build
+multigen --target <language> batch --source-dir <dir>
+multigen --target rust batch --source-dir ./src --build
 ```
 
 ### Backends
@@ -560,7 +560,7 @@ mgen --target rust batch --source-dir ./src --build
 List available language backends:
 
 ```bash
-mgen backends
+multigen backends
 ```
 
 ### Clean
@@ -568,7 +568,7 @@ mgen backends
 Clean build artifacts:
 
 ```bash
-mgen clean
+multigen clean
 ```
 
 ## Development
@@ -583,7 +583,7 @@ make type-check     # Run type checking with mypy
 
 ### Test Organization
 
-MGen maintains a comprehensive test suite organized into focused modules:
+MultiGen maintains a comprehensive test suite organized into focused modules:
 
 - `test_backend_c_*.py`: C backend tests (191 tests total)
   - Core functionality, OOP, comprehensions, string methods, runtime libraries
@@ -602,7 +602,7 @@ MGen maintains a comprehensive test suite organized into focused modules:
 
 To add support for a new target language:
 
-1. Create backend directory: `src/mgen/backends/mylang/`
+1. Create backend directory: `src/multigen/backends/mylang/`
 2. Implement required abstract interfaces:
    - `MyLangBackend(LanguageBackend)`: Main backend class
    - `MyLangFactory(AbstractFactory)`: Component factory
@@ -610,7 +610,7 @@ To add support for a new target language:
    - `MyLangBuilder(AbstractBuilder)`: Build system integration
    - `MyLangContainerSystem(AbstractContainerSystem)`: Container handling
    - `MyLangPreferences(BasePreferences)`: Language-specific preferences
-3. Register backend in `src/mgen/backends/registry.py`
+3. Register backend in `src/multigen/backends/registry.py`
 4. Add comprehensive tests in `tests/test_backend_mylang_*.py`
 5. Update documentation
 
@@ -618,7 +618,7 @@ See existing backends (C, C++, Rust, Go, Haskell, OCaml) for implementation exam
 
 ## Relationship with CGen
 
-MGen extends the [CGen](https://github.com/shakfu/cgen) project by:
+MultiGen extends the [CGen](https://github.com/shakfu/cgen) project by:
 
 - Expanding Python-to-C capabilities into a multi-language translation system
 - Integrating CGen's sophisticated C runtime libraries (50KB+ of error handling, memory management, Python operations)
@@ -664,7 +664,7 @@ All backends support core Python features with varying levels of sophistication:
 
 ### Test Coverage
 
-MGen maintains comprehensive test coverage ensuring translation accuracy:
+MultiGen maintains comprehensive test coverage ensuring translation accuracy:
 
 - **821 total tests** across all components and backends
 - Comprehensive backend coverage testing all major Python features
@@ -694,6 +694,6 @@ MGen maintains comprehensive test coverage ensuring translation accuracy:
 - **Formal Verification**: Theorem proving and memory safety proofs integration
 - **Cross-Language Runtime**: Extend runtime concepts to other backends (C++, Rust, Go)
 - **Performance Benchmarking**: Comprehensive performance analysis across all target languages
-- **IDE Integration**: Language server protocol support for MGen syntax
+- **IDE Integration**: Language server protocol support for MultiGen syntax
 - **Web Interface**: Online code conversion tool
 - **Plugin System**: External backend support and extensibility

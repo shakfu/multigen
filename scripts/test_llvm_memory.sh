@@ -63,7 +63,7 @@ test_benchmark() {
     if [ ! -f "$ll_file" ]; then
         echo "  ${YELLOW}⚠${NC}  LLVM IR not found, building..."
         cd "$PROJECT_ROOT"
-        uv run mgen build -t llvm "$bench_path" > /dev/null 2>&1
+        uv run multigen build -t llvm "$bench_path" > /dev/null 2>&1
 
         # Check again after build
         ll_file="$BUILD_DIR/benchmark_results/llvm/${bench_name}/${bench_name}.ll"
@@ -94,13 +94,13 @@ test_benchmark() {
     # Link with ASAN enabled
     # Find all C runtime files
     local runtime_files=(
-        "$PROJECT_ROOT/src/mgen/backends/llvm/runtime/vec_int_minimal.c"
-        "$PROJECT_ROOT/src/mgen/backends/llvm/runtime/vec_vec_int_minimal.c"
-        "$PROJECT_ROOT/src/mgen/backends/llvm/runtime/vec_str_minimal.c"
-        "$PROJECT_ROOT/src/mgen/backends/llvm/runtime/map_int_int_minimal.c"
-        "$PROJECT_ROOT/src/mgen/backends/llvm/runtime/map_str_int_minimal.c"
-        "$PROJECT_ROOT/src/mgen/backends/llvm/runtime/set_int_minimal.c"
-        "$PROJECT_ROOT/src/mgen/backends/llvm/runtime/mgen_llvm_string.c"
+        "$PROJECT_ROOT/src/multigen/backends/llvm/runtime/vec_int_minimal.c"
+        "$PROJECT_ROOT/src/multigen/backends/llvm/runtime/vec_vec_int_minimal.c"
+        "$PROJECT_ROOT/src/multigen/backends/llvm/runtime/vec_str_minimal.c"
+        "$PROJECT_ROOT/src/multigen/backends/llvm/runtime/map_int_int_minimal.c"
+        "$PROJECT_ROOT/src/multigen/backends/llvm/runtime/map_str_int_minimal.c"
+        "$PROJECT_ROOT/src/multigen/backends/llvm/runtime/set_int_minimal.c"
+        "$PROJECT_ROOT/src/multigen/backends/llvm/runtime/multigen_llvm_string.c"
     )
 
     # Filter to only existing files

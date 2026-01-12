@@ -23,17 +23,20 @@ We just completed a major milestone - **all 7 backends now have working build sy
 Before moving forward, capture this achievement:
 
 ### 1. Update CHANGELOG.md (v0.1.87 or similar)
+
 - "Build System Fixes Complete: All 7 backends functional"
 - Document the 0% → 11-44% improvements
 - Highlight the systematic approach that worked
 - List all 5 new documentation files created
 
 ### 2. Update PRODUCTION_ROADMAP.md
+
 - Mark "Fix build systems" as [x] COMPLETE
 - Update backend maturity status for all 6 backends
 - Revise priorities based on new state
 
 ### 3. Update CLAUDE.md
+
 - Add translation test results to "Current Status"
 - Update backend comparison table
 - Add note about build system completion
@@ -45,8 +48,9 @@ Before moving forward, capture this achievement:
 **Rationale**: You have 6 production-ready backends (C at 92.6%, benchmarks at 100% for 6 backends). The translation test suite reveals code generation bugs, but these don't block real-world usage.
 
 **Actions**:
+
 1. **Write comprehensive README improvements**
-   - Clear "What is MGen?" section
+   - Clear "What is MultiGen?" section
    - Feature matrix showing what works
    - Quick start guide (5-minute setup)
    - Show compelling examples
@@ -78,6 +82,7 @@ Before moving forward, capture this achievement:
 **Risk**: Low
 
 **Why this is recommended**:
+
 - **Momentum**: Capitalize on the build system success
 - **Completeness**: Project is feature-complete for most use cases
 - **Validation**: Real users will identify what matters most
@@ -93,36 +98,41 @@ Before moving forward, capture this achievement:
 **High-ROI Targets**:
 
 #### 2.1 C++ Set Methods (40.7% → ~48%)
+
 - **Problem**: Using `.add()` instead of `.insert()`
-- **Files**: `src/mgen/backends/cpp/converter.py`
+- **Files**: `src/multigen/backends/cpp/converter.py`
 - **Effort**: 1-2 hours (trivial one-line fix)
 - **Impact**: ~2 tests fixed
 - **Verification**: Run translation test suite
 
 #### 2.2 Go String Methods (44.4% → ~52%)
+
 - **Problem**: 7+ tests failing on string operations
-- **Files**: `src/mgen/backends/go/converter.py`
+- **Files**: `src/multigen/backends/go/converter.py`
 - **Effort**: 1 day (likely simple mapping issues)
 - **Impact**: ~2-3 tests fixed
 - **Verification**: Check test_string_methods*, test_string_membership*
 
 #### 2.3 Rust Control Flow (44.4% → ~52%)
+
 - **Problem**: Syntax errors in if/else generation (mismatched braces)
-- **Files**: `src/mgen/backends/rust/converter.py`
+- **Files**: `src/multigen/backends/rust/converter.py`
 - **Effort**: 1 day (parser/generation bug)
 - **Impact**: ~2-3 tests fixed
 - **Verification**: Check test_control_flow and related
 
 #### 2.4 OCaml Array/List Type Handling (22.2% → ~30%)
+
 - **Problem**: Type mismatches between arrays and lists
-- **Files**: `src/mgen/backends/ocaml/converter.py`
+- **Files**: `src/multigen/backends/ocaml/converter.py`
 - **Effort**: 1-2 days (requires understanding OCaml semantics)
 - **Impact**: ~2-3 tests fixed
 - **Verification**: Check simple_test and array-related tests
 
 #### 2.5 Haskell List Operations (11.1% → ~22%)
+
 - **Problem**: Invalid syntax like `(append numbers 10)`
-- **Files**: `src/mgen/backends/haskell/converter.py`, `backends/haskell/function_converter.py`
+- **Files**: `src/multigen/backends/haskell/converter.py`, `backends/haskell/function_converter.py`
 - **Effort**: 2-3 days (requires functional paradigm rework)
 - **Impact**: ~3-4 tests fixed
 - **Verification**: Check simple_test, test_container_iteration
@@ -170,6 +180,7 @@ Before moving forward, capture this achievement:
 **Risk**: Medium (LLVM IR is complex)
 
 **Why this matters**:
+
 - LLVM enables WebAssembly, cross-compilation, GPU kernels
 - Strong technical story for academic/research audiences
 - Could write paper: "Python → LLVM with WebAssembly support"
@@ -181,6 +192,7 @@ Before moving forward, capture this achievement:
 **Rationale**: 2 tests fail across ALL backends due to bare `list`/`dict` annotations. Fixing this would bump all backends ~7%.
 
 **Problem**:
+
 ```python
 # This fails in all backends
 numbers: list = []  # Bare 'list' without type parameter
@@ -188,6 +200,7 @@ items: dict = {}    # Bare 'dict' without type parameters
 ```
 
 **Solution**: Flow-based type inference
+
 ```python
 # Infer from usage
 numbers: list = []  # → infer list[int]
@@ -223,6 +236,7 @@ items["key"] = 42   # from assignment
 **Risk**: Low (infrastructure already exists)
 
 **Why this matters**:
+
 - Systematic improvement across all backends
 - Improves Python 3.8 compatibility (bare annotations were common)
 - Demonstrates sophisticated type inference capability
@@ -232,9 +246,11 @@ items["key"] = 42   # from assignment
 ## Recommended Approach: **Option 1 + Option 2 (Hybrid)**
 
 ### Week 1: Documentation and Polish
+
 **Focus**: Make the project accessible and compelling
 
 **Tasks**:
+
 - [ ] Update CHANGELOG.md (v0.1.87)
 - [ ] Update PRODUCTION_ROADMAP.md
 - [ ] Update CLAUDE.md
@@ -246,9 +262,11 @@ items["key"] = 42   # from assignment
 **Deliverable**: Project is presentation-ready
 
 ### Week 2: Quick Wins on Code Generation
+
 **Focus**: Push top backends to 50%+
 
 **Tasks**:
+
 - [ ] Fix C++ set methods (trivial, 1-2 hours)
 - [ ] Fix Go string methods (1 day)
 - [ ] Fix Rust control flow (1 day)
@@ -258,9 +276,11 @@ items["key"] = 42   # from assignment
 **Deliverable**: Top 4 backends at 48-52% success rate
 
 ### Week 3: Release and Community
+
 **Focus**: Launch and gather feedback
 
 **Tasks**:
+
 - [ ] Version bump (v1.0 or v0.2.0)
 - [ ] GitHub release with release notes
 - [ ] Publish blog post
@@ -289,6 +309,7 @@ If optimizing for technical excellence over adoption:
 ### **Option 3 (LLVM) + Option 4 (Type Inference)**
 
 **Week 1-2**: LLVM hardening
+
 - Run translation tests
 - Fix issues
 - Memory safety tests
@@ -296,12 +317,14 @@ If optimizing for technical excellence over adoption:
 - Complete documentation
 
 **Week 3-4**: Type inference implementation
+
 - Extend FlowSensitiveInferencer
 - Implement container inference
 - Test across all backends
 - Achieve ~50% average across all backends
 
 **Outcome**:
+
 - LLVM becomes flagship technical achievement
 - Type inference solves systematic issue
 - Both are intellectually satisfying
@@ -315,7 +338,9 @@ If optimizing for technical excellence over adoption:
 ## Other Considerations
 
 ### If You Want Completeness
+
 **Systematically fix all code generation bugs**:
+
 - Create comprehensive test coverage analysis
 - Prioritize by impact (tests fixed per hour of work)
 - Work through backends methodically
@@ -325,7 +350,9 @@ If optimizing for technical excellence over adoption:
 **Impact**: Demonstrates exceptional quality
 
 ### If You Want Innovation
+
 **WebAssembly Implementation (Phase 2)**:
+
 - JavaScript runtime bridge
 - WASI support
 - Emscripten integration
@@ -368,6 +395,7 @@ If optimizing for technical excellence over adoption:
 **Start with Option 1 (Polish and Release)**
 
 **Why**:
+
 1. You've built something remarkable - share it
 2. User feedback will guide priorities better than speculation
 3. Quick wins in Week 2 show responsiveness
@@ -375,6 +403,7 @@ If optimizing for technical excellence over adoption:
 5. Real-world usage validates design decisions
 
 **Next steps** (immediate):
+
 1. Update CHANGELOG.md with build system fixes
 2. Update PRODUCTION_ROADMAP.md
 3. Review and improve README.md

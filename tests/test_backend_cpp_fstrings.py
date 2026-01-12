@@ -2,7 +2,7 @@
 
 import pytest
 
-from mgen.backends.cpp.converter import MGenPythonToCppConverter
+from multigen.backends.cpp.converter import MultiGenPythonToCppConverter
 
 
 class TestCppFStringConversion:
@@ -10,7 +10,7 @@ class TestCppFStringConversion:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCppConverter()
+        self.converter = MultiGenPythonToCppConverter()
 
     def test_simple_f_string(self):
         """Test simple f-string with single variable."""
@@ -109,7 +109,7 @@ def format_length(items: list[int]) -> str:
         cpp_code = self.converter.convert_code(python_code)
 
         assert "std::string format_length(std::vector<int> items)" in cpp_code
-        assert "std::to_string(mgen::len(items))" in cpp_code
+        assert "std::to_string(multigen::len(items))" in cpp_code
         assert '"Length: "' in cpp_code
 
     def test_f_string_in_variable_assignment(self):

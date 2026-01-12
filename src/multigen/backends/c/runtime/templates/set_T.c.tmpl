@@ -1,0 +1,250 @@
+/**
+ * Simple hash set for {{T_SUFFIX}} - Implementation
+ * STC-compatible naming for drop-in replacement
+ */
+
+#include "multigen_set_{{T_SUFFIX}}.h"
+#include "multigen_error_handling.h"
+#include <stdlib.h>
+#include <string.h>
+
+#define DEFAULT_CAPACITY 16
+#define LOAD_FACTOR 0.75
+#define GROWTH_FACTOR 2
+
+set_{{T_SUFFIX}} set_{{T_SUFFIX}}_init(void) {
+    set_{{T_SUFFIX}} set;
+    set.buckets = NULL;  // Lazy allocation
+    set.size = 0;
+    set.capacity = 0;
+    return set;
+}
+
+static void set_{{T_SUFFIX}}_grow(set_{{T_SUFFIX}}* set) {
+    size_t new_capacity = (set->capacity == 0) ? DEFAULT_CAPACITY : set->capacity * GROWTH_FACTOR;
+
+    // Allocate new buckets
+    set_{{T_SUFFIX}}_entry* new_buckets = calloc(new_capacity, sizeof(set_{{T_SUFFIX}}_entry));
+    if (!new_buckets) {
+        MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Failed to grow {{T_SUFFIX}} set");
+        return;
+    }
+
+    // Rehash existing entries
+    if (set->buckets) {
+        for (size_t i = 0; i < set->capacity; i++) {
+            if (set->buckets[i].occupied) {
+                // Find new position
+                size_t hash = set->buckets[i].hash;
+                size_t idx = hash % new_capacity;
+
+                // Linear probing
+                while (new_buckets[idx].occupied) {
+                    idx = (idx + 1) % new_capacity;
+                }
+
+                // Move entry (transfer ownership)
+                new_buckets[idx] = set->buckets[i];
+            }
+        }
+        free(set->buckets);
+    }
+
+    set->buckets = new_buckets;
+    set->capacity = new_capacity;
+}
+
+bool set_{{T_SUFFIX}}_insert(set_{{T_SUFFIX}}* set, {{#T_IS_POINTER}}const {{/T_IS_POINTER}}{{T}} value) {
+    if (!set) {
+        MGEN_SET_ERROR(MGEN_ERROR_VALUE, "NULL {{T_SUFFIX}} set");
+        return false;
+    }
+
+    // Lazy initialization
+    if (set->capacity == 0) {
+        set_{{T_SUFFIX}}_grow(set);
+    }
+
+    // Check load factor
+    if ((double)set->size / set->capacity > LOAD_FACTOR) {
+        set_{{T_SUFFIX}}_grow(set);
+    }
+
+    size_t hash = {{T_HASH}}(value);
+    size_t idx = hash % set->capacity;
+    size_t start_idx = idx;
+
+    // Linear probing to find slot
+    do {
+        if (set->buckets[idx].occupied) {
+            // Check if value already exists
+            if (set->buckets[idx].value {{T_COMPARE}} value) {
+                return false;  // Already present
+            }
+        } else {
+            // Found empty slot - insert here
+{{#T_NEEDS_COPY}}
+            set->buckets[idx].value = strdup(value);
+            if (!set->buckets[idx].value) {
+                MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Failed to duplicate {{T_SUFFIX}}");
+                return false;
+            }
+{{/T_NEEDS_COPY}}
+            set->buckets[idx].value = value;
+
+            set->buckets[idx].hash = hash;
+            set->buckets[idx].occupied = true;
+            set->size++;
+            return true;  // Inserted
+        }
+
+        idx = (idx + 1) % set->capacity;
+    } while (idx != start_idx);
+
+    // Set is full (should not happen due to load factor check)
+    MGEN_SET_ERROR(MGEN_ERROR_VALUE, "{{T_SUFFIX}} set is full");
+    return false;
+}
+
+bool set_{{T_SUFFIX}}_contains(const set_{{T_SUFFIX}}* set, {{#T_IS_POINTER}}const {{/T_IS_POINTER}}{{T}} value) {
+    if (!set || set->capacity == 0) {
+        return false;
+    }
+
+    size_t hash = {{T_HASH}}(value);
+    size_t idx = hash % set->capacity;
+    size_t start_idx = idx;
+
+    // Linear probing to find value
+    do {
+        if (set->buckets[idx].occupied) {
+            if (set->buckets[idx].value {{T_COMPARE}} value) {
+                return true;
+            }
+        } else {
+            return false;
+        }
+        idx = (idx + 1) % set->capacity;
+    } while (idx != start_idx);
+
+    return false;
+}
+
+bool set_{{T_SUFFIX}}_erase(set_{{T_SUFFIX}}* set, {{#T_IS_POINTER}}const {{/T_IS_POINTER}}{{T}} value) {
+    if (!set || set->capacity == 0) {
+        return false;
+    }
+
+    size_t hash = {{T_HASH}}(value);
+    size_t idx = hash % set->capacity;
+    size_t start_idx = idx;
+
+    do {
+        if (set->buckets[idx].occupied) {
+            if (set->buckets[idx].value {{T_COMPARE}} value) {
+{{#T_NEEDS_DROP}}
+                free(set->buckets[idx].value);
+{{/T_NEEDS_DROP}}
+                set->buckets[idx].value = {{T_ZERO}};
+                set->buckets[idx].occupied = false;
+                set->size--;
+                return true;
+            }
+        } else {
+            return false;
+        }
+        idx = (idx + 1) % set->capacity;
+    } while (idx != start_idx);
+
+    return false;
+}
+
+size_t set_{{T_SUFFIX}}_size(const set_{{T_SUFFIX}}* set) {
+    return set ? set->size : 0;
+}
+
+bool set_{{T_SUFFIX}}_empty(const set_{{T_SUFFIX}}* set) {
+    return !set || set->size == 0;
+}
+
+void set_{{T_SUFFIX}}_clear(set_{{T_SUFFIX}}* set) {
+    if (!set || !set->buckets) {
+        return;
+    }
+
+    for (size_t i = 0; i < set->capacity; i++) {
+        if (set->buckets[i].occupied) {
+{{#T_NEEDS_DROP}}
+            free(set->buckets[i].value);
+{{/T_NEEDS_DROP}}
+            set->buckets[i].value = {{T_ZERO}};
+            set->buckets[i].occupied = false;
+        }
+    }
+
+    set->size = 0;
+}
+
+void set_{{T_SUFFIX}}_drop(set_{{T_SUFFIX}}* set) {
+    if (!set) {
+        return;
+    }
+
+    if (set->buckets) {
+        for (size_t i = 0; i < set->capacity; i++) {
+            if (set->buckets[i].occupied) {
+{{#T_NEEDS_DROP}}
+                free(set->buckets[i].value);
+{{/T_NEEDS_DROP}}
+            }
+        }
+        free(set->buckets);
+    }
+
+    set->buckets = NULL;
+    set->size = 0;
+    set->capacity = 0;
+}
+
+void set_{{T_SUFFIX}}_reserve(set_{{T_SUFFIX}}* set, size_t new_capacity) {
+    if (!set) {
+        MGEN_SET_ERROR(MGEN_ERROR_VALUE, "NULL {{T_SUFFIX}} set");
+        return;
+    }
+
+    if (new_capacity <= set->capacity) {
+        return;
+    }
+
+    // Save old state
+    set_{{T_SUFFIX}}_entry* old_buckets = set->buckets;
+    size_t old_capacity = set->capacity;
+
+    // Allocate new buckets
+    set->buckets = calloc(new_capacity, sizeof(set_{{T_SUFFIX}}_entry));
+    if (!set->buckets) {
+        MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Failed to reserve capacity");
+        set->buckets = old_buckets;
+        return;
+    }
+    set->capacity = new_capacity;
+    set->size = 0;
+
+    // Rehash existing entries
+    if (old_buckets) {
+        for (size_t i = 0; i < old_capacity; i++) {
+            if (old_buckets[i].occupied) {
+                size_t hash = old_buckets[i].hash;
+                size_t idx = hash % new_capacity;
+
+                while (set->buckets[idx].occupied) {
+                    idx = (idx + 1) % new_capacity;
+                }
+
+                set->buckets[idx] = old_buckets[i];
+                set->size++;
+            }
+        }
+        free(old_buckets);
+    }
+}

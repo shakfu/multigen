@@ -1,7 +1,7 @@
 """
-F-String Demo - MGen v0.1.86+
+F-String Demo - MultiGen v0.1.86+
 
-Demonstrates MGen's f-string support across all backends.
+Demonstrates MultiGen's f-string support across all backends.
 """
 
 def greet(name: str) -> str:

@@ -21,6 +21,7 @@
 ### Testing Tool
 
 **AddressSanitizer (ASAN)** - Industry-standard memory error detector
+
 - Part of LLVM/Clang toolchain
 - Detects: use-after-free, buffer overflows, double-free, memory leaks
 - Runtime overhead: ~2x (acceptable for testing)
@@ -29,11 +30,11 @@
 
 ### Code Changes
 
-1. **LLVMCompiler** (`src/mgen/backends/llvm/compiler.py:51`)
+1. **LLVMCompiler** (`src/multigen/backends/llvm/compiler.py:51`)
    - Added `enable_asan` parameter to `compile_ir_to_executable()`
    - Adds `-fsanitize=address -g` flags when enabled
 
-2. **LLVMBuilder** (`src/mgen/backends/llvm/builder.py:99`)
+2. **LLVMBuilder** (`src/multigen/backends/llvm/builder.py:99`)
    - Added `enable_asan` parameter to `compile_direct()`
    - Compiles runtime libraries with ASAN flags
    - Links with ASAN support
@@ -58,7 +59,7 @@ All runtime libraries verified leak-free:
 - **map_int_int_minimal.c** (~216 lines) - Hash map (int → int)
 - **map_str_int_minimal.c** (~190 lines) - Hash map (string → int)
 - **set_int_minimal.c** (~182 lines) - Hash set with chaining
-- **mgen_llvm_string.c** (~150 lines) - String operations
+- **multigen_llvm_string.c** (~150 lines) - String operations
 
 Total runtime: ~8,300 lines of memory-safe C code.
 
@@ -83,7 +84,7 @@ ASAN_OPTIONS=detect_leaks=1 ./build/your_program
 ### Programmatic API
 
 ```python
-from mgen.backends.llvm import LLVMBuilder
+from multigen.backends.llvm import LLVMBuilder
 
 builder = LLVMBuilder()
 builder.compile_direct(
@@ -162,6 +163,7 @@ Recommendation: Use during development/CI, disable for release builds.
 ## Conclusion
 
 The LLVM backend is **memory-safe** with:
+
 - [x] 100% benchmark coverage (7/7 passing)
 - [x] Zero leaks detected by AddressSanitizer
 - [x] Automated testing infrastructure
@@ -173,7 +175,7 @@ This meets production-ready quality standards for memory management.
 ---
 
 **Test Date**: October 2025
-**MGen Version**: v0.1.80
+**MultiGen Version**: v0.1.80
 **Tool**: AddressSanitizer (Clang 17.0.0)
 **Platform**: macOS 14.6 (ARM64)
 **Status**: [x] **PRODUCTION READY**

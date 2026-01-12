@@ -1,4 +1,4 @@
-# MGen LLVM Backend - Complete User Guide
+# MultiGen LLVM Backend - Complete User Guide
 
 **Last Updated**: October 16, 2025
 **Version**: v0.1.84
@@ -25,7 +25,7 @@
 
 ## Overview
 
-The LLVM backend is MGen's **6th production-ready backend**, generating native executables via LLVM IR. It offers unique advantages:
+The LLVM backend is MultiGen's **6th production-ready backend**, generating native executables via LLVM IR. It offers unique advantages:
 
 ### Key Strengths
 
@@ -70,13 +70,13 @@ sudo apt-get install llvm clang
 
 ```bash
 # Convert Python to LLVM IR
-mgen convert --target llvm program.py
+multigen convert --target llvm program.py
 
 # Build executable (AOT mode, default O2 optimization)
-mgen build --target llvm program.py
+multigen build --target llvm program.py
 
 # Build with maximum optimization (O3)
-mgen build --target llvm -O aggressive program.py
+multigen build --target llvm -O aggressive program.py
 
 # Generated files:
 # - program.ll      (LLVM IR - original)
@@ -96,7 +96,7 @@ def main() -> int:
 
 ```bash
 # Compile and run
-mgen build --target llvm hello.py
+multigen build --target llvm hello.py
 ./build/hello
 ```
 
@@ -107,6 +107,7 @@ mgen build --target llvm hello.py
 ### Supported Python Features
 
 **Core Language**:
+
 - [x] Functions and recursion
 - [x] Control flow (if/elif/else, while, for)
 - [x] Type annotations
@@ -116,6 +117,7 @@ mgen build --target llvm hello.py
 - [x] Comparison operations
 
 **Data Structures**:
+
 - [x] Lists (`vec_int`, `vec_str`, `vec_vec_int`)
 - [x] Dicts (`map_int_int`, `map_str_int`)
 - [x] Sets (`set_int`)
@@ -123,6 +125,7 @@ mgen build --target llvm hello.py
 - [x] 2D arrays (nested lists)
 
 **String Operations** (9 methods - most complete):
+
 - [x] `split()` - split by delimiter
 - [x] `lower()` - lowercase conversion
 - [x] `strip()` - remove whitespace
@@ -134,6 +137,7 @@ mgen build --target llvm hello.py
 - [x] Concatenation with `+`
 
 **Built-in Functions**:
+
 - [x] `len()` - length of containers/strings
 - [x] `range()` - iteration ranges
 - [x] `print()` - formatted output
@@ -141,6 +145,7 @@ mgen build --target llvm hello.py
 - [x] `abs()` - absolute value
 
 **Advanced Features**:
+
 - [x] List comprehensions
 - [x] Dict comprehensions
 - [x] Set comprehensions
@@ -168,16 +173,17 @@ The LLVM backend supports two compilation modes with different trade-offs:
 
 ```bash
 # Standard compilation (default O2)
-mgen build --target llvm program.py
+multigen build --target llvm program.py
 
 # With specific optimization level
-mgen build --target llvm -O none program.py        # O0 (debugging)
-mgen build --target llvm -O basic program.py       # O1 (development)
-mgen build --target llvm -O moderate program.py    # O2 (default)
-mgen build --target llvm -O aggressive program.py  # O3 (max performance)
+multigen build --target llvm -O none program.py        # O0 (debugging)
+multigen build --target llvm -O basic program.py       # O1 (development)
+multigen build --target llvm -O moderate program.py    # O2 (default)
+multigen build --target llvm -O aggressive program.py  # O3 (max performance)
 ```
 
 **Characteristics**:
+
 - Generates standalone executable
 - Small binary size (37KB average)
 - Fast execution with optimization (54-86ms depending on level)
@@ -191,7 +197,7 @@ mgen build --target llvm -O aggressive program.py  # O3 (max performance)
 **Best for**: Development and testing
 
 ```python
-from mgen.backends.llvm.jit_executor import jit_compile_and_run
+from multigen.backends.llvm.jit_executor import jit_compile_and_run
 
 # Execute LLVM IR directly
 result = jit_compile_and_run("program.ll", verbose=True)
@@ -199,6 +205,7 @@ print(f"Result: {result}")
 ```
 
 **Characteristics**:
+
 - **7.7x faster** total time
 - No intermediate files
 - In-memory execution
@@ -236,31 +243,33 @@ The LLVM backend includes a **complete optimization pass pipeline** (v0.1.84) wi
 
 ```bash
 # Debug build (O0) - No optimization
-mgen build -t llvm -O none program.py
+multigen build -t llvm -O none program.py
 # Use for: debugging, preserving IR structure
 
 # Development build (O1) - Basic optimizations
-mgen build -t llvm -O basic program.py
+multigen build -t llvm -O basic program.py
 # Use for: fast iteration, basic optimizations
 
 # Production build (O2) - Default, balanced
-mgen build -t llvm program.py  # or -O moderate
+multigen build -t llvm program.py  # or -O moderate
 # Use for: production deployments, best balance
 
 # Performance build (O3) - Aggressive optimizations
-mgen build -t llvm -O aggressive program.py
+multigen build -t llvm -O aggressive program.py
 # Use for: performance-critical applications
 ```
 
 ### Optimization Passes
 
 **O0 (none)** - Debugging:
+
 - No optimization passes applied
 - Preserves original IR structure
 - Fastest compilation
 - Use for debugging with tools like gdb/lldb
 
 **O1 (basic)** - Development:
+
 - Dead argument elimination
 - Dead code elimination
 - Global optimization
@@ -270,6 +279,7 @@ mgen build -t llvm -O aggressive program.py
 - **Result**: 70% IR size reduction, 2% faster execution
 
 **O2 (moderate)** - Production Default:
+
 - All O1 passes, plus:
 - Function inlining (threshold: 225 instructions)
 - Global dead code elimination
@@ -283,6 +293,7 @@ mgen build -t llvm -O aggressive program.py
 - **Result**: 44% IR size reduction, 1% faster execution
 
 **O3 (aggressive)** - Maximum Performance:
+
 - All O2 passes, plus:
 - Aggressive dead code elimination
 - Aggressive instruction combining
@@ -298,6 +309,7 @@ mgen build -t llvm -O aggressive program.py
 **Example: Recursive Fibonacci**
 
 Original (unoptimized):
+
 ```llvm
 define i64 @fibonacci(i64 %n) {
 entry:
@@ -318,6 +330,7 @@ recursive:
 ```
 
 After O3 optimization:
+
 ```llvm
 ; Function Attrs: nofree nosync nounwind memory(none)
 define i64 @fibonacci(i64 %.1) local_unnamed_addr #0 {
@@ -339,6 +352,7 @@ common.ret:
 ```
 
 **Optimizations Applied**:
+
 - [x] Tail call optimization (`tail call`)
 - [x] Control flow restructuring
 - [x] Function attributes (`nofree`, `nosync`, `nounwind`)
@@ -349,21 +363,25 @@ common.ret:
 ### Performance Impact
 
 **Compilation Time**:
+
 - O0 → O1/O2/O3: +3-5% (15-20ms overhead)
 - Minimal impact, well worth the runtime gains
 
 **Binary Size**:
+
 - All levels produce ~37KB binaries
 - Size unchanged by optimization level
 - Inlining and DCE balance each other out
 
 **Execution Time**:
+
 - O0 (baseline): 85.6ms
 - O1: 83.9ms (+2.0% faster)
 - O2: 84.8ms (+0.9% faster)
 - O3: 54.3ms (**+36.5% faster** )
 
 **IR Size**:
+
 - Original: 6.0KB
 - O1: 1.8KB (-70%, most aggressive reduction)
 - O2/O3: 3.3KB (-44%, balanced)
@@ -372,7 +390,7 @@ common.ret:
 
 ```bash
 # Save both original and optimized IR
-mgen build -t llvm -O aggressive program.py
+multigen build -t llvm -O aggressive program.py
 
 # View original IR
 cat build/src/program.ll
@@ -384,13 +402,13 @@ cat build/src/program.opt.ll
 diff -u build/src/program.ll build/src/program.opt.ll
 
 # Disable optimizations for debugging
-mgen build -t llvm -O none program.py
+multigen build -t llvm -O none program.py
 ```
 
 ### API Usage
 
 ```python
-from mgen.backends.llvm.optimizer import LLVMOptimizer
+from multigen.backends.llvm.optimizer import LLVMOptimizer
 
 # Create optimizer with specific level
 optimizer = LLVMOptimizer(opt_level=3)
@@ -408,21 +426,25 @@ print(f"Vectorization: {info['vectorization_enabled']}")  # True
 ### Recommendations
 
 **For Development**:
+
 - Use O0 or O1 for fastest iteration
 - Binary debugging works best with O0
 - O1 provides quick feedback on optimization potential
 
 **For Testing**:
+
 - Use O2 (default) to match production behavior
 - Test critical paths with O3 to ensure correctness
 - Run memory tests (ASAN) at all optimization levels
 
 **For Production**:
+
 - Use O2 as default (best balance)
 - Use O3 for performance-critical applications
 - Profile before and after to measure real-world impact
 
 **For Benchmarking**:
+
 - Always use O3 for fair comparisons
 - Measure compilation + execution time
 - Report optimization level with results
@@ -431,7 +453,7 @@ print(f"Vectorization: {info['vectorization_enabled']}")  # True
 
 ## String Operations
 
-The LLVM backend has the **most complete string API** among all MGen backends:
+The LLVM backend has the **most complete string API** among all MultiGen backends:
 
 ### Basic Operations
 
@@ -536,7 +558,7 @@ vec_int_push(list, 42);
 vec_int_free(list);  // Must call to avoid leaks
 
 // Strings are allocated and must be freed
-char* result = mgen_str_upper("hello");
+char* result = multigen_str_upper("hello");
 free(result);  // Generated code handles this
 ```
 
@@ -586,13 +608,14 @@ free(result);  // Generated code handles this
 
 ```bash
 # Use optimization flags for better performance
-mgen build -t llvm -O aggressive program.py  # O3
-mgen build -t llvm -O moderate program.py    # O2 (default)
-mgen build -t llvm -O basic program.py       # O1
-mgen build -t llvm -O none program.py        # O0
+multigen build -t llvm -O aggressive program.py  # O3
+multigen build -t llvm -O moderate program.py    # O2 (default)
+multigen build -t llvm -O basic program.py       # O1
+multigen build -t llvm -O none program.py        # O0
 ```
 
 **Measured Impact (Fibonacci benchmark)**:
+
 - O0 → O3: **36.5% faster** execution (85.6ms → 54.3ms)
 - O0 → O3: Only **4% slower** compilation (408ms → 424ms)
 - Binary size: **Unchanged** (~37KB)
@@ -609,12 +632,14 @@ The LLVM backend provides **descriptive error messages** (v0.1.83):
 ### Runtime Errors
 
 **Before (v0.1.82)**:
-```
+
+```text
 exit(1)  // Silent crash, no information
 ```
 
 **After (v0.1.83)**:
-```
+
+```text
 vec_int error: Index 5 out of bounds (size = 3)
 map_int_int error: NULL pointer passed to map_int_int_set
 set_int error: Failed to allocate entry for value 42
@@ -623,29 +648,34 @@ set_int error: Failed to allocate entry for value 42
 ### Error Message Format
 
 All runtime errors follow this pattern:
-```
+
+```text
 {container_type} error: {specific_message}
 ```
 
 ### Common Error Types
 
 1. **NULL Pointer Errors**:
-```
+
+```text
 vec_int error: NULL pointer passed to vec_int_push
 ```
 
 2. **Index Out of Bounds**:
-```
+
+```text
 vec_int error: Index 10 out of bounds (size = 5)
 ```
 
 3. **Memory Allocation Failures**:
-```
+
+```text
 map_str_int error: Failed to allocate memory for capacity 1024
 ```
 
 4. **Container Full Errors**:
-```
+
+```text
 map_int_int error: Failed to find entry slot (map full)
 ```
 
@@ -654,7 +684,7 @@ map_int_int error: Failed to find entry slot (map full)
 ```bash
 # Enable AddressSanitizer for detailed error reports
 export ASAN_OPTIONS=detect_leaks=1:symbolize=1
-mgen build --target llvm --enable-asan program.py
+multigen build --target llvm --enable-asan program.py
 
 # Run with verbose output
 ./build/program 2>&1 | tee error.log
@@ -735,6 +765,7 @@ def main() -> int:
 **Error**: `llc: command not found`
 
 **Solution**:
+
 ```bash
 # macOS - add Homebrew LLVM to PATH
 export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
@@ -749,12 +780,13 @@ export LLVM_CLANG_PATH=/opt/homebrew/opt/llvm/bin/clang
 **Error**: IR verification failed
 
 **Solution**:
+
 ```bash
 # Check LLVM IR syntax
 cat build/program.ll | llc -verify-machineinstrs
 
 # Enable verbose output
-mgen build --target llvm --verbose program.py
+multigen build --target llvm --verbose program.py
 ```
 
 #### 3. Runtime Crashes
@@ -762,9 +794,10 @@ mgen build --target llvm --verbose program.py
 **Error**: Segmentation fault
 
 **Solution**:
+
 ```bash
 # Enable AddressSanitizer
-mgen build --target llvm --enable-asan program.py
+multigen build --target llvm --enable-asan program.py
 
 # Run and check output
 ./build/program 2>&1 | grep "ERROR:"
@@ -775,13 +808,14 @@ mgen build --target llvm --enable-asan program.py
 **Problem**: Slow execution
 
 **Solution**:
+
 ```bash
 # Use O3 optimization
 export LLVM_OPTIMIZATION_LEVEL=3
-mgen build --target llvm program.py
+multigen build --target llvm program.py
 
 # Or switch to JIT mode for development
-python -m mgen.backends.llvm.jit_executor program.ll
+python -m multigen.backends.llvm.jit_executor program.ll
 ```
 
 ### Getting Help
@@ -790,7 +824,7 @@ python -m mgen.backends.llvm.jit_executor program.ll
 2. Enable verbose mode: `--verbose`
 3. Run memory tests: `make test-memory-llvm`
 4. Review generated IR: `cat build/program.ll`
-5. File issues: [GitHub Issues](https://github.com/anthropics/mgen/issues)
+5. File issues: [GitHub Issues](https://github.com/anthropics/multigen/issues)
 
 ---
 
@@ -798,7 +832,7 @@ python -m mgen.backends.llvm.jit_executor program.ll
 
 ### Compilation Pipeline
 
-```
+```text
 Python Source Code
        ↓
    AST Parsing
@@ -823,16 +857,16 @@ Native Executable
 
 ### Runtime Library Structure
 
-```
-src/mgen/backends/llvm/runtime/
+```text
+src/multigen/backends/llvm/runtime/
 ├── vec_int_minimal.c          # List[int] operations
 ├── vec_str_minimal.c          # List[str] operations
 ├── vec_vec_int_minimal.c      # List[List[int]] operations
 ├── map_int_int_minimal.c      # Dict[int, int] operations
 ├── map_str_int_minimal.c      # Dict[str, int] operations
 ├── set_int_minimal.c          # Set[int] operations
-├── mgen_llvm_string.c         # String operations (9 methods)
-└── mgen_llvm_string.h         # String API declarations
+├── multigen_llvm_string.c         # String operations (9 methods)
+└── multigen_llvm_string.h         # String API declarations
 ```
 
 ### Key Components
@@ -870,7 +904,7 @@ src/mgen/backends/llvm/runtime/
 
 ### Type System
 
-```
+```text
 Python Type          LLVM Type           C Runtime Type
 -----------          ---------           --------------
 int                  i64                 long long
@@ -896,13 +930,14 @@ set[int]             %struct.set_int*    set_int*
 ### Development
 
 - [Architecture Overview](dev/ir_to_llvm_ir.md) - Design decisions
-- [Runtime Implementation](../src/mgen/backends/llvm/runtime/) - C code
+- [Runtime Implementation](../src/multigen/backends/llvm/runtime/) - C code
 - [Test Suite](../tests/test_backend_llvm*.py) - 107 tests
 - [String Method Tests](../tests/test_llvm_string_methods.py) - 20 tests
 
 ### Examples
 
 See `tests/benchmarks/algorithms/` for working examples:
+
 - `fibonacci.py` - Recursion
 - `matmul.py` - 2D arrays
 - `quicksort.py` - List operations
@@ -948,7 +983,7 @@ See `tests/benchmarks/algorithms/` for working examples:
 ---
 
 **Last Updated**: October 16, 2025
-**Maintained By**: MGen Team
+**Maintained By**: MultiGen Team
 **Status**: Production Ready
 
 **Performance**: Up to 36.5% faster with O3 optimization (v0.1.84)

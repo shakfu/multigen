@@ -1,4 +1,4 @@
-# MGen Tutorial Examples
+# MultiGen Tutorial Examples
 
 These examples accompany the [Getting Started Tutorial](../../docs/GETTING_STARTED.md).
 
@@ -15,10 +15,10 @@ These examples accompany the [Getting Started Tutorial](../../docs/GETTING_START
 
 ```bash
 # Convert to C++
-mgen --target cpp convert hello.py
+multigen --target cpp convert hello.py
 
 # Build and run
-mgen --target cpp build hello.py
+multigen --target cpp build hello.py
 ./build/hello
 ```
 
@@ -26,23 +26,23 @@ mgen --target cpp build hello.py
 
 ```bash
 # Try different backends
-mgen --target cpp build math_ops.py
-mgen --target rust build math_ops.py
-mgen --target go build math_ops.py
+multigen --target cpp build math_ops.py
+multigen --target rust build math_ops.py
+multigen --target go build math_ops.py
 ./build/math_ops
 ```
 
 ### String Operations
 
 ```bash
-mgen --target rust build string_ops.py
+multigen --target rust build string_ops.py
 ./build/string_ops
 ```
 
 ### Data Structures
 
 ```bash
-mgen --target go build data_structures.py
+multigen --target go build data_structures.py
 ./build/data_structures
 ```
 

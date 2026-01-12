@@ -1,7 +1,7 @@
 """Tests for type parameter extraction."""
 
 import pytest
-from mgen.backends.c.type_parameter_extractor import (
+from multigen.backends.c.type_parameter_extractor import (
     TypeParameterExtractor,
     ContainerTypeInfo,
 )

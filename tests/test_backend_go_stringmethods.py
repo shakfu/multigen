@@ -2,8 +2,8 @@
 
 import pytest
 
-from mgen.backends.go.converter import MGenPythonToGoConverter
-from mgen.backends.errors import UnsupportedFeatureError
+from multigen.backends.go.converter import MultiGenPythonToGoConverter
+from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestGoStringMethods:
@@ -11,7 +11,7 @@ class TestGoStringMethods:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToGoConverter()
+        self.converter = MultiGenPythonToGoConverter()
 
     def test_string_upper_method(self):
         """Test string upper() method conversion."""
@@ -21,7 +21,7 @@ def test_upper(text: str) -> str:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "return mgen.StrOps.Upper(text)" in go_code
+        assert "return multigen.StrOps.Upper(text)" in go_code
 
     def test_string_lower_method(self):
         """Test string lower() method conversion."""
@@ -31,7 +31,7 @@ def test_lower(text: str) -> str:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "return mgen.StrOps.Lower(text)" in go_code
+        assert "return multigen.StrOps.Lower(text)" in go_code
 
     def test_string_strip_method(self):
         """Test string strip() method conversion."""
@@ -41,7 +41,7 @@ def test_strip(text: str) -> str:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "return mgen.StrOps.Strip(text)" in go_code
+        assert "return multigen.StrOps.Strip(text)" in go_code
 
     def test_string_strip_with_chars(self):
         """Test string strip() method with characters."""
@@ -51,7 +51,7 @@ def test_strip_chars(text: str, chars: str) -> str:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "return mgen.StrOps.StripChars(text, chars)" in go_code
+        assert "return multigen.StrOps.StripChars(text, chars)" in go_code
 
     def test_string_find_method(self):
         """Test string find() method conversion."""
@@ -61,7 +61,7 @@ def test_find(text: str, substr: str) -> int:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "return mgen.StrOps.Find(text, substr)" in go_code
+        assert "return multigen.StrOps.Find(text, substr)" in go_code
 
     def test_string_replace_method(self):
         """Test string replace() method conversion."""
@@ -71,7 +71,7 @@ def test_replace(text: str, old: str, new: str) -> str:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "return mgen.StrOps.Replace(text, old, new)" in go_code
+        assert "return multigen.StrOps.Replace(text, old, new)" in go_code
 
     def test_string_split_method(self):
         """Test string split() method conversion."""
@@ -81,7 +81,7 @@ def test_split(text: str) -> list:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "return mgen.StrOps.Split(text)" in go_code
+        assert "return multigen.StrOps.Split(text)" in go_code
 
     def test_string_split_with_separator(self):
         """Test string split() method with separator."""
@@ -91,7 +91,7 @@ def test_split_sep(text: str, sep: str) -> list:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "return mgen.StrOps.SplitSep(text, sep)" in go_code
+        assert "return multigen.StrOps.SplitSep(text, sep)" in go_code
 
     def test_string_methods_on_literals(self):
         """Test string methods on string literals."""
@@ -101,7 +101,7 @@ def test_literal_methods() -> str:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert 'mgen.StrOps.Upper("Hello World")' in go_code
+        assert 'multigen.StrOps.Upper("Hello World")' in go_code
 
     def test_chained_string_methods(self):
         """Test chained string method calls."""
@@ -113,8 +113,8 @@ def test_chained(text: str) -> str:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "cleaned := mgen.StrOps.Strip(text)" in go_code
-        assert "upper_text := mgen.StrOps.Upper(cleaned)" in go_code
+        assert "cleaned := multigen.StrOps.Strip(text)" in go_code
+        assert "upper_text := multigen.StrOps.Upper(cleaned)" in go_code
 
 
 class TestGoStringMethodsInClasses:
@@ -122,7 +122,7 @@ class TestGoStringMethodsInClasses:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToGoConverter()
+        self.converter = MultiGenPythonToGoConverter()
 
     def test_string_methods_on_instance_variables(self):
         """Test string methods on instance variables."""
@@ -139,8 +139,8 @@ class TextProcessor:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "return mgen.StrOps.Upper(obj.Text)" in go_code
-        assert "return mgen.Len" in go_code  # Generic len function
+        assert "return multigen.StrOps.Upper(obj.Text)" in go_code
+        assert "return multigen.Len" in go_code  # Generic len function
 
     def test_string_methods_with_assignment(self):
         """Test string methods with assignment to instance variables."""
@@ -157,8 +157,8 @@ class StringManipulator:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "obj.Value = mgen.StrOps.Upper(obj.Value)" in go_code
-        assert "obj.Value = mgen.StrOps.Lower(mgen.StrOps.Strip(obj.Value))" in go_code
+        assert "obj.Value = multigen.StrOps.Upper(obj.Value)" in go_code
+        assert "obj.Value = multigen.StrOps.Lower(multigen.StrOps.Strip(obj.Value))" in go_code
 
     def test_complex_string_processing(self):
         """Test complex string processing in class methods."""
@@ -175,9 +175,9 @@ class DataCleaner:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "trimmed := mgen.StrOps.Strip(raw_data)" in go_code
-        assert 'no_spaces := mgen.StrOps.Replace(trimmed, " ", "_")' in go_code
-        assert "upper_case := mgen.StrOps.Upper(no_spaces)" in go_code
+        assert "trimmed := multigen.StrOps.Strip(raw_data)" in go_code
+        assert 'no_spaces := multigen.StrOps.Replace(trimmed, " ", "_")' in go_code
+        assert "upper_case := multigen.StrOps.Upper(no_spaces)" in go_code
         assert "return (obj.Prefix + upper_case)" in go_code
 
     def test_string_methods_in_conditions(self):
@@ -193,5 +193,5 @@ class Validator:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "cleaned := mgen.StrOps.Lower(mgen.StrOps.Strip(input_text))" in go_code
-        assert "return (cleaned == mgen.StrOps.Lower(obj.Required))" in go_code
+        assert "cleaned := multigen.StrOps.Lower(multigen.StrOps.Strip(input_text))" in go_code
+        assert "return (cleaned == multigen.StrOps.Lower(obj.Required))" in go_code

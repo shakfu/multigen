@@ -2,8 +2,8 @@
 
 import pytest
 
-from mgen.backends.rust.converter import MGenPythonToRustConverter
-from mgen.backends.errors import UnsupportedFeatureError
+from multigen.backends.rust.converter import MultiGenPythonToRustConverter
+from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestRustBasicConversion:
@@ -11,7 +11,7 @@ class TestRustBasicConversion:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToRustConverter()
+        self.converter = MultiGenPythonToRustConverter()
 
     def test_simple_function(self):
         """Test simple function conversion."""
@@ -74,7 +74,7 @@ class TestRustExpressions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToRustConverter()
+        self.converter = MultiGenPythonToRustConverter()
 
     def test_arithmetic_expressions(self):
         """Test arithmetic expression conversion."""
@@ -154,7 +154,7 @@ class TestRustBasicStatements:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToRustConverter()
+        self.converter = MultiGenPythonToRustConverter()
 
     def test_variable_assignment(self):
         """Test variable assignment."""
@@ -245,7 +245,7 @@ class TestRustBuiltinFunctions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToRustConverter()
+        self.converter = MultiGenPythonToRustConverter()
 
     def test_print_function(self):
         """Test print function conversion."""
@@ -311,7 +311,7 @@ class TestRustTypeInference:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToRustConverter()
+        self.converter = MultiGenPythonToRustConverter()
 
     def test_integer_inference(self):
         """Test integer type inference."""
@@ -435,7 +435,7 @@ class TestRustAdvancedExpressions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToRustConverter()
+        self.converter = MultiGenPythonToRustConverter()
 
     def test_nested_expressions(self):
         """Test nested expression conversion."""

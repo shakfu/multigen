@@ -44,7 +44,7 @@ Benchmark: `fibonacci.py` (fibonacci(29))
 ### Basic Usage
 
 ```python
-from mgen.backends.llvm.jit_executor import jit_compile_and_run
+from multigen.backends.llvm.jit_executor import jit_compile_and_run
 
 # Compile and execute LLVM IR file
 result = jit_compile_and_run("fibonacci.ll", verbose=True)
@@ -54,7 +54,7 @@ print(f"Result: {result}")
 ### Advanced Usage
 
 ```python
-from mgen.backends.llvm.jit_executor import LLVMJITExecutor
+from multigen.backends.llvm.jit_executor import LLVMJITExecutor
 
 # Create executor
 executor = LLVMJITExecutor()
@@ -81,7 +81,7 @@ finally:
 import subprocess
 import tempfile
 from pathlib import Path
-from mgen.backends.llvm.jit_executor import jit_compile_and_run
+from multigen.backends.llvm.jit_executor import jit_compile_and_run
 
 # Generate LLVM IR from Python file
 with tempfile.TemporaryDirectory() as tmpdir:
@@ -89,7 +89,7 @@ with tempfile.TemporaryDirectory() as tmpdir:
 
     # Convert Python to LLVM IR
     subprocess.run([
-        "uv", "run", "mgen", "convert",
+        "uv", "run", "multigen", "convert",
         "-t", "llvm", "program.py"
     ], cwd=output_dir)
 
@@ -104,10 +104,10 @@ with tempfile.TemporaryDirectory() as tmpdir:
 
 ```bash
 # Generate LLVM IR
-uv run mgen convert -t llvm program.py
+uv run multigen convert -t llvm program.py
 
 # JIT execute
-uv run python -m mgen.backends.llvm.jit_executor build/src/program.ll
+uv run python -m multigen.backends.llvm.jit_executor build/src/program.ll
 ```
 
 ## API Reference
@@ -156,7 +156,7 @@ Currently, JIT mode works best with **self-contained programs** that don't requi
 **Workaround**: For programs with runtime dependencies, use AOT mode:
 
 ```bash
-uv run mgen build -t llvm program.py
+uv run multigen build -t llvm program.py
 ```
 
 ## Examples
@@ -164,7 +164,7 @@ uv run mgen build -t llvm program.py
 ### Example 1: Simple Function
 
 ```python
-from mgen.backends.llvm.jit_executor import LLVMJITExecutor
+from multigen.backends.llvm.jit_executor import LLVMJITExecutor
 
 llvm_ir = """
 define i64 @add(i64 %a, i64 %b) {
@@ -185,7 +185,7 @@ finally:
 ### Example 2: Fibonacci
 
 ```python
-from mgen.backends.llvm.jit_executor import jit_compile_and_run
+from multigen.backends.llvm.jit_executor import jit_compile_and_run
 
 # Assuming fibonacci.ll exists
 result = jit_compile_and_run("fibonacci.ll", verbose=True)
@@ -263,7 +263,7 @@ JIT mode uses llvmlite's execution engine:
 
 - [llvmlite Documentation](https://llvmlite.readthedocs.io/)
 - [LLVM Execution Engine](https://llvm.org/docs/MCJITDesignAndImplementation.html)
-- [MGen LLVM Backend Roadmap](../../../LLVM_BACKEND_ROADMAP.md)
+- [MultiGen LLVM Backend Roadmap](../../../LLVM_BACKEND_ROADMAP.md)
 
 ## Contributing
 

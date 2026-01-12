@@ -1,4 +1,4 @@
-# Integration Status cgen -> mgen
+# Integration Status cgen -> multigen
 
 Already Integrated [x]
 
@@ -35,7 +35,7 @@ Based on CLAUDE.md v0.1.31, CGen Feature Parity is Complete:
 
 Not Yet Integrated from CGen [!]
 
-Based on examining the CGen repository, here are features that CGen has but MGen doesn't yet
+Based on examining the CGen repository, here are features that CGen has but MultiGen doesn't yet
 have fully implemented:
 
 1. Complete Nested Container Support (Partially Done)

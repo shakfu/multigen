@@ -2,8 +2,8 @@
 
 import pytest
 
-from mgen.backends.go.converter import MGenPythonToGoConverter
-from mgen.backends.errors import UnsupportedFeatureError
+from multigen.backends.go.converter import MultiGenPythonToGoConverter
+from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestGoAugAssignBasic:
@@ -11,7 +11,7 @@ class TestGoAugAssignBasic:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToGoConverter()
+        self.converter = MultiGenPythonToGoConverter()
 
     def test_add_assignment(self):
         """Test += operator."""
@@ -140,7 +140,7 @@ class TestGoAugAssignVariables:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToGoConverter()
+        self.converter = MultiGenPythonToGoConverter()
 
     def test_local_variable_assignment(self):
         """Test augmented assignment on local variables."""
@@ -196,7 +196,7 @@ class TestGoAugAssignClasses:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToGoConverter()
+        self.converter = MultiGenPythonToGoConverter()
 
     def test_instance_variable_assignment(self):
         """Test augmented assignment on instance variables."""

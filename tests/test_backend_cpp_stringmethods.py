@@ -2,15 +2,15 @@
 
 import pytest
 
-from mgen.backends.cpp.converter import MGenPythonToCppConverter
-from mgen.backends.errors import UnsupportedFeatureError
+from multigen.backends.cpp.converter import MultiGenPythonToCppConverter
+from multigen.backends.errors import UnsupportedFeatureError
 
 class TestStringMethodsBasics:
     """Test basic string method functionality."""
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCppConverter()
+        self.converter = MultiGenPythonToCppConverter()
 
     def test_string_upper_method(self):
         """Test str.upper() method."""
@@ -23,7 +23,7 @@ def test_upper() -> str:
 
         assert 'std::string text = "hello";' in cpp_code
         assert "StringOps::upper(text)" in cpp_code
-        assert '#include "runtime/mgen_cpp_runtime.hpp"' in cpp_code
+        assert '#include "runtime/multigen_cpp_runtime.hpp"' in cpp_code
 
     def test_string_lower_method(self):
         """Test str.lower() method."""
@@ -110,7 +110,7 @@ class TestStringMethodsInClass:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCppConverter()
+        self.converter = MultiGenPythonToCppConverter()
 
     def test_string_method_on_instance_variable(self):
         """Test string method called on instance variable."""
@@ -164,7 +164,7 @@ class TestStringMethodsAdvanced:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCppConverter()
+        self.converter = MultiGenPythonToCppConverter()
 
     def test_string_method_in_expression(self):
         """Test string method used within larger expressions."""

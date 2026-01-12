@@ -2,7 +2,7 @@
 
 import pytest
 
-from mgen.backends.llvm.optimizer import LLVMOptimizer
+from multigen.backends.llvm.optimizer import LLVMOptimizer
 
 
 class TestLLVMOptimizer:

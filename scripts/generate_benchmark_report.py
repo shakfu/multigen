@@ -46,7 +46,7 @@ def generate_markdown_report(json_file: Path, output_file: Path) -> None:
 
     # Generate report
     lines = [
-        "# MGen Benchmark Results",
+        "# MultiGen Benchmark Results",
         "",
         f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
         "",

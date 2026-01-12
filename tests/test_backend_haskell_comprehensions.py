@@ -2,7 +2,7 @@
 
 import pytest
 
-from mgen.backends.haskell.converter import MGenPythonToHaskellConverter
+from multigen.backends.haskell.converter import MultiGenPythonToHaskellConverter
 
 
 class TestHaskellListComprehensions:
@@ -10,7 +10,7 @@ class TestHaskellListComprehensions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToHaskellConverter()
+        self.converter = MultiGenPythonToHaskellConverter()
 
     def test_simple_list_comprehension(self):
         """Test simple list comprehension."""
@@ -88,7 +88,7 @@ class TestHaskellDictComprehensions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToHaskellConverter()
+        self.converter = MultiGenPythonToHaskellConverter()
 
     def test_simple_dict_comprehension(self):
         """Test simple dictionary comprehension."""
@@ -156,7 +156,7 @@ class TestHaskellSetComprehensions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToHaskellConverter()
+        self.converter = MultiGenPythonToHaskellConverter()
 
     def test_simple_set_comprehension(self):
         """Test simple set comprehension."""
@@ -222,7 +222,7 @@ class TestHaskellComprehensionIntegration:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToHaskellConverter()
+        self.converter = MultiGenPythonToHaskellConverter()
 
     def test_comprehensions_in_function_calls(self):
         """Test comprehensions used as function arguments."""

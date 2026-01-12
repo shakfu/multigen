@@ -1,7 +1,7 @@
 Formal Verification
 ===================
 
-MGen includes Z3-based formal verification for memory safety proofs.
+MultiGen includes Z3-based formal verification for memory safety proofs.
 
 Overview
 --------
@@ -108,7 +108,7 @@ Programmatic Usage
 
 Use verification in Python code::
 
-   from mgen.pipeline import MGenPipeline, PipelineConfig
+   from multigen.pipeline import MultiGenPipeline, PipelineConfig
 
    config = PipelineConfig(
        target_language="c",
@@ -116,7 +116,7 @@ Use verification in Python code::
        strict_verification=True,
    )
 
-   pipeline = MGenPipeline(config=config)
+   pipeline = MultiGenPipeline(config=config)
    result = pipeline.convert("example.py")
 
    if result.success:
@@ -174,7 +174,7 @@ Troubleshooting
 
 **False positives**::
 
-   # Report at https://github.com/shakfu/mgen/issues
+   # Report at https://github.com/shakfu/multigen/issues
    # Include minimal reproduction case
 
 Next Steps

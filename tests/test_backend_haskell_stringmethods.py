@@ -2,7 +2,7 @@
 
 import pytest
 
-from mgen.backends.haskell.converter import MGenPythonToHaskellConverter
+from multigen.backends.haskell.converter import MultiGenPythonToHaskellConverter
 
 
 class TestHaskellStringMethods:
@@ -10,7 +10,7 @@ class TestHaskellStringMethods:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToHaskellConverter()
+        self.converter = MultiGenPythonToHaskellConverter()
 
     def test_string_upper(self):
         """Test string upper method."""
@@ -81,8 +81,8 @@ def process_text(text: str) -> str:
 """
         haskell_code = self.converter.convert_code(python_code)
 
-        assert "MGenRuntime.lower (MGenRuntime.strip text)" in haskell_code
-        assert "MGenRuntime.upper cleaned" in haskell_code
+        assert "MultiGenRuntime.lower (MultiGenRuntime.strip text)" in haskell_code
+        assert "MultiGenRuntime.upper cleaned" in haskell_code
 
     def test_string_methods_with_literals(self):
         """Test string methods called on string literals."""

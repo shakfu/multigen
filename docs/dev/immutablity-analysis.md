@@ -36,21 +36,21 @@ Explicit Type-Based Signals
 
 ## Strong signals
 
-tuple[int, ...]      # vs list[int]
-frozenset[str]       # vs set[str]
+tuple[int, ...] # vs list[int]
+frozenset[str] # vs set[str]
 
 1. Type Annotations with Final
 
 from typing import Final
 
 CONSTANT: Final[int] = 42
-config: Final[dict] = {"key": "value"}  # Intent: don't reassign
+config: Final[dict] = {"key": "value"} # Intent: don't reassign
 
 1. Frozen Dataclasses
 
 from dataclasses import dataclass
 
-@dataclass(frozen=True)  # Immutable by design
+@dataclass(frozen=True) # Immutable by design
 class Point:
     x: int
     y: int
@@ -59,7 +59,7 @@ class Point:
 
 from typing import NamedTuple
 
-class Coordinate(NamedTuple):  # Always immutable
+class Coordinate(NamedTuple): # Always immutable
     x: int
     y: int
 
@@ -67,21 +67,21 @@ class Coordinate(NamedTuple):  # Always immutable
 
 from collections.abc import Sequence, MutableSequence
 
-def read_only(data: Sequence[int]) -> int:  # Signals read-only
+def read_only(data: Sequence[int]) -> int: # Signals read-only
     return data[0]
 
-def mutating(data: MutableSequence[int]):   # Signals mutation
+def mutating(data: MutableSequence[int]): # Signals mutation
     data.append(42)
 
 Naming Convention Signals
 
 1. ALL_CAPS Constants
 
-MAX_SIZE: int = 100  # Convention signals immutability
+MAX_SIZE: int = 100 # Convention signals immutability
 
 1. Leading Underscore (Private)
 
-  def _internal_helper(data: list) -> int:  # Often read-only
+  def _internal_helper(data: list) -> int: # Often read-only
       return len(data)
 
   Structural/Behavioral Signals
@@ -89,17 +89,17 @@ MAX_SIZE: int = 100  # Convention signals immutability
   1. Read-only Properties
 
   @property
-  def value(self) -> int:  # No setter = immutable
+  def value(self) -> int: # No setter = immutable
       return self._value
 
   1. Function Return Type Annotations
 
-  def get_config() -> tuple[str, ...]:  # Returns immutable
+  def get_config() -> tuple[str, ...]: # Returns immutable
       return ("a", "b", "c")
 
   1. Primitive Types
 
-  str, int, float, bool, None, bytes  # Always immutable
+  str, int, float, bool, None, bytes # Always immutable
 
   For Code Generation (Rust Backend)
 
@@ -107,19 +107,19 @@ MAX_SIZE: int = 100  # Convention signals immutability
 
 ## Strong immutability signals → use &Vec<T> or &[T]
 
-  def process(data: tuple[int, ...]) -> int:  # tuple → &[i32]
-  def read_config(cfg: Sequence[str]):         # Sequence → &Vec<String>
+  def process(data: tuple[int, ...]) -> int: # tuple → &[i32]
+  def read_config(cfg: Sequence[str]): # Sequence → &Vec<String>
 
 ## Weak/no signals → use &mut Vec<T> if modified, & if only read
 
-  def analyze(data: list[int]) -> int:         # list → analyze usage
-      total = sum(data)  # Only read → &Vec<i32>
+  def analyze(data: list[int]) -> int: # list → analyze usage
+      total = sum(data) # Only read → &Vec<i32>
       return total
 
-  def modify(data: list[int]):                 # list + modify → &mut Vec<i32>
+  def modify(data: list[int]): # list + modify → &mut Vec<i32>
       data.append(42)
 
-  Detection Strategy for MGen
+  Detection Strategy for MultiGen
 
 1. Check annotation:
    - tuple, frozenset → always immutable reference
@@ -144,7 +144,7 @@ MAX_SIZE: int = 100  # Convention signals immutability
 analysis. Since you are effectively analyzing Python code, the immutability analysis should be
 general and usable by any of the backends, however the interpretation of the results of the
 analysis should be backend-specific, and in this case, rust will map the results to its own
-syntax  and semantics of immutability.
+syntax and semantics of immutability.
 
 ⏺ Excellent architectural insight! Let me implement a general immutability analysis system that's
    backend-agnostic, with Rust-specific interpretation.

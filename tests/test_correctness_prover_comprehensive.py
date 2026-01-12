@@ -12,8 +12,8 @@ src_path = project_root / "src"
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
-from mgen.frontend import AnalysisContext, CorrectnessProver
-from mgen.frontend.base import AnalysisLevel
+from multigen.frontend import AnalysisContext, CorrectnessProver
+from multigen.frontend.base import AnalysisLevel
 
 # Check if Z3 is available
 try:

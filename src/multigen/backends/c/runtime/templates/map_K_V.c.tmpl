@@ -1,0 +1,266 @@
+/**
+ * Simple hash map for {{K_SUFFIX}}→{{V_SUFFIX}} mappings - Implementation
+ * STC-compatible naming for drop-in replacement
+ */
+
+#include "multigen_map_{{KV_SUFFIX}}.h"
+#include "multigen_error_handling.h"
+#include <stdlib.h>
+#include <string.h>
+
+#define DEFAULT_CAPACITY 16
+#define LOAD_FACTOR 0.75
+#define GROWTH_FACTOR 2
+
+{{#K_NEEDS_DROP}}
+// Hash function is already provided by type system: {{K_HASH}}
+{{/K_NEEDS_DROP}}
+
+map_{{KV_SUFFIX}} map_{{KV_SUFFIX}}_init(void) {
+    map_{{KV_SUFFIX}} map;
+    map.buckets = NULL;  // Lazy allocation
+    map.size = 0;
+    map.capacity = 0;
+    return map;
+}
+
+static void map_{{KV_SUFFIX}}_grow(map_{{KV_SUFFIX}}* map) {
+    size_t new_capacity = (map->capacity == 0) ? DEFAULT_CAPACITY : map->capacity * GROWTH_FACTOR;
+
+    // Allocate new buckets
+    map_{{KV_SUFFIX}}_entry* new_buckets = calloc(new_capacity, sizeof(map_{{KV_SUFFIX}}_entry));
+    if (!new_buckets) {
+        MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Failed to grow {{K_SUFFIX}}→{{V_SUFFIX}} map");
+        return;
+    }
+
+    // Rehash existing entries
+    if (map->buckets) {
+        for (size_t i = 0; i < map->capacity; i++) {
+            if (map->buckets[i].occupied) {
+                // Find new position
+                size_t hash = map->buckets[i].hash;
+                size_t idx = hash % new_capacity;
+
+                // Linear probing
+                while (new_buckets[idx].occupied) {
+                    idx = (idx + 1) % new_capacity;
+                }
+
+                // Move entry (transfer ownership)
+                new_buckets[idx] = map->buckets[i];
+            }
+        }
+        free(map->buckets);
+    }
+
+    map->buckets = new_buckets;
+    map->capacity = new_capacity;
+}
+
+void map_{{KV_SUFFIX}}_insert(map_{{KV_SUFFIX}}* map, {{#K_IS_POINTER}}const {{/K_IS_POINTER}}{{K}} key, {{#V_IS_POINTER}}const {{/V_IS_POINTER}}{{V}} value) {
+    if (!map) {
+        MGEN_SET_ERROR(MGEN_ERROR_VALUE, "NULL {{K_SUFFIX}}→{{V_SUFFIX}} map");
+        return;
+    }
+
+    // Lazy initialization
+    if (map->capacity == 0) {
+        map_{{KV_SUFFIX}}_grow(map);
+    }
+
+    // Check load factor
+    if ((double)map->size / map->capacity > LOAD_FACTOR) {
+        map_{{KV_SUFFIX}}_grow(map);
+    }
+
+    size_t hash = {{K_HASH}}(key);
+    size_t idx = hash % map->capacity;
+
+    // Linear probing to find slot
+    while (map->buckets[idx].occupied) {
+        // Update existing key
+        if (map->buckets[idx].key {{K_COMPARE}} key) {
+{{#V_NEEDS_DROP}}
+            free(map->buckets[idx].value);
+{{/V_NEEDS_DROP}}
+{{#V_NEEDS_COPY}}
+            map->buckets[idx].value = value ? strdup(value) : NULL;
+{{/V_NEEDS_COPY}}
+            map->buckets[idx].value = value;
+            return;
+        }
+        idx = (idx + 1) % map->capacity;
+    }
+
+    // Insert new entry
+{{#K_NEEDS_COPY}}
+    map->buckets[idx].key = strdup(key);
+{{/K_NEEDS_COPY}}
+    map->buckets[idx].key = key;
+
+{{#V_NEEDS_COPY}}
+    map->buckets[idx].value = value ? strdup(value) : NULL;
+{{/V_NEEDS_COPY}}
+    map->buckets[idx].value = value;
+
+    map->buckets[idx].hash = hash;
+    map->buckets[idx].occupied = true;
+    map->size++;
+}
+
+{{V}}* map_{{KV_SUFFIX}}_get(map_{{KV_SUFFIX}}* map, {{#K_IS_POINTER}}const {{/K_IS_POINTER}}{{K}} key) {
+    if (!map || map->capacity == 0) {
+        return NULL;
+    }
+
+    size_t hash = {{K_HASH}}(key);
+    size_t idx = hash % map->capacity;
+    size_t start_idx = idx;
+
+    // Linear probing to find key
+    do {
+        if (map->buckets[idx].occupied) {
+            if (map->buckets[idx].key {{K_COMPARE}} key) {
+                return &map->buckets[idx].value;
+            }
+        } else {
+            return NULL;
+        }
+        idx = (idx + 1) % map->capacity;
+    } while (idx != start_idx);
+
+    return NULL;
+}
+
+bool map_{{KV_SUFFIX}}_contains(map_{{KV_SUFFIX}}* map, {{#K_IS_POINTER}}const {{/K_IS_POINTER}}{{K}} key) {
+    return map_{{KV_SUFFIX}}_get(map, key) != NULL;
+}
+
+size_t map_{{KV_SUFFIX}}_size(const map_{{KV_SUFFIX}}* map) {
+    return map ? map->size : 0;
+}
+
+void map_{{KV_SUFFIX}}_erase(map_{{KV_SUFFIX}}* map, {{#K_IS_POINTER}}const {{/K_IS_POINTER}}{{K}} key) {
+    if (!map || map->capacity == 0) {
+        return;
+    }
+
+    size_t hash = {{K_HASH}}(key);
+    size_t idx = hash % map->capacity;
+    size_t start_idx = idx;
+
+    do {
+        if (map->buckets[idx].occupied) {
+            if (map->buckets[idx].key {{K_COMPARE}} key) {
+{{#K_NEEDS_DROP}}
+                free(map->buckets[idx].key);
+{{/K_NEEDS_DROP}}
+{{#V_NEEDS_DROP}}
+                free(map->buckets[idx].value);
+{{/V_NEEDS_DROP}}
+                map->buckets[idx].key = {{K_ZERO}};
+                map->buckets[idx].value = {{V_ZERO}};
+                map->buckets[idx].occupied = false;
+                map->size--;
+                return;
+            }
+        } else {
+            return;
+        }
+        idx = (idx + 1) % map->capacity;
+    } while (idx != start_idx);
+}
+
+void map_{{KV_SUFFIX}}_clear(map_{{KV_SUFFIX}}* map) {
+    if (!map || !map->buckets) {
+        return;
+    }
+
+    for (size_t i = 0; i < map->capacity; i++) {
+        if (map->buckets[i].occupied) {
+{{#K_NEEDS_DROP}}
+            free(map->buckets[i].key);
+{{/K_NEEDS_DROP}}
+{{#V_NEEDS_DROP}}
+            free(map->buckets[i].value);
+{{/V_NEEDS_DROP}}
+            map->buckets[i].key = {{K_ZERO}};
+            map->buckets[i].value = {{V_ZERO}};
+            map->buckets[i].occupied = false;
+        }
+    }
+
+    map->size = 0;
+}
+
+void map_{{KV_SUFFIX}}_drop(map_{{KV_SUFFIX}}* map) {
+    if (!map) {
+        return;
+    }
+
+    if (map->buckets) {
+        for (size_t i = 0; i < map->capacity; i++) {
+            if (map->buckets[i].occupied) {
+{{#K_NEEDS_DROP}}
+                free(map->buckets[i].key);
+{{/K_NEEDS_DROP}}
+{{#V_NEEDS_DROP}}
+                free(map->buckets[i].value);
+{{/V_NEEDS_DROP}}
+            }
+        }
+        free(map->buckets);
+    }
+
+    map->buckets = NULL;
+    map->size = 0;
+    map->capacity = 0;
+}
+
+bool map_{{KV_SUFFIX}}_empty(const map_{{KV_SUFFIX}}* map) {
+    return !map || map->size == 0;
+}
+
+void map_{{KV_SUFFIX}}_reserve(map_{{KV_SUFFIX}}* map, size_t new_capacity) {
+    if (!map) {
+        MGEN_SET_ERROR(MGEN_ERROR_VALUE, "NULL {{K_SUFFIX}}→{{V_SUFFIX}} map");
+        return;
+    }
+
+    if (new_capacity <= map->capacity) {
+        return;
+    }
+
+    // Save old state
+    map_{{KV_SUFFIX}}_entry* old_buckets = map->buckets;
+    size_t old_capacity = map->capacity;
+
+    // Allocate new buckets
+    map->buckets = calloc(new_capacity, sizeof(map_{{KV_SUFFIX}}_entry));
+    if (!map->buckets) {
+        MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Failed to reserve capacity");
+        map->buckets = old_buckets;
+        return;
+    }
+    map->capacity = new_capacity;
+    map->size = 0;
+
+    // Rehash existing entries
+    if (old_buckets) {
+        for (size_t i = 0; i < old_capacity; i++) {
+            if (old_buckets[i].occupied) {
+                size_t hash = old_buckets[i].hash;
+                size_t idx = hash % new_capacity;
+
+                while (map->buckets[idx].occupied) {
+                    idx = (idx + 1) % new_capacity;
+                }
+
+                map->buckets[idx] = old_buckets[i];
+                map->size++;
+            }
+        }
+        free(old_buckets);
+    }
+}

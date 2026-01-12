@@ -2,7 +2,7 @@
 
 import pytest
 from pathlib import Path
-from mgen.backends.c.template_substitution import TemplateSubstitutionEngine
+from multigen.backends.c.template_substitution import TemplateSubstitutionEngine
 
 
 class TestVecTemplateInstantiation:
@@ -11,7 +11,7 @@ class TestVecTemplateInstantiation:
     def setup_method(self):
         """Set up test fixtures."""
         self.engine = TemplateSubstitutionEngine()
-        self.template_dir = Path(__file__).parent.parent / "src" / "mgen" / "backends" / "c" / "runtime" / "templates"
+        self.template_dir = Path(__file__).parent.parent / "src" / "multigen" / "backends" / "c" / "runtime" / "templates"
 
     def test_vec_T_h_template_exists(self):
         """Test that vec_T.h.tmpl template file exists."""
@@ -69,8 +69,8 @@ class TestVecTemplateInstantiation:
         result = self.engine.substitute_vec_template(template, "int")
 
         # Check includes
-        assert '#include "mgen_vec_int.h"' in result
-        assert '#include "mgen_error_handling.h"' in result
+        assert '#include "multigen_vec_int.h"' in result
+        assert '#include "multigen_error_handling.h"' in result
 
         # Check init function
         assert "vec_int vec_int_init(void)" in result
@@ -96,7 +96,7 @@ class TestVecTemplateInstantiation:
         result = self.engine.substitute_vec_template(template, "str")
 
         # Check includes
-        assert '#include "mgen_vec_str.h"' in result
+        assert '#include "multigen_vec_str.h"' in result
 
         # Check init function
         assert "vec_str vec_str_init(void)" in result

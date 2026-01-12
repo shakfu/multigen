@@ -10,32 +10,32 @@ Requirements
 Basic Installation
 ------------------
 
-Install MGen using pip::
+Install MultiGen using pip::
 
-   pip install mgen
+   pip install multigen
 
 Or using uv::
 
-   uv pip install mgen
+   uv pip install multigen
 
 With Formal Verification
 -------------------------
 
 To enable Z3-based formal verification, install with the z3 extra::
 
-   pip install mgen[z3]
+   pip install multigen[z3]
 
 Or::
 
-   uv pip install mgen[z3]
+   uv pip install multigen[z3]
 
 Development Installation
 ------------------------
 
 Clone the repository and install in development mode::
 
-   git clone https://github.com/shakfu/mgen.git
-   cd mgen
+   git clone https://github.com/shakfu/multigen.git
+   cd multigen
    uv sync --group dev
 
 This installs all development dependencies including:
@@ -48,9 +48,9 @@ This installs all development dependencies including:
 Verify Installation
 -------------------
 
-Check that MGen is installed correctly::
+Check that MultiGen is installed correctly::
 
-   mgen --version
+   multigen --version
 
 Run the test suite::
 

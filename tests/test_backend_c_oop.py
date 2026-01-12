@@ -2,8 +2,8 @@
 
 import pytest
 
-from mgen.backends.c.converter import MGenPythonToCConverter
-from mgen.backends.errors import UnsupportedFeatureError
+from multigen.backends.c.converter import MultiGenPythonToCConverter
+from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestPy2COOPBasics:
@@ -11,7 +11,7 @@ class TestPy2COOPBasics:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_simple_class_definition(self):
         """Test simple class with instance variables."""
@@ -136,7 +136,7 @@ class TestPy2COOPTypeInference:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_instance_variable_type_inference(self):
         """Test type inference for instance variables."""
@@ -177,7 +177,7 @@ class TestPy2COOPAdvanced:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_method_with_parameters(self):
         """Test methods with multiple parameters."""
@@ -272,7 +272,7 @@ class TestPy2COOPErrorHandling:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_class_without_init(self):
         """Test class without __init__ method."""
@@ -315,7 +315,7 @@ class TestPy2COOPIntegration:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_class_with_loops(self):
         """Test class methods containing loops."""
@@ -367,7 +367,7 @@ class Calculator:
 ])
 def test_instance_variable_type_mapping(python_type, c_type):
     """Test parametrized type mapping for instance variables."""
-    converter = MGenPythonToCConverter()
+    converter = MultiGenPythonToCConverter()
 
     python_code = f"""
 class TypeTest:
@@ -384,7 +384,7 @@ class TypeTest:
 @pytest.mark.integration
 def test_oop_comprehensive():
     """Comprehensive test of OOP features working together."""
-    converter = MGenPythonToCConverter()
+    converter = MultiGenPythonToCConverter()
 
     python_code = """
 class BankAccount:

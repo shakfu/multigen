@@ -2,8 +2,8 @@
 
 import pytest
 
-from mgen.backends.go.converter import MGenPythonToGoConverter
-from mgen.backends.errors import UnsupportedFeatureError
+from multigen.backends.go.converter import MultiGenPythonToGoConverter
+from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestGoBasicsConversion:
@@ -11,7 +11,7 @@ class TestGoBasicsConversion:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToGoConverter()
+        self.converter = MultiGenPythonToGoConverter()
 
     def test_simple_function_conversion(self):
         """Test simple function with type annotations."""
@@ -23,7 +23,7 @@ def add_numbers(a: int, b: int) -> int:
 
         assert "func add_numbers(a int, b int) int" in go_code
         assert "return (a + b)" in go_code
-        assert 'import "mgenproject/mgen"' in go_code
+        assert 'import "multigenproject/multigen"' in go_code
         assert "package main" in go_code
 
     def test_function_with_string_parameters(self):
@@ -57,7 +57,7 @@ def print_message(msg: str) -> None:
         go_code = self.converter.convert_code(python_code)
 
         assert "func print_message(msg string)" in go_code
-        assert "mgen.Print(msg)" in go_code
+        assert "multigen.Print(msg)" in go_code
 
     def test_auto_type_inference(self):
         """Test automatic type inference when annotations are missing."""
@@ -76,7 +76,7 @@ class TestGoBasicStatements:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToGoConverter()
+        self.converter = MultiGenPythonToGoConverter()
 
     def test_variable_assignment(self):
         """Test variable assignment with type inference."""
@@ -171,7 +171,7 @@ class TestGoExpressions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToGoConverter()
+        self.converter = MultiGenPythonToGoConverter()
 
     def test_binary_operations(self):
         """Test binary operations."""
@@ -233,7 +233,7 @@ class TestGoBuiltinFunctions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToGoConverter()
+        self.converter = MultiGenPythonToGoConverter()
 
     def test_print_function(self):
         """Test print() function conversion."""
@@ -244,8 +244,8 @@ def test_print(msg: str) -> None:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "mgen.Print(msg)" in go_code
-        assert 'mgen.Print("Hello", "World")' in go_code
+        assert "multigen.Print(msg)" in go_code
+        assert 'multigen.Print("Hello", "World")' in go_code
 
     def test_len_function(self):
         """Test len() function conversion."""
@@ -256,7 +256,7 @@ def test_len(items: list) -> int:
         go_code = self.converter.convert_code(python_code)
 
         # list annotation defaults to []int now
-        assert "return mgen.Len[int](items)" in go_code
+        assert "return multigen.Len[int](items)" in go_code
 
     def test_abs_function(self):
         """Test abs() function conversion."""
@@ -266,7 +266,7 @@ def test_abs(x: int) -> int:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "return mgen.AbsInt(x)" in go_code
+        assert "return multigen.AbsInt(x)" in go_code
 
     def test_range_function(self):
         """Test range() function conversion."""
@@ -276,7 +276,7 @@ def test_range() -> None:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "mgen.NewRange(10)" in go_code
+        assert "multigen.NewRange(10)" in go_code
 
     def test_min_max_functions(self):
         """Test min() and max() function conversion."""
@@ -289,5 +289,5 @@ def test_min_max(items: list) -> int:
         go_code = self.converter.convert_code(python_code)
 
         # list annotation defaults to []int now
-        assert "mgen.Min[int](items)" in go_code
-        assert "mgen.Max[int](items)" in go_code
+        assert "multigen.Min[int](items)" in go_code
+        assert "multigen.Max[int](items)" in go_code

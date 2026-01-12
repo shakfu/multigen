@@ -1,8 +1,8 @@
-# MGen Use Cases - Real-World Integration Patterns
+# MultiGen Use Cases - Real-World Integration Patterns
 
 **Last Updated**: October 18, 2025
 **Version**: v0.1.98
-**Target Audience**: Engineers integrating MGen into production systems
+**Target Audience**: Engineers integrating MultiGen into production systems
 
 ---
 
@@ -50,9 +50,10 @@ def main() -> int:
 ```
 
 **Build & Deploy**:
+
 ```bash
 # Compile to C
-mgen build -t c sensor_processing.py
+multigen build -t c sensor_processing.py
 
 # Result: 82KB binary, zero dependencies
 ls -lh build/sensor_processing
@@ -60,14 +61,15 @@ ls -lh build/sensor_processing
 
 # Cross-compile for ARM
 arm-linux-gnueabi-gcc -std=c99 \
-  -I src/mgen/backends/c/runtime \
-  -I src/mgen/backends/c/ext \
+  -I src/multigen/backends/c/runtime \
+  -I src/multigen/backends/c/ext \
   build/src/sensor_processing.c \
-  src/mgen/backends/c/runtime/*.c \
+  src/multigen/backends/c/runtime/*.c \
   -o build/sensor_processing_arm
 ```
 
 **Benefits**:
+
 - [x] Prototype in Python (fast iteration)
 - [x] Deploy to embedded device (C binary)
 - [x] No runtime dependencies (static linking)
@@ -114,9 +116,10 @@ def main() -> int:
 ```
 
 **Build & Deploy**:
+
 ```bash
 # Compile to Rust
-mgen build -t rust api_handler.py
+multigen build -t rust api_handler.py
 
 # Benchmark
 time ./build/api_handler
@@ -127,11 +130,12 @@ time ./build/api_handler
 ```
 
 **Integration with Existing Rust Service**:
+
 ```rust
 // main.rs
 use actix_web::{web, App, HttpServer};
 
-mod api_handler;  // MGen-generated module
+mod api_handler;  // MultiGen-generated module
 
 async fn handle_batch(users: web::Json<Vec<i32>>) -> impl Responder {
     let results = api_handler::process_request(users.into_inner());
@@ -151,6 +155,7 @@ async fn main() -> std::io::Result<()> {
 ```
 
 **Benefits**:
+
 - [x] 10x performance improvement
 - [x] Memory safety (Rust borrow checker)
 - [x] Easy integration with Rust web frameworks
@@ -209,9 +214,10 @@ def main() -> int:
 ```
 
 **Build & Deploy**:
+
 ```bash
 # Instant compilation
-time mgen build -t go deploy_tool.py
+time multigen build -t go deploy_tool.py
 # real    0m0.063s   INSTANT
 
 # Run
@@ -223,6 +229,7 @@ scp build/deploy_tool prod-server:/usr/local/bin/
 ```
 
 **Benefits**:
+
 - [x] Instant compilation (edit-compile-test loop < 100ms)
 - [x] Single binary deployment
 - [x] No runtime dependencies
@@ -285,14 +292,15 @@ def main() -> int:
 ```
 
 **Build & Benchmark**:
+
 ```bash
 # No optimization (debug)
-mgen build -t llvm -O0 matrix_ops.py
+multigen build -t llvm -O0 matrix_ops.py
 time ./build/matrix_ops
 # real    0m0.086s
 
 # Maximum optimization
-mgen build -t llvm -O3 matrix_ops.py
+multigen build -t llvm -O3 matrix_ops.py
 time ./build/matrix_ops
 # real    0m0.054s  (36.5% faster!)
 
@@ -302,6 +310,7 @@ time python matrix_ops.py
 ```
 
 **Benefits**:
+
 - [x] 36.5% speedup with O3
 - [x] 45x faster than Python
 - [x] Industry-standard LLVM optimizations
@@ -369,9 +378,10 @@ def main() -> int:
 ```
 
 **Build & Deploy**:
+
 ```bash
 # Build with C++
-mgen build -t cpp log_processor.py
+multigen build -t cpp log_processor.py
 
 # Process 10M log lines
 time ./build/log_processor
@@ -388,6 +398,7 @@ ENTRYPOINT ["/usr/local/bin/log_processor"]
 ```
 
 **Benefits**:
+
 - [x] 21x faster than Python
 - [x] Tiny binary (36KB) for containers
 - [x] STL containers (set, map) for efficiency
@@ -427,9 +438,10 @@ def main() -> int:
 ```
 
 **Build for WebAssembly**:
+
 ```bash
 # Compile to LLVM IR
-mgen convert -t llvm fibonacci.py
+multigen convert -t llvm fibonacci.py
 
 # Compile IR to WASM
 llc -march=wasm32 -filetype=obj build/fibonacci.ll -o build/fibonacci.wasm
@@ -440,6 +452,7 @@ ls -lh build/fibonacci.wasm
 ```
 
 **JavaScript Integration**:
+
 ```javascript
 // index.html
 <script type="module">
@@ -455,6 +468,7 @@ console.log(`Fibonacci(40) = ${result}`);
 ```
 
 **Benefits**:
+
 - [x] Python algorithm runs in browser
 - [x] No server required
 - [x] 80% smaller than native binary
@@ -490,9 +504,10 @@ def main() -> int:
 ```
 
 **Cross-Compile for Multiple Platforms**:
+
 ```bash
 # x86-64 (Desktop)
-mgen build -t llvm crypto_hash.py
+multigen build -t llvm crypto_hash.py
 # Output: build/crypto_hash (x86-64)
 
 # ARM (iOS/Android)
@@ -509,6 +524,7 @@ llc -march=wasm32 -filetype=obj build/crypto_hash.ll -o build/crypto_hash.wasm
 ```
 
 **Benefits**:
+
 - [x] Write once, compile for any platform
 - [x] Single source of truth
 - [x] LLVM handles target-specific optimizations
@@ -566,15 +582,17 @@ def main() -> int:
 ```
 
 **Build & Study**:
+
 ```bash
 # Generate Haskell code
-mgen build -t haskell quicksort_functional.py
+multigen build -t haskell quicksort_functional.py
 
 # Examine functional output
 cat build/src/quicksort_functional.hs
 ```
 
 **Generated Haskell** (excerpt):
+
 ```haskell
 quicksort :: [Int] -> [Int]
 quicksort arr =
@@ -591,6 +609,7 @@ quicksort arr =
 ```
 
 **Benefits**:
+
 - [x] Learn functional programming patterns
 - [x] Python syntax → Haskell semantics
 - [x] Type-safe functional code
@@ -605,11 +624,12 @@ quicksort arr =
 **Start**: Pure Python codebase
 **Step 1**: Identify performance bottlenecks (profiling)
 **Step 2**: Extract bottleneck to separate .py file
-**Step 3**: Compile bottleneck with MGen (keep interface identical)
+**Step 3**: Compile bottleneck with MultiGen (keep interface identical)
 **Step 4**: Replace Python module with compiled version
 **Step 5**: Measure improvement, iterate
 
 **Example**:
+
 ```python
 # Before: Pure Python
 from algorithms import expensive_computation
@@ -617,26 +637,27 @@ from algorithms import expensive_computation
 result = expensive_computation(data)
 
 # After: Compiled module (same interface)
-from build.algorithms import expensive_computation  # MGen-compiled
+from build.algorithms import expensive_computation  # MultiGen-compiled
 
 result = expensive_computation(data)  # 10x faster, same code
 ```
 
 ### Pattern 2: Library Wrapping
 
-**Wrap MGen output in language-specific library**
+**Wrap MultiGen output in language-specific library**
 
 **C++ Example**:
+
 ```cpp
 // my_library.hpp
 #pragma once
-#include "algorithm.h"  // MGen-generated
+#include "algorithm.h"  // MultiGen-generated
 
 namespace MyLibrary {
     class Algorithm {
     public:
         int compute(const std::vector<int>& data) {
-            return mgen_compute(data);
+            return multigen_compute(data);
         }
     };
 }
@@ -648,7 +669,7 @@ namespace MyLibrary {
 
 ```bash
 # Build service
-mgen build -t rust api_service.py
+multigen build -t rust api_service.py
 
 # Dockerize
 docker build -t my-service .
@@ -663,19 +684,20 @@ kubectl apply -f deployment.yaml
 ## Common Workflows
 
 ### Development Workflow
+
 ```bash
 # 1. Prototype in Python
 python algorithm.py
 
 # 2. Compile and test
-mgen build -t cpp algorithm.py
+multigen build -t cpp algorithm.py
 ./build/algorithm
 
 # 3. Benchmark
 time ./build/algorithm
 
 # 4. Optimize
-mgen build -t llvm -O3 algorithm.py
+multigen build -t llvm -O3 algorithm.py
 time ./build/algorithm
 
 # 5. Deploy
@@ -683,9 +705,10 @@ time ./build/algorithm
 ```
 
 ### CI/CD Integration
+
 ```yaml
 # .github/workflows/build.yml
-name: Build with MGen
+name: Build with MultiGen
 
 on: [push]
 
@@ -695,12 +718,12 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Install MGen
-        run: pip install mgen
+      - name: Install MultiGen
+        run: pip install multigen
 
       - name: Build algorithms
         run: |
-          mgen build -t rust src/algorithms/*.py
+          multigen build -t rust src/algorithms/*.py
 
       - name: Test
         run: |
@@ -719,7 +742,8 @@ jobs:
 
 ## Summary
 
-**MGen enables**:
+**MultiGen enables**:
+
 - [x] Rapid prototyping in Python
 - [x] Production deployment in compiled languages
 - [x] Performance optimization without rewrites
@@ -727,6 +751,7 @@ jobs:
 - [x] Educational tools for language learning
 
 **Choose backend based on**:
+
 - Target platform (embedded → C, web → Rust/Go, research → Haskell)
 - Performance needs (critical → LLVM O3, normal → C++)
 - Integration requirements (existing codebase → matching backend)

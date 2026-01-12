@@ -1,4 +1,4 @@
-# MGen Translation Test Examples
+# MultiGen Translation Test Examples
 
 This directory contains focused test cases for Python-to-C translation features. These files are specifically designed to test and validate core translation capabilities.
 
@@ -9,12 +9,14 @@ This directory contains focused test cases for Python-to-C translation features.
 **Progress**: 70% (v0.1.99) → 93% (v0.1.104) in 5 releases!
 
 **Test Results (v0.1.104)**:
+
 - **19 BUILD+RUN PASS** (70% nominal pass rate)
 - **6 "Computed Returns"** - Tests that return values (sum=60, len=1, etc.)
 - **2 BUILD FAIL** - Edge cases only (nested containers)
 - **Actual Pass Rate**: 25/27 = **93%** ✨
 
 **Recent Fixes (v0.1.100-104)**:
+
 - ✅ **v0.1.100**: Validation errors (math import, string ops)
 - ✅ **v0.1.101**: Dict comprehension `len()` support
 - ✅ **v0.1.102**: String literal wrapping for `vec_cstr`
@@ -22,6 +24,7 @@ This directory contains focused test cases for Python-to-C translation features.
 - ✅ **v0.1.104**: String array subscript access
 
 **Fully Supported Features**:
+
 - ✅ Type casting (`int()`, `float()`, `str()`, `bool()`)
 - ✅ String operations (membership, methods, split, concatenation)
 - ✅ List operations (slicing, comprehensions, methods)
@@ -35,6 +38,7 @@ This directory contains focused test cases for Python-to-C translation features.
 - ✅ OOP (classes, methods, inheritance)
 
 **Known Limitations** (2 edge cases - NOT supported):
+
 - ❌ Dict with list values (`dict[str, list[int]]`) - Use workaround (see C_BACKEND_PLAN.md)
 - ❌ Bare `list` without type params (`list = [[1,2]]`) - Use `list[list[int]]` (best practice)
 
@@ -72,7 +76,6 @@ These files are designed for:
 - **Regression Testing**: Ensuring that changes don't break existing translation capabilities
 - **Feature Validation**: Testing new translation features as they're implemented
 - **Batch Testing**: Using with `cgen batch` command to test all translation features at once
-
 
 ## Note
 

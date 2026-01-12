@@ -2,11 +2,11 @@
 
 import pytest
 
-from mgen.backends.ocaml.converter import MGenPythonToOCamlConverter
-from mgen.backends.ocaml.containers import OCamlContainerSystem
-from mgen.backends.ocaml.builder import OCamlBuilder
-from mgen.backends.preferences import OCamlPreferences
-from mgen.backends.errors import UnsupportedFeatureError
+from multigen.backends.ocaml.converter import MultiGenPythonToOCamlConverter
+from multigen.backends.ocaml.containers import OCamlContainerSystem
+from multigen.backends.ocaml.builder import OCamlBuilder
+from multigen.backends.preferences import OCamlPreferences
+from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestOCamlBasics:
@@ -14,7 +14,7 @@ class TestOCamlBasics:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToOCamlConverter()
+        self.converter = MultiGenPythonToOCamlConverter()
 
     def test_simple_function(self):
         """Test simple function conversion."""
@@ -59,7 +59,7 @@ def calculate(x: int, y: int) -> int:
         prefs.set('use_pattern_matching', False)
         prefs.set('prefer_immutable', False)
 
-        converter = MGenPythonToOCamlConverter(prefs)
+        converter = MultiGenPythonToOCamlConverter(prefs)
         assert converter.preferences.get('use_pattern_matching') == False
         assert converter.preferences.get('prefer_immutable') == False
 
@@ -99,7 +99,7 @@ def filter_numbers(numbers):
         prefs = OCamlPreferences()
         prefs.set('prefer_idiomatic_syntax', True)
 
-        converter = MGenPythonToOCamlConverter(prefs)
+        converter = MultiGenPythonToOCamlConverter(prefs)
 
         python_code = """
 def filter_numbers(numbers):
@@ -194,7 +194,7 @@ class TestOCamlBuilder:
         commands = self.builder.get_build_command('test.ml')
         assert 'ocamlc' in commands
         assert 'test.ml' in commands
-        assert 'mgen_runtime.ml' in commands
+        assert 'multigen_runtime.ml' in commands
 
     def test_run_commands(self):
         """Test run command generation."""
@@ -267,7 +267,7 @@ class TestOCamlAugmentedAssignment:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToOCamlConverter()
+        self.converter = MultiGenPythonToOCamlConverter()
 
     def test_plus_equals(self):
         """Test += operator conversion."""
@@ -339,7 +339,7 @@ class TestOCamlControlFlow:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToOCamlConverter()
+        self.converter = MultiGenPythonToOCamlConverter()
 
     def test_if_statement(self):
         """Test simple if statement conversion."""
@@ -418,7 +418,7 @@ class TestOCamlComprehensions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToOCamlConverter()
+        self.converter = MultiGenPythonToOCamlConverter()
 
     def test_simple_list_comprehension(self):
         """Test simple list comprehension conversion."""
@@ -484,7 +484,7 @@ class TestOCamlOOP:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToOCamlConverter()
+        self.converter = MultiGenPythonToOCamlConverter()
 
     def test_simple_class_definition(self):
         """Test simple class to OCaml record type conversion."""
@@ -559,7 +559,7 @@ class TestOCamlStringMethods:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToOCamlConverter()
+        self.converter = MultiGenPythonToOCamlConverter()
 
     def test_string_length(self):
         """Test len() on string conversion."""

@@ -1,6 +1,6 @@
-# MGen Examples
+# MultiGen Examples
 
-This directory contains real-world example applications demonstrating MGen's capabilities.
+This directory contains real-world example applications demonstrating MultiGen's capabilities.
 
 ## Directory Structure
 
@@ -49,27 +49,27 @@ This directory contains real-world example applications demonstrating MGen's cap
 
 ```bash
 # Convert to C
-mgen --target c convert examples/cli_tools/wordcount.py
+multigen --target c convert examples/cli_tools/wordcount.py
 
 # Convert to C++  
-mgen --target cpp convert examples/algorithms/merge_sort.py
+multigen --target cpp convert examples/algorithms/merge_sort.py
 
 # Convert to Rust
-mgen --target rust convert examples/data_processing/csv_stats.py
+multigen --target rust convert examples/data_processing/csv_stats.py
 
 # Convert to Go
-mgen --target go convert examples/games/number_guess.py
+multigen --target go convert examples/games/number_guess.py
 ```
 
 ### Build and run
 
 ```bash
 # Build and run (C example)
-mgen --target c build examples/cli_tools/wordcount.py
+multigen --target c build examples/cli_tools/wordcount.py
 ./build/wordcount
 
 # Build with external build system
-mgen --target rust convert examples/algorithms/merge_sort.py
+multigen --target rust convert examples/algorithms/merge_sort.py
 cd build/src && cargo build --release && ./target/release/merge_sort
 ```
 
@@ -102,7 +102,7 @@ All examples can be compiled and benchmarked across backends:
 # Compare performance across backends
 for backend in c cpp rust go haskell ocaml; do
     echo "=== $backend ==="
-    mgen --target $backend build examples/algorithms/merge_sort.py
+    multigen --target $backend build examples/algorithms/merge_sort.py
     time ./build/merge_sort
 done
 ```

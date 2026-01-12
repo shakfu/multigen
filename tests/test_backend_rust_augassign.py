@@ -2,8 +2,8 @@
 
 import pytest
 
-from mgen.backends.rust.converter import MGenPythonToRustConverter
-from mgen.backends.errors import UnsupportedFeatureError
+from multigen.backends.rust.converter import MultiGenPythonToRustConverter
+from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestRustAugAssignBasic:
@@ -11,7 +11,7 @@ class TestRustAugAssignBasic:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToRustConverter()
+        self.converter = MultiGenPythonToRustConverter()
 
     def test_add_assignment(self):
         """Test += operator."""
@@ -140,7 +140,7 @@ class TestRustAugAssignVariables:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToRustConverter()
+        self.converter = MultiGenPythonToRustConverter()
 
     def test_local_variable_assignment(self):
         """Test augmented assignment on local variables."""
@@ -196,7 +196,7 @@ class TestRustAugAssignClasses:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToRustConverter()
+        self.converter = MultiGenPythonToRustConverter()
 
     def test_instance_variable_assignment(self):
         """Test augmented assignment on instance variables."""
@@ -298,7 +298,7 @@ class TestRustAugAssignAdvanced:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToRustConverter()
+        self.converter = MultiGenPythonToRustConverter()
 
     def test_augassign_with_complex_expressions(self):
         """Test augmented assignment with complex right-hand expressions."""

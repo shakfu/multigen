@@ -2,7 +2,7 @@
 
 import pytest
 from pathlib import Path
-from mgen.backends.llvm.wasm_compiler import (
+from multigen.backends.llvm.wasm_compiler import (
     WebAssemblyCompiler,
     compile_to_webassembly,
     LLVMLITE_AVAILABLE,
@@ -25,10 +25,10 @@ class TestWebAssemblyCompiler:
         assert compiler.target_triple == "wasm32-wasi"
 
     def test_extract_pure_functions(self):
-        """Test extraction of user-defined functions from MGen IR."""
-        # Simulated MGen IR with runtime declarations and user functions
-        mgen_ir = """
-; ModuleID = "mgen_module"
+        """Test extraction of user-defined functions from MultiGen IR."""
+        # Simulated MultiGen IR with runtime declarations and user functions
+        multigen_ir = """
+; ModuleID = "multigen_module"
 target triple = ""
 
 declare void @vec_int_push(i64* %vec, i64 %value)
@@ -58,7 +58,7 @@ entry:
 }
 """
         compiler = WebAssemblyCompiler()
-        pure_ir = compiler.extract_pure_functions(mgen_ir)
+        pure_ir = compiler.extract_pure_functions(multigen_ir)
 
         # Should extract both functions
         assert "define i64 @fibonacci" in pure_ir
@@ -73,7 +73,7 @@ entry:
 
     def test_extract_pure_functions_no_functions(self):
         """Test extraction with IR that has no function definitions."""
-        mgen_ir = """
+        multigen_ir = """
 ; Only declarations
 declare void @vec_int_push(i64* %vec, i64 %value)
 declare i64 @vec_int_at(i64* %vec, i64 %index)
@@ -81,7 +81,7 @@ declare i64 @vec_int_at(i64* %vec, i64 %index)
         compiler = WebAssemblyCompiler()
 
         with pytest.raises(ValueError, match="No function definitions found"):
-            compiler.extract_pure_functions(mgen_ir)
+            compiler.extract_pure_functions(multigen_ir)
 
     def test_compile_simple_function(self, tmp_path):
         """Test compiling simple LLVM IR to WebAssembly."""
@@ -190,13 +190,13 @@ recurse:
             # Should have at least wasm32-unknown-unknown
             assert "wasm32" in info["available_targets"]
 
-    def test_compile_mgen_ir_integration(self, tmp_path):
-        """Integration test with MGen-style IR (fibonacci without I/O)."""
+    def test_compile_multigen_ir_integration(self, tmp_path):
+        """Integration test with MultiGen-style IR (fibonacci without I/O)."""
         # Create fibonacci IR file dynamically (pure function, no I/O)
         ir_path = tmp_path / "fibonacci.ll"
         ir_path.write_text(
             """
-; ModuleID = "mgen_fibonacci"
+; ModuleID = "multigen_fibonacci"
 target triple = ""
 
 define i64 @fibonacci(i64 %n) {
@@ -225,7 +225,7 @@ entry:
         compiler = WebAssemblyCompiler()
 
         wasm_path = tmp_path / "fibonacci.wasm"
-        success = compiler.compile_mgen_ir(
+        success = compiler.compile_multigen_ir(
             ir_path=ir_path,
             output_path=wasm_path,
             opt_level=2,
@@ -238,7 +238,7 @@ entry:
 
         # Also test text format
         wat_path = tmp_path / "fibonacci.wat"
-        success = compiler.compile_mgen_ir(
+        success = compiler.compile_multigen_ir(
             ir_path=ir_path,
             output_path=wat_path,
             opt_level=2,
@@ -310,7 +310,7 @@ class TestWebAssemblyCompilerNoLLVMLite:
         # This test only runs if llvmlite is NOT available
         # In practice, this is hard to test since the test suite requires llvmlite
         # When llvmlite is unavailable, WebAssemblyCompiler.__init__ raises ImportError
-        from mgen.backends.llvm.wasm_compiler import WebAssemblyCompiler
+        from multigen.backends.llvm.wasm_compiler import WebAssemblyCompiler
 
         with pytest.raises(ImportError, match="llvmlite is required"):
             WebAssemblyCompiler()

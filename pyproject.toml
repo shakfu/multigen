@@ -1,8 +1,8 @@
 [project]
-name = "mgen"
+name = "multigen"
 version = "0.1.46"
 authors = [
-    {name = "MGen Contributors", email = "noreply@example.com"},
+    {name = "MultiGen Contributors", email = "noreply@example.com"},
 ]
 description = "Python-to-Many code translation"
 readme = "README.md"
@@ -58,19 +58,19 @@ llvm = [
 
 
 [project.urls]
-Homepage = "https://github.com/shakfu/mgen"
-Documentation = "https://mgen.readthedocs.io"
-Repository = "https://github.com/shakfu/mgen"
-"Bug Tracker" = "https://github.com/shakfu/mgen/issues"
+Homepage = "https://github.com/shakfu/multigen"
+Documentation = "https://multigen.readthedocs.io"
+Repository = "https://github.com/shakfu/multigen"
+"Bug Tracker" = "https://github.com/shakfu/multigen/issues"
 
 [project.scripts]
-mgen = "mgen.cli.main:main"
+multigen = "multigen.cli.main:main"
 
 [tool.pytest.ini_options]
 minversion = "7.0"
 addopts = "-ra -q --strict-markers --strict-config"
 testpaths = ["tests"]
-# Ignore translation/ - contains Python source files for MGen translation, not pytest tests
+# Ignore translation/ - contains Python source files for MultiGen translation, not pytest tests
 norecursedirs = ["tests/translation"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
@@ -85,7 +85,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["src/mgen"]
+source = ["src/multigen"]
 branch = true
 omit = [
     "*/tests/*",

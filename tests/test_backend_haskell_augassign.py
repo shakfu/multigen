@@ -2,7 +2,7 @@
 
 import pytest
 
-from mgen.backends.haskell.converter import MGenPythonToHaskellConverter
+from multigen.backends.haskell.converter import MultiGenPythonToHaskellConverter
 
 
 class TestHaskellAugmentedAssignment:
@@ -10,7 +10,7 @@ class TestHaskellAugmentedAssignment:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToHaskellConverter()
+        self.converter = MultiGenPythonToHaskellConverter()
 
     def test_addition_assignment(self):
         """Test += operator."""

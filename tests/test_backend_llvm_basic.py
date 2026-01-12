@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from mgen.backends.llvm import IRToLLVMConverter, LLVMBackend
-from mgen.frontend.static_ir import build_ir_from_code
+from multigen.backends.llvm import IRToLLVMConverter, LLVMBackend
+from multigen.frontend.static_ir import build_ir_from_code
 
 # Check if LLVM tools are available
 LLVM_TOOLS_AVAILABLE = shutil.which("llc") is not None and shutil.which("clang") is not None

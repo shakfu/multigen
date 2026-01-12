@@ -7,17 +7,19 @@
 ## Problem
 
 The Rust backend had build system issues preventing compilation:
+
 - `compile_direct()` method was failing due to path issues
 - Runtime module was being copied to wrong location
 - Working directory issues in subprocess calls
 
 ## Solution
 
-Fixed `src/mgen/backends/rust/builder.py`:
+Fixed `src/multigen/backends/rust/builder.py`:
 
 ### Changes Made
 
 **1. Fixed Path Resolution**
+
 ```python
 # Before: Relative paths that broke when cwd changed
 source_path = Path(source_file)
@@ -29,15 +31,17 @@ out_dir = Path(output_dir).absolute()
 ```
 
 **2. Fixed Runtime Module Location**
+
 ```python
 # Before: Copied to output directory (wrong - rustc looks next to source)
-runtime_dst = out_dir / "mgen_rust_runtime.rs"
+runtime_dst = out_dir / "multigen_rust_runtime.rs"
 
 # After: Copy to source directory where rustc expects it
-runtime_dst = source_path.parent / "mgen_rust_runtime.rs"
+runtime_dst = source_path.parent / "multigen_rust_runtime.rs"
 ```
 
 **3. Removed Working Directory Change**
+
 ```python
 # Before: Changed cwd, breaking relative paths
 result = subprocess.run(cmd, capture_output=True, text=True, cwd=output_dir)
@@ -47,6 +51,7 @@ result = subprocess.run(cmd, capture_output=True, text=True)
 ```
 
 **4. Added Error Reporting**
+
 ```python
 # Added debugging output to see compilation errors
 if result.stderr:
@@ -88,6 +93,7 @@ if result.stderr:
 | test_struct_field_access | [X] BUILD_FAIL | - | Feature not implemented |
 
 **Summary**:
+
 - [x] **12 tests PASS** (44.4%)
 - [X] **15 tests FAIL** (55.6%)
   - 2 due to untyped container annotations (same as C/C++ backends)
@@ -96,11 +102,13 @@ if result.stderr:
 ## Impact
 
 ### Before Fix
+
 - [X] 0/27 tests passing (0%)
 - Build system completely broken
 - All tests failed with build errors
 
 ### After Fix
+
 - [x] 12/27 tests passing (44.4%)
 - Build system working correctly
 - Compilation errors now visible for debugging
@@ -110,13 +118,16 @@ if result.stderr:
 ## Rust-Specific Details
 
 ### Exit Codes
+
 Rust's `main()` function returns nothing (unit type `()`), so all successful programs exit with code 0. This is different from C/C++ where tests return computed values.
 
 ### Runtime Module
-Rust requires the runtime module (`mgen_rust_runtime.rs`) to be in the same directory as the source file for the `mod` statement to work:
+
+Rust requires the runtime module (`multigen_rust_runtime.rs`) to be in the same directory as the source file for the `mod` statement to work:
+
 ```rust
-mod mgen_rust_runtime;
-use mgen_rust_runtime::*;
+mod multigen_rust_runtime;
+use multigen_rust_runtime::*;
 ```
 
 The fix ensures the runtime is copied to `build/src/` alongside the generated `.rs` files.
@@ -159,7 +170,7 @@ The Rust backend is now **functional** and actually **outperforms C++** (44.4% v
 
 ## Files Modified
 
-- `src/mgen/backends/rust/builder.py` - Fixed compile_direct() method
+- `src/multigen/backends/rust/builder.py` - Fixed compile_direct() method
 
 **Total Changes**: ~20 lines in 1 file
 
@@ -167,13 +178,13 @@ The Rust backend is now **functional** and actually **outperforms C++** (44.4% v
 
 ```bash
 # Test single file
-uv run mgen build -t rust tests/translation/simple_test.py
+uv run multigen build -t rust tests/translation/simple_test.py
 ./build/simple_test  # Exit code: 0 (Rust main returns unit type)
 
 # Test all files
 for test in tests/translation/*.py; do
   testname=$(basename "$test" .py)
-  uv run mgen build -t rust "$test" && echo "$testname: PASS"
+  uv run multigen build -t rust "$test" && echo "$testname: PASS"
 done
 ```
 

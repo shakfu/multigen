@@ -2,8 +2,8 @@
 
 import pytest
 
-from mgen.backends.go.converter import MGenPythonToGoConverter
-from mgen.backends.errors import UnsupportedFeatureError
+from multigen.backends.go.converter import MultiGenPythonToGoConverter
+from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestGoOOPBasics:
@@ -11,7 +11,7 @@ class TestGoOOPBasics:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToGoConverter()
+        self.converter = MultiGenPythonToGoConverter()
 
     def test_simple_class_conversion(self):
         """Test simple class with constructor."""
@@ -91,7 +91,7 @@ class TestGoOOPAdvanced:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToGoConverter()
+        self.converter = MultiGenPythonToGoConverter()
 
     def test_method_with_control_flow(self):
         """Test method with if statements and loops."""

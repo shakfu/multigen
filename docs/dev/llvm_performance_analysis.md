@@ -148,6 +148,7 @@ Comprehensive performance analysis of the LLVM backend against compiled systems 
 | 6 | C++ | 388.7ms | 1.2x slower | STL template instantiation |
 
 **Analysis**: LLVM's compilation time is **middle-of-the-pack**. The overhead comes from:
+
 1. IR generation (Python → Static IR → LLVM IR)
 2. llc compilation (IR → object file)
 3. clang linking (object → executable)
@@ -156,7 +157,7 @@ Comprehensive performance analysis of the LLVM backend against compiled systems 
 
 ### Compilation Time Breakdown by Benchmark
 
-```
+```text
 Benchmark      C++     C      Rust   OCaml  LLVM   Go
 ────────────────────────────────────────────────────
 fibonacci     326ms   366ms  153ms  224ms  287ms  70ms
@@ -188,6 +189,7 @@ Average       389ms   385ms  227ms  240ms  312ms  81ms
 | 6 | Go | 2365.9KB | 48.3x larger | Full runtime + GC |
 
 **Analysis**: LLVM produces **near-optimal binary sizes**, second only to C++. This makes LLVM ideal for:
+
 - Embedded systems with size constraints
 - Serverless functions (faster cold starts)
 - Edge computing (bandwidth-limited)
@@ -195,7 +197,7 @@ Average       389ms   385ms  227ms  240ms  312ms  81ms
 
 ### Binary Size Distribution
 
-```
+```text
 Backend    Min      Max      Avg      StdDev
 ──────────────────────────────────────────────
 C++       34.4KB   42.8KB   36.1KB   2.8KB
@@ -238,6 +240,7 @@ Go         2.3MB    2.4MB    2.4MB   0.3KB
 | **LLVM** | **321** | — | IR (not human-written) |
 
 **Note**: LLVM IR is **not meant for human consumption**. It's an intermediate representation optimized for:
+
 - Compiler optimization passes
 - Cross-platform code generation
 - JIT compilation
@@ -260,6 +263,7 @@ Go         2.3MB    2.4MB    2.4MB   0.3KB
 | Go | GC | [x] | [x] (runtime) | [x] (runtime) |
 
 **LLVM Memory Safety Status** (v0.1.82):
+
 - [x] **0 memory leaks** across all benchmarks
 - [x] **0 use-after-free** errors
 - [x] **0 buffer overflows**
@@ -268,6 +272,7 @@ Go         2.3MB    2.4MB    2.4MB   0.3KB
 - [x] **Automated testing** infrastructure
 
 **Comparison**:
+
 - **Rust**: Memory safety at **compile-time** (strongest guarantees)
 - **LLVM**: Memory safety via **runtime verification** (production-tested)
 - **C/C++**: No guarantees without manual testing
@@ -282,7 +287,7 @@ LLVM supports 4 optimization levels (O0, O1, O2, O3):
 
 ```bash
 export LLVM_OPTIMIZATION_LEVEL=3  # O0, O1, O2, O3
-mgen build --target llvm program.py
+multigen build --target llvm program.py
 ```
 
 **Measured Impact** (fibonacci benchmark):
@@ -451,26 +456,33 @@ mgen build --target llvm program.py
 ### LLVM-Specific Optimizations
 
 1. **Use O3 for Production**
+
 ```bash
 export LLVM_OPTIMIZATION_LEVEL=3
-mgen build --target llvm program.py
+multigen build --target llvm program.py
 ```
+
 **Impact**: 29% faster execution, 29% slower compilation
 
 2. **Use JIT Mode for Development**
+
 ```python
-from mgen.backends.llvm.jit_executor import jit_compile_and_run
+from multigen.backends.llvm.jit_executor import jit_compile_and_run
 result = jit_compile_and_run("program.ll")
 ```
+
 **Impact**: 7.7x faster total time vs AOT
 
 3. **Enable ASAN for Testing**
+
 ```bash
-mgen build --target llvm --enable-asan program.py
+multigen build --target llvm --enable-asan program.py
 ```
+
 **Impact**: Catch memory errors early
 
 4. **Profile with LLVM Tools**
+
 ```bash
 # Generate optimized IR
 llc -O3 -filetype=asm program.ll -o program.s
@@ -482,6 +494,7 @@ cat program.s | less
 ### Algorithm-Specific Tips
 
 **For String Processing**: LLVM's 9 string methods are optimized - use them!
+
 ```python
 # Use built-in methods
 result = text.upper().replace("old", "new")
@@ -489,12 +502,14 @@ result = text.upper().replace("old", "new")
 ```
 
 **For List Operations**: LLVM's list implementation is competitive with C
+
 ```python
 # List comprehensions compile to efficient loops
 squares = [x*x for x in range(1000)]
 ```
 
 **For Dictionaries**: Use int keys when possible (faster than string keys)
+
 ```python
 # Faster
 scores: dict[int, int] = {1: 100, 2: 95}
@@ -521,12 +536,14 @@ scores: dict[str, int] = {"alice": 100, "bob": 95}
 **LLVM Backend Rating: [+][+][+][+][+] (5/5)**
 
 The LLVM backend delivers **exceptional performance** for a compiler backend:
+
 - **2nd fastest execution** (competitive with C/Rust)
 - **2nd smallest binaries** (near C++ efficiency)
 - **Memory-safe** (ASAN verified)
 - **Production-ready** (7/7 benchmarks passing)
 
 **Best Use Cases**:
+
 1. Production deployments (balanced performance + size)
 2. Embedded systems (size-constrained)
 3. Serverless functions (fast cold starts)
@@ -534,6 +551,7 @@ The LLVM backend delivers **exceptional performance** for a compiler backend:
 5. Development (JIT mode)
 
 **Trade-offs**:
+
 - Compilation speed is middle-of-the-pack
 - Slightly slower than C/Rust on dict/set operations
 - IR output is not human-readable

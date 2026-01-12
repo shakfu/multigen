@@ -11,7 +11,7 @@ src_path = project_root / "src"
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
-from mgen.pipeline import MGenPipeline, PipelineConfig
+from multigen.pipeline import MultiGenPipeline, PipelineConfig
 
 # Check if Z3 is available
 try:
@@ -50,7 +50,7 @@ def add(x: int, y: int) -> int:
             enable_formal_verification=False,
             strict_verification=True,  # Strict mode without verification
         )
-        pipeline = MGenPipeline(config=config)
+        pipeline = MultiGenPipeline(config=config)
 
         # Should warn but still work
         result = pipeline.convert(test_file)
@@ -73,7 +73,7 @@ def add(x: int, y: int) -> int:
         config = PipelineConfig(
             target_language="c", enable_formal_verification=True, strict_verification=True
         )
-        pipeline = MGenPipeline(config=config)
+        pipeline = MultiGenPipeline(config=config)
 
         result = pipeline.convert(test_file)
         assert result.success
@@ -99,7 +99,7 @@ def unsafe_access(arr: list[int], n: int) -> int:
             enable_formal_verification=True,
             strict_verification=True,
         )
-        pipeline = MGenPipeline(config=config)
+        pipeline = MultiGenPipeline(config=config)
 
         result = pipeline.convert(test_file)
 
@@ -130,7 +130,7 @@ def access_array(arr: list[int], n: int) -> int:
             enable_formal_verification=True,
             strict_verification=False,
         )
-        pipeline_warn = MGenPipeline(config=config_warn)
+        pipeline_warn = MultiGenPipeline(config=config_warn)
         result_warn = pipeline_warn.convert(test_file)
 
         # Strict mode
@@ -139,7 +139,7 @@ def access_array(arr: list[int], n: int) -> int:
             enable_formal_verification=True,
             strict_verification=True,
         )
-        pipeline_strict = MGenPipeline(config=config_strict)
+        pipeline_strict = MultiGenPipeline(config=config_strict)
         result_strict = pipeline_strict.convert(test_file)
 
         # If verification finds issues:
@@ -173,7 +173,7 @@ def unsafe_function(arr: list[int], n: int) -> int:
             enable_formal_verification=True,
             strict_verification=False,
         )
-        pipeline_warn = MGenPipeline(config=config_warn)
+        pipeline_warn = MultiGenPipeline(config=config_warn)
         result_warn = pipeline_warn.convert(test_file)
 
         # Non-strict mode should succeed
@@ -188,7 +188,7 @@ def unsafe_function(arr: list[int], n: int) -> int:
             enable_formal_verification=True,
             strict_verification=True,
         )
-        pipeline_strict = MGenPipeline(config=config_strict)
+        pipeline_strict = MultiGenPipeline(config=config_strict)
         result_strict = pipeline_strict.convert(test_file)
 
         # If verification failed in strict mode
@@ -242,7 +242,7 @@ def safe_function(x: int, y: int) -> int:
             enable_formal_verification=True,
             strict_verification=True,
         )
-        pipeline = MGenPipeline(config=config)
+        pipeline = MultiGenPipeline(config=config)
         result = pipeline.convert(test_file)
 
         # Should fail on first unsafe function (if verification detects it)

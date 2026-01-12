@@ -1,7 +1,7 @@
-# MGen Production Roadmap
+# MultiGen Production Roadmap
 
 **Version**: v0.1.73 (October 2025)
-**Status**:  **Experimental Backends & Advanced Features**
+**Status**: **Experimental Backends & Advanced Features**
 **Strategy**: Depth over breadth - polish existing features, explore new compilation targets
 
 ---
@@ -18,12 +18,12 @@
 
 ### Backend Readiness (6/7 Production + 1 Functionally Complete)
 
--  **C++**: 7/7 (100%) - PRODUCTION READY
--  **C**: 7/7 (100%) - PRODUCTION READY
--  **Rust**: 7/7 (100%) - PRODUCTION READY
--  **Go**: 7/7 (100%) - PRODUCTION READY
--  **OCaml**: 7/7 (100%) - PRODUCTION READY
--  **LLVM**: 7/7 (100%) - PRODUCTION READY (v0.1.80)
+- **C++**: 7/7 (100%) - PRODUCTION READY
+- **C**: 7/7 (100%) - PRODUCTION READY
+- **Rust**: 7/7 (100%) - PRODUCTION READY
+- **Go**: 7/7 (100%) - PRODUCTION READY
+- **OCaml**: 7/7 (100%) - PRODUCTION READY
+- **LLVM**: 7/7 (100%) - PRODUCTION READY (v0.1.80)
 - [x] **Haskell**: 6/7 (86%) - FUNCTIONALLY COMPLETE
 
 ### Recent Achievements (v0.1.72-0.1.82)
@@ -112,8 +112,8 @@
 - [x] **Memory-safe** (ASAN verified with 0 leaks)
 - [x] Single backend for all platforms (via LLVM)
 - [x] Industry-standard optimization passes
--  WebAssembly support (future)
--  GPU code generation potential (future)
+- WebAssembly support (future)
+- GPU code generation potential (future)
 
 ### 2. Documentation Completion (HIGH)
 
@@ -163,7 +163,7 @@
   - LLVM-specific optimization notes with performance benchmarks
   - Build directory structure diagram
 - Better error messages with helpful hints:
-  - Invalid backend errors now suggest using `mgen backends` command
+  - Invalid backend errors now suggest using `multigen backends` command
   - Available backends listed after error
 - Standard optimization flags:
   - `-O0` / `-O none` - No optimization (fastest compile, debug)
@@ -301,7 +301,7 @@
 - [ ] WebAssembly target (via LLVM - future)
 - [ ] Cross-platform compilation (via LLVM - future)
 
-### Documentation  IN PROGRESS (60%)
+### Documentation IN PROGRESS (60%)
 
 - [x] Getting started
 - [x] Error handling
@@ -312,7 +312,7 @@
 - [ ] Contributing
 - [ ] API reference
 
-### Developer Experience  IN PROGRESS (60%)
+### Developer Experience IN PROGRESS (60%)
 
 - [x] Error messages with locations
 - [x] Type inference
@@ -333,9 +333,9 @@
 2. [x] Code quality refactoring (COMPLETE)
 3. [x] Formal verification foundation (COMPLETE)
 4. [x] LLVM backend production-ready (v0.1.72-0.1.80) - **COMPLETE**
-5.  Documentation suite (IN PROGRESS - 60%)
-6.  CLI/UX polish (NEXT)
-7.  Community building (FUTURE)
+5. Documentation suite (IN PROGRESS - 60%)
+6. CLI/UX polish (NEXT)
+7. Community building (FUTURE)
 
 ### Key Insights
 
@@ -361,7 +361,7 @@
 
 ## Long-Term Vision
 
-### MGen as Production Tool
+### MultiGen as Production Tool
 
 - **Niche**: Verified Python-to-Systems-Language translation with LLVM optimization
 - **Differentiators**:
@@ -399,5 +399,6 @@
 **Last Updated**: October 2025 (v0.1.83)
 **Next Review**: After documentation completion
 **Major Milestones**:
+
 - v0.1.82: LLVM backend memory safety verified (0 leaks, 0 errors across 7 benchmarks)
 - v0.1.83: Advanced string methods + better error messages (107 tests, 9 string ops)

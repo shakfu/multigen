@@ -2,7 +2,7 @@
 
 
 
-from mgen.backends.c.emitter import MGenPythonToCConverter
+from multigen.backends.c.emitter import MultiGenPythonToCConverter
 
 
 class TestPy2CControlFlow:
@@ -10,7 +10,7 @@ class TestPy2CControlFlow:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_if_else(self):
         """Test if-else statements."""

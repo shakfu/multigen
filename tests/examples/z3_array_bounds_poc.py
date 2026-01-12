@@ -18,7 +18,7 @@ try:
     from z3 import And, ForAll, Implies, Int, Solver, sat
 except ImportError:
     print("ERROR: Z3 not installed. Install with: pip install z3-solver")
-    print("Or install mgen with Z3 support: pip install mgen[z3]")
+    print("Or install multigen with Z3 support: pip install multigen[z3]")
     exit(1)
 
 

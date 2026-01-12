@@ -2,15 +2,15 @@
 
 import pytest
 
-from mgen.backends.cpp.converter import MGenPythonToCppConverter
-from mgen.backends.errors import UnsupportedFeatureError
+from multigen.backends.cpp.converter import MultiGenPythonToCppConverter
+from multigen.backends.errors import UnsupportedFeatureError
 
 class TestCppBasicsConversion:
     """Test basic conversion functionality."""
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCppConverter()
+        self.converter = MultiGenPythonToCppConverter()
 
     def test_simple_function_conversion(self):
         """Test simple function with type annotations."""
@@ -75,7 +75,7 @@ class TestCppBasicStatements:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCppConverter()
+        self.converter = MultiGenPythonToCppConverter()
 
     def test_variable_assignment(self):
         """Test variable assignment with type inference."""
@@ -170,7 +170,7 @@ class TestCppExpressions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCppConverter()
+        self.converter = MultiGenPythonToCppConverter()
 
     def test_binary_operations(self):
         """Test binary operations."""
@@ -232,7 +232,7 @@ class TestCppBuiltinFunctions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCppConverter()
+        self.converter = MultiGenPythonToCppConverter()
 
     def test_print_function(self):
         """Test print() function conversion."""
@@ -254,7 +254,7 @@ def test_len(items: list) -> int:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "return mgen::len(items);" in cpp_code
+        assert "return multigen::len(items);" in cpp_code
 
     def test_abs_function(self):
         """Test abs() function conversion."""
@@ -264,7 +264,7 @@ def test_abs(x: int) -> int:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "return mgen::abs(x);" in cpp_code
+        assert "return multigen::abs(x);" in cpp_code
 
     def test_range_function(self):
         """Test range() function conversion."""

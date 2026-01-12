@@ -51,7 +51,7 @@ All runtime libraries verified leak-free with ASAN:
 | map_int_int_minimal.c | ~216 | Hash map (int→int) | [x] Safe |
 | map_str_int_minimal.c | ~190 | Hash map (string→int) | [x] Safe |
 | set_int_minimal.c | ~182 | Hash set with chaining | [x] Safe |
-| mgen_llvm_string.c | ~150 | String operations | [x] Safe |
+| multigen_llvm_string.c | ~150 | String operations | [x] Safe |
 
 **Total**: ~8,300 lines of memory-safe C runtime code.
 
@@ -83,7 +83,8 @@ All runtime libraries verified leak-free with ASAN:
 
 ### Code Changes
 
-**1. LLVMCompiler** (`src/mgen/backends/llvm/compiler.py`)
+**1. LLVMCompiler** (`src/multigen/backends/llvm/compiler.py`)
+
 ```python
 def compile_ir_to_executable(
     self,
@@ -94,7 +95,8 @@ def compile_ir_to_executable(
     # Adds -fsanitize=address -g to linker
 ```
 
-**2. LLVMBuilder** (`src/mgen/backends/llvm/builder.py`)
+**2. LLVMBuilder** (`src/multigen/backends/llvm/builder.py`)
+
 ```python
 def compile_direct(
     self,
@@ -107,12 +109,14 @@ def compile_direct(
 ```
 
 **3. Test Script** (`scripts/test_llvm_memory.sh`)
+
 - Automated testing for all benchmarks
 - LLVM tool detection (Homebrew/system)
 - Detailed logging and reporting
 - CI/CD ready with exit codes
 
 **4. Makefile Integration**
+
 ```makefile
 test-memory-llvm:
     @./scripts/test_llvm_memory.sh
@@ -125,12 +129,14 @@ test-memory-llvm:
 ### Tool: AddressSanitizer (ASAN)
 
 **Why ASAN?**
+
 - Industry-standard memory error detector
 - Part of LLVM/Clang toolchain
 - Battle-tested in production systems (Chrome, Firefox, etc.)
 - Comprehensive coverage of memory errors
 
 **What ASAN Detects:**
+
 - [x] Memory leaks (allocated but not freed)
 - [x] Use-after-free (accessing freed memory)
 - [x] Heap buffer overflow (reading/writing past bounds)
@@ -219,7 +225,7 @@ export ASAN_OPTIONS=detect_leaks=1:halt_on_error=0:log_path=asan.log
 ### Programmatic API
 
 ```python
-from mgen.backends.llvm import LLVMBuilder
+from multigen.backends.llvm import LLVMBuilder
 
 builder = LLVMBuilder()
 success = builder.compile_direct(
@@ -274,6 +280,7 @@ Add to `.github/workflows/ci.yml`:
 ### Vulnerability Assessment
 
 [x] **No vulnerabilities found** in runtime library:
+
 - No use-after-free vulnerabilities
 - No buffer overflow vulnerabilities
 - No double-free vulnerabilities
@@ -282,6 +289,7 @@ Add to `.github/workflows/ci.yml`:
 ### Production Readiness
 
 The LLVM backend is **production-ready** for:
+
 - [x] Safety-critical applications
 - [x] Long-running services (no leaks)
 - [x] Memory-constrained environments
@@ -332,9 +340,9 @@ The LLVM backend has successfully completed comprehensive memory safety verifica
 ### Next Steps
 
 1. [x] Memory testing - **COMPLETE**
-2.  Performance benchmarking vs other backends
-3.  Documentation completion (backend selection guide)
-4.  v1.0 release preparation
+2. Performance benchmarking vs other backends
+3. Documentation completion (backend selection guide)
+4. v1.0 release preparation
 
 ---
 
@@ -347,4 +355,4 @@ The LLVM backend has successfully completed comprehensive memory safety verifica
 
 ---
 
-*This report confirms that the MGen LLVM backend meets industry standards for memory safety and is ready for production use.*
+*This report confirms that the MultiGen LLVM backend meets industry standards for memory safety and is ready for production use.*

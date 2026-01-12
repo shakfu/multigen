@@ -2,15 +2,15 @@
 
 import pytest
 
-from mgen.backends.c.emitter import MGenPythonToCConverter
-from mgen.backends.errors import UnsupportedFeatureError, TypeMappingError
+from multigen.backends.c.emitter import MultiGenPythonToCConverter
+from multigen.backends.errors import UnsupportedFeatureError, TypeMappingError
 
 class TestAugmentedAssignmentBasics:
     """Test basic augmented assignment functionality."""
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_simple_add_assignment(self):
         """Test += operator."""
@@ -96,7 +96,7 @@ class TestBitwiseAugmentedAssignment:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_bitwise_or_assignment(self):
         """Test |= operator."""
@@ -169,7 +169,7 @@ class TestAugmentedAssignmentWithExpressions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_augassign_with_variable_expression(self):
         """Test augmented assignment with variable expression."""
@@ -219,7 +219,7 @@ class TestAugmentedAssignmentOOP:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_augassign_instance_variable(self):
         """Test augmented assignment on instance variables."""
@@ -274,7 +274,7 @@ class TestAugmentedAssignmentErrorHandling:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_undeclared_variable_error(self):
         """Test error when using undeclared variable."""
@@ -314,7 +314,7 @@ class TestAugmentedAssignmentIntegration:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_augassign_in_loops(self):
         """Test augmented assignment inside loops."""
@@ -385,7 +385,7 @@ def multiple_operations() -> int:
 ])
 def test_augassign_operators_parametrized(op_python, op_c):
     """Test parametrized augmented assignment operators."""
-    converter = MGenPythonToCConverter()
+    converter = MultiGenPythonToCConverter()
 
     python_code = f"""
 def test_operator() -> int:
@@ -401,7 +401,7 @@ def test_operator() -> int:
 @pytest.mark.integration
 def test_augmented_assignment_comprehensive():
     """Comprehensive test of augmented assignment working with all features."""
-    converter = MGenPythonToCConverter()
+    converter = MultiGenPythonToCConverter()
 
     python_code = """
 class Calculator:

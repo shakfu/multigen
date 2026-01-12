@@ -1,6 +1,6 @@
 BENCHMARK_RESULTS_DIR := build/benchmark_results
 
-# Makefile for MGen development
+# Makefile for MultiGen development
 
 .PHONY: help install test test-unit test-integration test-translation \
 		test-py2c test-benchmark test-build test-memory-llvm clean lint format type-check \
@@ -9,7 +9,7 @@ BENCHMARK_RESULTS_DIR := build/benchmark_results
 
 # Default target
 help:
-	@echo "MGen Development Commands"
+	@echo "MultiGen Development Commands"
 	@echo "========================="
 	@echo ""
 	@echo "Setup:"
@@ -68,10 +68,10 @@ test-unit:
 	uv run pytest -m "unit" tests/ -v
 
 test-translation:
-	uv run mgen batch --continue-on-error --source-dir tests/translation
+	uv run multigen batch --continue-on-error --source-dir tests/translation
 
 test-build:
-	uv run mgen batch --build --continue-on-error --source-dir tests/translation
+	uv run multigen batch --build --continue-on-error --source-dir tests/translation
 
 test-integration:
 	uv run pytest -m "integration" tests/ -v
@@ -89,7 +89,7 @@ test-memory-llvm:
 	@./scripts/test_llvm_memory.sh
 
 test-coverage:
-	uv run pytest --cov=src/mgen --cov-branch --cov-report=html --cov-report=term-missing --ignore=tests/test_demos.py --ignore=tests/translation tests/
+	uv run pytest --cov=src/multigen --cov-branch --cov-report=html --cov-report=term-missing --ignore=tests/test_demos.py --ignore=tests/translation tests/
 	@echo ""
 	@echo "Coverage report generated in htmlcov/index.html"
 
@@ -114,7 +114,7 @@ format-check:
 	uv run ruff format --check src tests
 
 type-check:
-	uv run mypy src/mgen
+	uv run mypy src/multigen
 
 pre-commit:
 	pre-commit install
@@ -166,7 +166,7 @@ perf-monitor:
 verify-package: build
 	uv run python -m twine check dist/*
 	uv run pip install dist/*.whl
-	uv run python -c "import mgen; print(f'MGen version: {mgen.__version__}')"
+	uv run python -c "import multigen; print(f'MultiGen version: {multigen.__version__}')"
 
 # Development server (for future web interface)
 dev-server:

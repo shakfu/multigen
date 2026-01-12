@@ -11,7 +11,7 @@ src_path = project_root / "src"
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
-from mgen.pipeline import MGenPipeline, PipelineConfig
+from multigen.pipeline import MultiGenPipeline, PipelineConfig
 
 # Check if Z3 is available
 try:
@@ -36,7 +36,7 @@ def add(x: int, y: int) -> int:
 
         # Run pipeline without verification
         config = PipelineConfig(target_language="c", enable_formal_verification=False)
-        pipeline = MGenPipeline(config=config)
+        pipeline = MultiGenPipeline(config=config)
 
         result = pipeline.convert(test_file)
         assert result.success
@@ -58,7 +58,7 @@ def safe_access(arr: list[int], n: int) -> int:
         config = PipelineConfig(
             target_language="c", enable_formal_verification=True, enable_advanced_analysis=True
         )
-        pipeline = MGenPipeline(config=config)
+        pipeline = MultiGenPipeline(config=config)
 
         result = pipeline.convert(test_file)
         assert result.success
@@ -81,7 +81,7 @@ def unsafe_access(arr: list[int], n: int) -> int:
         config = PipelineConfig(
             target_language="c", enable_formal_verification=True, enable_advanced_analysis=True
         )
-        pipeline = MGenPipeline(config=config)
+        pipeline = MultiGenPipeline(config=config)
 
         result = pipeline.convert(test_file)
         # May succeed with warnings, or may detect issues
@@ -103,7 +103,7 @@ def simple(x: int) -> int:
 
         # Try to enable verification (should warn if Z3 missing)
         config = PipelineConfig(target_language="c", enable_formal_verification=True)
-        pipeline = MGenPipeline(config=config)
+        pipeline = MultiGenPipeline(config=config)
 
         # Should work even if Z3 is missing (graceful degradation)
         result = pipeline.convert(test_file)

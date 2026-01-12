@@ -9,7 +9,7 @@ Base Classes
 LanguageBackend
 ~~~~~~~~~~~~~~~
 
-.. autoclass:: mgen.backends.base.LanguageBackend
+.. autoclass:: multigen.backends.base.LanguageBackend
    :members:
    :undoc-members:
    :show-inheritance:
@@ -17,7 +17,7 @@ LanguageBackend
 AbstractEmitter
 ~~~~~~~~~~~~~~~
 
-.. autoclass:: mgen.backends.base.AbstractEmitter
+.. autoclass:: multigen.backends.base.AbstractEmitter
    :members:
    :undoc-members:
    :show-inheritance:
@@ -25,7 +25,7 @@ AbstractEmitter
 AbstractFactory
 ~~~~~~~~~~~~~~~
 
-.. autoclass:: mgen.backends.base.AbstractFactory
+.. autoclass:: multigen.backends.base.AbstractFactory
    :members:
    :undoc-members:
    :show-inheritance:
@@ -33,7 +33,7 @@ AbstractFactory
 C Backend
 ---------
 
-.. automodule:: mgen.backends.c
+.. automodule:: multigen.backends.c
    :members:
    :undoc-members:
    :show-inheritance:
@@ -41,7 +41,7 @@ C Backend
 C++ Backend
 -----------
 
-.. automodule:: mgen.backends.cpp
+.. automodule:: multigen.backends.cpp
    :members:
    :undoc-members:
    :show-inheritance:
@@ -49,7 +49,7 @@ C++ Backend
 Rust Backend
 ------------
 
-.. automodule:: mgen.backends.rust
+.. automodule:: multigen.backends.rust
    :members:
    :undoc-members:
    :show-inheritance:
@@ -57,7 +57,7 @@ Rust Backend
 Go Backend
 ----------
 
-.. automodule:: mgen.backends.go
+.. automodule:: multigen.backends.go
    :members:
    :undoc-members:
    :show-inheritance:
@@ -65,7 +65,7 @@ Go Backend
 Haskell Backend
 ---------------
 
-.. automodule:: mgen.backends.haskell
+.. automodule:: multigen.backends.haskell
    :members:
    :undoc-members:
    :show-inheritance:
@@ -73,7 +73,7 @@ Haskell Backend
 OCaml Backend
 -------------
 
-.. automodule:: mgen.backends.ocaml
+.. automodule:: multigen.backends.ocaml
    :members:
    :undoc-members:
    :show-inheritance:
@@ -83,7 +83,7 @@ Backend Selection
 
 Backends are selected via the ``target_language`` parameter::
 
-   from mgen.pipeline import PipelineConfig
+   from multigen.pipeline import PipelineConfig
 
    # C backend
    config = PipelineConfig(target_language="c")
@@ -103,6 +103,6 @@ To add a new backend:
 1. Subclass ``LanguageBackend``
 2. Implement required abstract methods
 3. Create backend-specific emitter, factory, builder
-4. Register in ``mgen.backends.__init__.py``
+4. Register in ``multigen.backends.__init__.py``
 
 See ``CLAUDE.md`` for detailed architecture notes.

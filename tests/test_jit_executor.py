@@ -22,7 +22,7 @@ except ImportError:
 @pytest.mark.skipif(not LLVM_AVAILABLE, reason="llvmlite binding not available")
 def test_jit_simple_function():
     """Test JIT compilation of simple LLVM IR function."""
-    from mgen.backends.llvm.jit_executor import LLVMJITExecutor
+    from multigen.backends.llvm.jit_executor import LLVMJITExecutor
 
     # Simple LLVM IR that adds two numbers
     llvm_ir = """
@@ -49,7 +49,7 @@ def test_jit_simple_function():
 @pytest.mark.skipif(not LLVM_AVAILABLE, reason="llvmlite binding not available")
 def test_jit_fibonacci():
     """Test JIT compilation of fibonacci benchmark."""
-    from mgen.backends.llvm.jit_executor import jit_compile_and_run
+    from multigen.backends.llvm.jit_executor import jit_compile_and_run
 
     # Generate LLVM IR for fibonacci
     project_root = Path(__file__).parent.parent
@@ -58,15 +58,15 @@ def test_jit_fibonacci():
     if not benchmark_file.exists():
         pytest.skip("Fibonacci benchmark not found")
 
-    # Generate LLVM IR using mgen
+    # Generate LLVM IR using multigen
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
         ll_file = output_dir / "src" / "fibonacci.ll"
 
-        # Run mgen to generate LLVM IR (outputs to <build-dir>/src/)
+        # Run multigen to generate LLVM IR (outputs to <build-dir>/src/)
         result = subprocess.run(
             [
-                "uv", "run", "mgen",
+                "uv", "run", "multigen",
                 "--build-dir", str(output_dir),
                 "convert", "-t", "llvm", str(benchmark_file),
             ],
@@ -93,7 +93,7 @@ def test_jit_fibonacci():
 @pytest.mark.skipif(not LLVM_AVAILABLE, reason="llvmlite binding not available")
 def test_jit_main_function():
     """Test JIT compilation of main() function."""
-    from mgen.backends.llvm.jit_executor import LLVMJITExecutor
+    from multigen.backends.llvm.jit_executor import LLVMJITExecutor
 
     # Simple main that returns 42
     llvm_ir = """
@@ -118,7 +118,7 @@ def test_jit_main_function():
 @pytest.mark.skipif(not LLVM_AVAILABLE, reason="llvmlite binding not available")
 def test_jit_invalid_ir():
     """Test that invalid LLVM IR raises error."""
-    from mgen.backends.llvm.jit_executor import LLVMJITExecutor
+    from multigen.backends.llvm.jit_executor import LLVMJITExecutor
 
     # Invalid LLVM IR (bad syntax)
     llvm_ir = """
@@ -139,7 +139,7 @@ def test_jit_invalid_ir():
 @pytest.mark.skipif(not LLVM_AVAILABLE, reason="llvmlite binding not available")
 def test_jit_missing_function():
     """Test that calling missing function raises error."""
-    from mgen.backends.llvm.jit_executor import LLVMJITExecutor
+    from multigen.backends.llvm.jit_executor import LLVMJITExecutor
 
     llvm_ir = """
     define i64 @existing_function() {

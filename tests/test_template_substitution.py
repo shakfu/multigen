@@ -1,8 +1,8 @@
 """Tests for template substitution engine."""
 
 import pytest
-from mgen.backends.c.template_substitution import TemplateSubstitutionEngine
-from mgen.backends.c.type_parameter_extractor import (
+from multigen.backends.c.template_substitution import TemplateSubstitutionEngine
+from multigen.backends.c.type_parameter_extractor import (
     TypeParameterExtractor,
     ContainerTypeInfo,
 )

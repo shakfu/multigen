@@ -29,6 +29,7 @@ Use the provided script to test all benchmarks:
 ```
 
 This will:
+
 1. Compile each benchmark with AddressSanitizer (`-fsanitize=address`)
 2. Execute with leak detection enabled
 3. Report any memory errors or leaks
@@ -40,7 +41,7 @@ To test a specific program with ASAN:
 
 ```bash
 # 1. Build the LLVM IR
-uv run mgen build -t llvm your_program.py
+uv run multigen build -t llvm your_program.py
 
 # 2. Compile with ASAN manually
 LLC=/opt/homebrew/opt/llvm/bin/llc  # or just 'llc'
@@ -50,9 +51,9 @@ $LLC -filetype=obj build/your_program.ll -o build/your_program.o
 
 # 3. Compile runtime with ASAN
 $CLANG -fsanitize=address -g -c \
-    src/mgen/backends/llvm/runtime/vec_int_minimal.c \
-    src/mgen/backends/llvm/runtime/map_int_int_minimal.c \
-    src/mgen/backends/llvm/runtime/set_int_minimal.c \
+    src/multigen/backends/llvm/runtime/vec_int_minimal.c \
+    src/multigen/backends/llvm/runtime/map_int_int_minimal.c \
+    src/multigen/backends/llvm/runtime/set_int_minimal.c \
     # ... other runtime files
 
 # 4. Link with ASAN
@@ -70,7 +71,7 @@ The LLVM backend now supports ASAN compilation through the builder API:
 ### Python API
 
 ```python
-from mgen.backends.llvm import LLVMBuilder, LLVMCompiler
+from multigen.backends.llvm import LLVMBuilder, LLVMCompiler
 
 # Using builder
 builder = LLVMBuilder()
@@ -92,6 +93,7 @@ compiler.compile_ir_to_executable(
 ### Implementation Details
 
 When `enable_asan=True`:
+
 - Runtime C files compiled with `-fsanitize=address -g`
 - Linker adds `-fsanitize=address -g` flags
 - Debug symbols included for better stack traces
@@ -128,9 +130,11 @@ export ASAN_OPTIONS=detect_leaks=1:halt_on_error=0:log_path=asan.log
 ## Test Script Details
 
 ### Location
+
 `scripts/test_llvm_memory.sh`
 
 ### Features
+
 - Automatically finds LLVM tools (llc, clang)
 - Compiles all runtime libraries with ASAN
 - Runs benchmarks with timeout protection
@@ -141,7 +145,8 @@ export ASAN_OPTIONS=detect_leaks=1:halt_on_error=0:log_path=asan.log
 ### Output
 
 Successful run:
-```
+
+```text
 ======================================
 LLVM Backend Memory Leak Testing
 ======================================
@@ -166,33 +171,39 @@ All benchmarks passed memory testing!
 All LLVM runtime libraries are memory-safe:
 
 ### vec_int_minimal.c (~130 lines)
+
 - Proper `malloc`/`realloc`/`free` usage
 - Bounds checking on all access
 - `vec_int_free()` cleans up all allocations
 
 ### vec_vec_int_minimal.c (~200 lines)
+
 - Nested container cleanup (frees inner vectors)
 - No dangling pointers
 - Proper deep copy semantics
 
 ### map_int_int_minimal.c (~216 lines)
+
 - Hash table with linear probing
 - Grows dynamically without leaks
 - `map_int_int_free()` releases all entries
 
 ### set_int_minimal.c (~182 lines)
+
 - Separate chaining for collisions
 - Recursive chain cleanup
 - No memory leaks on insertion/deletion
 
 ### String Operations
-- `mgen_llvm_string.c` uses `malloc`/`free` correctly
+
+- `multigen_llvm_string.c` uses `malloc`/`free` correctly
 - String arrays properly deallocated
 - No string leaks in split/concat operations
 
 ## Performance Impact
 
 ASAN has runtime overhead:
+
 - **Slowdown**: ~2x execution time
 - **Memory**: ~2-3x memory usage
 - **Binary size**: Larger due to instrumentation
@@ -228,6 +239,7 @@ sudo apt-get install clang
 ### "LeakSanitizer: detected memory leaks"
 
 Check the stack trace in the output to find the leak source:
+
 - Look for allocation site (where memory was allocated)
 - Verify corresponding `free()` call exists
 - Check all code paths call cleanup functions
@@ -241,7 +253,8 @@ export LSAN_OPTIONS=suppressions=lsan_suppressions.txt
 ```
 
 Create `lsan_suppressions.txt`:
-```
+
+```text
 leak:library_function_name
 ```
 

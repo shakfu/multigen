@@ -1,7 +1,7 @@
-MGen Documentation
+MultiGen Documentation
 ==================
 
-**MGen** (Multi-Language Generator) translates Python code to C, C++, Rust, Go, Haskell, and OCaml with zero external runtime dependencies.
+**MultiGen** (Multi-Language Generator) translates Python code to C, C++, Rust, Go, Haskell, and OCaml with zero external runtime dependencies.
 
 Features
 --------
@@ -17,15 +17,15 @@ Quick Start
 
 Installation::
 
-   pip install mgen
+   pip install multigen
 
 Basic Usage::
 
    # Convert Python to C
-   mgen convert -t c example.py
+   multigen convert -t c example.py
 
    # Build with Makefile generation
-   mgen build -t c example.py -m
+   multigen build -t c example.py -m
 
 .. toctree::
    :maxdepth: 2

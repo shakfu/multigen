@@ -1,4 +1,4 @@
-"""Demonstration of enhanced error messages in MGen.
+"""Demonstration of enhanced error messages in MultiGen.
 
 This script shows various error scenarios and how they are presented
 with the new colored error formatting system.
@@ -6,14 +6,14 @@ with the new colored error formatting system.
 
 import ast
 
-# Add parent directory to path to import mgen
+# Add parent directory to path to import multigen
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from mgen.error_formatter import format_error, print_error, set_color_mode
-from mgen.errors import (
+from multigen.error_formatter import format_error, print_error, set_color_mode
+from multigen.errors import (
     ErrorCode,
     SourceLocation,
     TypeMappingError,
@@ -50,7 +50,7 @@ def demo_error_with_location():
         location=location,
         source_line="    async def process_data(items):",
         suggestion="Use synchronous functions instead. Remove 'async' keyword.",
-        help_text="See https://github.com/yourusername/mgen/docs/async-support.md for more information.",
+        help_text="See https://github.com/yourusername/multigen/docs/async-support.md for more information.",
         error_code=ErrorCode.E1001,
     )
 
@@ -80,7 +80,7 @@ def example():
                 node=node,
                 filename="test.py",
                 suggestion="Use a list comprehension instead: result = [x for x in range(10)]",
-                help_text="MGen does not support generators. See supported features documentation.",
+                help_text="MultiGen does not support generators. See supported features documentation.",
                 error_code=ErrorCode.E1001,
             )
 
@@ -164,7 +164,7 @@ def demo_no_color():
 if __name__ == "__main__":
     print("\n")
     print("╔" + "=" * 78 + "╗")
-    print("║" + " " * 20 + "MGen Enhanced Error Messages Demo" + " " * 24 + "║")
+    print("║" + " " * 20 + "MultiGen Enhanced Error Messages Demo" + " " * 24 + "║")
     print("╚" + "=" * 78 + "╝")
 
     demo_basic_error()

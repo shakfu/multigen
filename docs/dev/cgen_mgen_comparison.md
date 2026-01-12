@@ -1,19 +1,19 @@
-# CGen vs MGen C Backend Comparison
+# CGen vs MultiGen C Backend Comparison
 
 **Date**: 2025-10-03
-**Purpose**: Identify code from CGen that can accelerate MGen C backend progress from 2/7 to higher benchmark success
+**Purpose**: Identify code from CGen that can accelerate MultiGen C backend progress from 2/7 to higher benchmark success
 
 ---
 
 ## Executive Summary
 
-CGen has **three sophisticated systems** that MGen's C backend lacks:
+CGen has **three sophisticated systems** that MultiGen's C backend lacks:
 
 1. **EnhancedTypeInferenceEngine** - Multi-pass type analysis with 90%+ accuracy
 2. **NestedContainerManager** - Comprehensive nested container support (List[List[int]], Dict[str, List[int]])
 3. **Flow-Sensitive Type Inference** - Context-aware type tracking across code paths
 
-These systems directly address MGen C backend's current failures in benchmarks.
+These systems directly address MultiGen C backend's current failures in benchmarks.
 
 ---
 
@@ -44,7 +44,7 @@ class EnhancedTypeInferenceEngine:
 - Type propagation through assignments
 - Confidence scoring (0.0-1.0) for each inference
 
-**MGen**: Basic single-pass inference
+**MultiGen**: Basic single-pass inference
 
 ```python
 def _infer_expression_type(self, expr: ast.expr) -> str:
@@ -55,7 +55,7 @@ def _infer_expression_type(self, expr: ast.expr) -> str:
     return "int"  # Default fallback
 ```
 
-**Gap**: MGen's inference is ~40% effective vs CGen's 90%+
+**Gap**: MultiGen's inference is ~40% effective vs CGen's 90%+
 
 ---
 
@@ -94,14 +94,14 @@ order = manager.get_instantiation_order()
 # Returns: ["vec_int", "vec_vec_int"]  # Inner first!
 ```
 
-**MGen**: No nested container support
+**MultiGen**: No nested container support
 
 ```python
 # Current: matrix: list = []
 # Generates: vec_int matrix = /* Unsupported expression List */;  [X]
 ```
 
-**Gap**: MGen fails on all nested containers (matmul, quicksort benchmarks)
+**Gap**: MultiGen fails on all nested containers (matmul, quicksort benchmarks)
 
 ---
 
@@ -149,14 +149,14 @@ if 5 in data:
 # Result: vec_int with HIGH confidence
 ```
 
-**MGen**: No usage pattern analysis
+**MultiGen**: No usage pattern analysis
 
 ```python
 # Same code generates:
 # vec_int data = /* Unsupported expression List */;  [X]
 ```
 
-**Gap**: MGen can't distinguish list/dict/set based on usage
+**Gap**: MultiGen can't distinguish list/dict/set based on usage
 
 ---
 
@@ -189,7 +189,7 @@ def _infer_from_method_usage(self, obj_name: str, method_name: str) -> InferredT
         )
 ```
 
-**MGen**: Partial method support
+**MultiGen**: Partial method support
 
 ```python
 def _convert_list_method(self, obj: str, method_name: str, args: list[str]) -> str:
@@ -198,7 +198,7 @@ def _convert_list_method(self, obj: str, method_name: str, args: list[str]) -> s
     # ... limited to 4 methods
 ```
 
-**Gap**: MGen handles method conversion but doesn't use methods for type inference
+**Gap**: MultiGen handles method conversion but doesn't use methods for type inference
 
 ---
 
@@ -225,15 +225,15 @@ def _infer_dict_types(self, keys: List[ast.expr], values: List[ast.expr]):
     return key_type, value_type  # e.g., ("str", "int")
 ```
 
-**MGen**: No key type inference
+**MultiGen**: No key type inference
 
 ```python
 # Python: word_counts: dict = {}
-# MGen generates: map_str_int (hardcoded default)
+# MultiGen generates: map_str_int (hardcoded default)
 # Fails when actual keys are different type
 ```
 
-**Gap**: MGen uses hardcoded defaults, fails on non-string keys
+**Gap**: MultiGen uses hardcoded defaults, fails on non-string keys
 
 ---
 
@@ -250,7 +250,7 @@ def _infer_dict_types(self, keys: List[ast.expr], values: List[ast.expr]):
 
 ```python
 # Python: data: list = []
-# Current MGen: vec_int data = /* Unsupported expression List */;  [X]
+# Current MultiGen: vec_int data = /* Unsupported expression List */;  [X]
 ```
 
 **CGen Solution**: EnhancedTypeInferenceEngine detects:
@@ -258,7 +258,7 @@ def _infer_dict_types(self, keys: List[ast.expr], values: List[ast.expr]):
 1. Empty list literal `[]`
 2. Analyzes subsequent usage (append, indexing)
 3. Infers element type with HIGH confidence
-4. Generates: `vec_int data = {0};`  [x]
+4. Generates: `vec_int data = {0};` [x]
 
 #### Issue #2: Nested Containers (2/7 benchmarks)
 
@@ -296,7 +296,7 @@ def _infer_dict_types(self, keys: List[ast.expr], values: List[ast.expr]):
 
 1. Detects subscript with string variable
 2. Marks as "keyed_access" with str type
-3. Generates: `hmap_cstr_int counts = {0};`  [x]
+3. Generates: `hmap_cstr_int counts = {0};` [x]
 
 ---
 
@@ -309,9 +309,9 @@ def _infer_dict_types(self, keys: List[ast.expr], values: List[ast.expr]):
 
 **Action Items**:
 
-1. Port `EnhancedTypeInferenceEngine` to MGen
+1. Port `EnhancedTypeInferenceEngine` to MultiGen
    - File: `/Users/sa/projects/cgen/src/cgen/ext/stc/enhanced_type_inference.py` (527 lines)
-   - Integrate into `MGenPythonToCConverter.__init__`
+   - Integrate into `MultiGenPythonToCConverter.__init__`
    - Call `engine.analyze_module()` in `_convert_module()`
 
 2. Implement usage pattern detection:
@@ -341,7 +341,7 @@ def _infer_dict_types(self, keys: List[ast.expr], values: List[ast.expr]):
 
 **Files to Modify**:
 
-- `/Users/sa/projects/mgen/src/mgen/backends/c/converter.py` (1,548 lines)
+- `/Users/sa/projects/multigen/src/multigen/backends/c/converter.py` (1,548 lines)
   - Add `self.type_inference_engine = EnhancedTypeInferenceEngine()`
   - Replace `_infer_expression_type()` with enhanced version
   - Update `_convert_annotated_assignment()` to use inference results
@@ -363,9 +363,9 @@ def _infer_dict_types(self, keys: List[ast.expr], values: List[ast.expr]):
 
 **Action Items**:
 
-1. Port `NestedContainerManager` to MGen
+1. Port `NestedContainerManager` to MultiGen
    - File: `/Users/sa/projects/cgen/src/cgen/ext/stc/nested_containers.py` (356 lines)
-   - Create new file: `/Users/sa/projects/mgen/src/mgen/backends/c/nested_containers.py`
+   - Create new file: `/Users/sa/projects/multigen/src/multigen/backends/c/nested_containers.py`
 
 2. Implement nested type parsing:
    - `parse_nested_type()` - 60 lines
@@ -397,11 +397,11 @@ def _infer_dict_types(self, keys: List[ast.expr], values: List[ast.expr]):
 
 **Files to Create**:
 
-- `/Users/sa/projects/mgen/src/mgen/backends/c/nested_containers.py` (356 lines)
+- `/Users/sa/projects/multigen/src/multigen/backends/c/nested_containers.py` (356 lines)
 
 **Files to Modify**:
 
-- `/Users/sa/projects/mgen/src/mgen/backends/c/converter.py`
+- `/Users/sa/projects/multigen/src/multigen/backends/c/converter.py`
   - Add `self.nested_manager = NestedContainerManager()`
   - Update `_generate_container_declarations()` to use nested manager
   - Add nested container type detection in type inference
@@ -432,7 +432,7 @@ def _infer_dict_types(self, keys: List[ast.expr], values: List[ast.expr]):
 ### Week 1: Enhanced Type Inference
 
 - **Days 1-2**: Port EnhancedTypeInferenceEngine class
-- **Days 3-4**: Integrate into MGenPythonToCConverter
+- **Days 3-4**: Integrate into MultiGenPythonToCConverter
 - **Day 5**: Test on list_ops, dict_ops, set_ops benchmarks
 - **Target**: 5/7 passing (71%)
 
@@ -452,25 +452,25 @@ def _infer_dict_types(self, keys: List[ast.expr], values: List[ast.expr]):
 
 **Can be copied almost verbatim**:
 
-1. `EnhancedTypeInferenceEngine` - Only needs MGen's TypeInfo adaptation
+1. `EnhancedTypeInferenceEngine` - Only needs MultiGen's TypeInfo adaptation
 2. `NestedContainerManager` - Architecture-agnostic, works as-is
 3. `_analyze_usage_patterns()` - Pure AST analysis
 4. `_infer_from_method_usage()` - Container method detection
 
 ### Requires Adaptation
 
-**Need MGen-specific changes**:
+**Need MultiGen-specific changes**:
 
-1. Type mapping (`c_type` field) - CGen uses `cstr`, MGen uses `char*`
+1. Type mapping (`c_type` field) - CGen uses `cstr`, MultiGen uses `char*`
 2. STC template generation - CGen has separate template_manager
-3. Variable context tracking - MGen's `variable_context` dict
+3. Variable context tracking - MultiGen's `variable_context` dict
 
 ### Integration Points
 
-**Where to hook into MGen**:
+**Where to hook into MultiGen**:
 
 ```python
-class MGenPythonToCConverter:
+class MultiGenPythonToCConverter:
     def __init__(self):
         # EXISTING
         self.type_mapping = {...}
@@ -531,7 +531,7 @@ class MGenPythonToCConverter:
 
 ## Conclusion
 
-CGen's `EnhancedTypeInferenceEngine` and `NestedContainerManager` are **mature, battle-tested systems** that directly address MGen C backend's current limitations. Both can be ported with minimal changes and would dramatically improve benchmark success rates.
+CGen's `EnhancedTypeInferenceEngine` and `NestedContainerManager` are **mature, battle-tested systems** that directly address MultiGen C backend's current limitations. Both can be ported with minimal changes and would dramatically improve benchmark success rates.
 
 **Recommendation**: Implement Phase 1 immediately (6-8 hours work, 71% success rate), then Phase 2 (8-10 hours, 100% success rate).
 

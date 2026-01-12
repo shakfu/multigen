@@ -1,4 +1,4 @@
-# MGen C Backend Improvement Plan
+# MultiGen C Backend Improvement Plan
 
 **Date**: 2025-10-03
 **Current Status**: 2/7 benchmarks passing (28.6%)
@@ -89,21 +89,21 @@ Port CGen's `EnhancedTypeInferenceEngine` which provides:
 
 ```bash
 # New file
-/Users/sa/projects/mgen/src/mgen/backends/c/enhanced_type_inference.py
+/Users/sa/projects/multigen/src/multigen/backends/c/enhanced_type_inference.py
 ```
 
 Copy from CGen:
 
 - `EnhancedTypeInferenceEngine` class (527 lines)
 - `InferredType`, `TypeConfidence` dataclasses
-- Adapt type mappings for MGen (cstr → char*)
+- Adapt type mappings for MultiGen (cstr → char*)
 
 **Step 2**: Integrate into converter (2 hours)
 
-Modify `/Users/sa/projects/mgen/src/mgen/backends/c/converter.py`:
+Modify `/Users/sa/projects/multigen/src/multigen/backends/c/converter.py`:
 
 ```python
-class MGenPythonToCConverter:
+class MultiGenPythonToCConverter:
     def __init__(self):
         # EXISTING
         self.type_mapping = {...}
@@ -263,7 +263,7 @@ Port CGen's `NestedContainerManager` which provides:
 
 ```bash
 # New file
-/Users/sa/projects/mgen/src/mgen/backends/c/nested_containers.py
+/Users/sa/projects/multigen/src/multigen/backends/c/nested_containers.py
 ```
 
 Copy from CGen:
@@ -308,7 +308,7 @@ def _detect_nested_append_patterns(self, node: ast.AST):
 
 **Step 3**: Integrate into converter (2 hours)
 
-Modify `/Users/sa/projects/mgen/src/mgen/backends/c/converter.py`:
+Modify `/Users/sa/projects/multigen/src/multigen/backends/c/converter.py`:
 
 ```python
 def _convert_module(self, node: ast.Module) -> str:
@@ -504,13 +504,13 @@ make test             # All unit tests pass
 
 ### Potential Issues
 
-1. **Type mapping conflicts**: CGen uses `cstr`, MGen uses `char*`
+1. **Type mapping conflicts**: CGen uses `cstr`, MultiGen uses `char*`
    - **Mitigation**: Create mapping layer in EnhancedTypeInferenceEngine
 
 2. **STC template ordering**: Complex dependency graphs
    - **Mitigation**: Use CGen's tested topological sort algorithm
 
-3. **Variable context sync**: MGen tracks in multiple places
+3. **Variable context sync**: MultiGen tracks in multiple places
    - **Mitigation**: Use single source of truth (inferred_types)
 
 ### Rollback Strategy

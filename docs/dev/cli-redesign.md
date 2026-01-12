@@ -4,18 +4,18 @@
 
 ```sh
 
-mgen convert -t rust app.py
+multigen convert -t rust app.py
 
-mgen convert --to rust app.py
+multigen convert --to rust app.py
 
-mgen build -t rust app.py
+multigen build -t rust app.py
 
-mgen build --to rust app.py
+multigen build --to rust app.py
 ```
 
 ## Project
 
 ```sh
 
-mgen init -t rust 
+multigen init -t rust 
 ```

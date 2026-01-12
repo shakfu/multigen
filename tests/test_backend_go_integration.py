@@ -2,8 +2,8 @@
 
 import pytest
 
-from mgen.backends.go.converter import MGenPythonToGoConverter
-from mgen.backends.errors import UnsupportedFeatureError
+from multigen.backends.go.converter import MultiGenPythonToGoConverter
+from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestGoIntegrationBasic:
@@ -11,7 +11,7 @@ class TestGoIntegrationBasic:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToGoConverter()
+        self.converter = MultiGenPythonToGoConverter()
 
     def test_complete_simple_program(self):
         """Test conversion of a complete simple program."""
@@ -30,7 +30,7 @@ def main() -> None:
 
         # Check imports and package
         assert "package main" in go_code
-        assert 'import "mgenproject/mgen"' in go_code
+        assert 'import "multigenproject/multigen"' in go_code
 
         # Check factorial function
         assert "func factorial(n int) int" in go_code
@@ -41,7 +41,7 @@ def main() -> None:
         # Check main function
         assert "func main()" in go_code
         assert "result := factorial(5)" in go_code
-        assert "mgen.Print(result)" in go_code
+        assert "multigen.Print(result)" in go_code
 
     def test_program_with_multiple_functions(self):
         """Test program with multiple interacting functions."""
@@ -80,8 +80,8 @@ def format_greeting(name: str) -> str:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "mgen.StrOps.Strip(text)" in go_code
-        assert "mgen.StrOps.Upper(cleaned)" in go_code
+        assert "multigen.StrOps.Strip(text)" in go_code
+        assert "multigen.StrOps.Upper(cleaned)" in go_code
         assert "func process_text(text string) string" in go_code
         assert "func format_greeting(name string) string" in go_code
         assert "processed_name := process_text(name)" in go_code
@@ -92,7 +92,7 @@ class TestGoIntegrationOOP:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToGoConverter()
+        self.converter = MultiGenPythonToGoConverter()
 
     def test_complete_class_with_methods(self):
         """Test complete class with constructor and methods."""
@@ -178,7 +178,7 @@ class TestGoIntegrationAdvanced:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToGoConverter()
+        self.converter = MultiGenPythonToGoConverter()
 
     def test_program_with_comprehensions(self):
         """Test program using comprehensions."""
@@ -195,9 +195,9 @@ def filter_data() -> list:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "mgen.ListComprehension" in go_code
-        assert "mgen.DictComprehension" in go_code
-        assert "mgen.NewRange(" in go_code
+        assert "multigen.ListComprehension" in go_code
+        assert "multigen.DictComprehension" in go_code
+        assert "multigen.NewRange(" in go_code
 
     def test_mixed_features_program(self):
         """Test program combining multiple advanced features."""
@@ -223,12 +223,12 @@ def analyze_text(text: str) -> dict:
         assert "Prefix string" in go_code
 
         # Check string methods
-        assert "mgen.StrOps.Split(text)" in go_code
-        assert "mgen.StrOps.Upper" in go_code
+        assert "multigen.StrOps.Split(text)" in go_code
+        assert "multigen.StrOps.Upper" in go_code
 
         # Check comprehensions
-        assert "mgen.DictComprehension" in go_code
-        assert "mgen.ListComprehension" in go_code
+        assert "multigen.DictComprehension" in go_code
+        assert "multigen.ListComprehension" in go_code
 
     def test_control_flow_with_functions(self):
         """Test complex control flow with function calls."""
@@ -261,7 +261,7 @@ def count_primes_up_to(n: int) -> int:
 
         # Note: Complex list operations would need more sophisticated handling
         assert "find_primes(n)" in go_code
-        assert "mgen.Len" in go_code  # Generic len function
+        assert "multigen.Len" in go_code  # Generic len function
 
 
 class TestGoIntegrationErrorHandling:
@@ -269,7 +269,7 @@ class TestGoIntegrationErrorHandling:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToGoConverter()
+        self.converter = MultiGenPythonToGoConverter()
 
     def test_basic_code_conversion(self):
         """Test that basic features work correctly."""
@@ -337,9 +337,9 @@ def main() -> None:
 
         # Verify method functionality
         assert "obj.Count +=" in go_code
-        assert "mgen.Len" in go_code  # Generic len function
-        assert "mgen.ListComprehension" in go_code
-        assert "mgen.DictComprehension" in go_code
+        assert "multigen.Len" in go_code  # Generic len function
+        assert "multigen.ListComprehension" in go_code
+        assert "multigen.DictComprehension" in go_code
 
         # Verify main function
         assert "processor := NewDataProcessor" in go_code

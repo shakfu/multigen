@@ -1,7 +1,7 @@
 Quick Start Guide
 =================
 
-This guide walks you through your first MGen conversion.
+This guide walks you through your first MultiGen conversion.
 
 Basic Conversion
 ----------------
@@ -22,7 +22,7 @@ Create a simple Python file ``fibonacci.py``::
 
 Convert to C::
 
-   mgen convert -t c fibonacci.py
+   multigen convert -t c fibonacci.py
 
 This generates ``fibonacci.c`` with a self-contained C implementation.
 
@@ -34,9 +34,9 @@ Compile with any C compiler::
    gcc -o fibonacci fibonacci.c
    ./fibonacci
 
-Or let MGen generate a Makefile::
+Or let MultiGen generate a Makefile::
 
-   mgen build -t c fibonacci.py -m
+   multigen build -t c fibonacci.py -m
    make
    ./fibonacci
 
@@ -46,19 +46,19 @@ Supported Targets
 Convert to different languages::
 
    # C++
-   mgen convert -t cpp fibonacci.py
+   multigen convert -t cpp fibonacci.py
 
    # Rust
-   mgen convert -t rust fibonacci.py
+   multigen convert -t rust fibonacci.py
 
    # Go
-   mgen convert -t go fibonacci.py
+   multigen convert -t go fibonacci.py
 
    # Haskell
-   mgen convert -t haskell fibonacci.py
+   multigen convert -t haskell fibonacci.py
 
    # OCaml
-   mgen convert -t ocaml fibonacci.py
+   multigen convert -t ocaml fibonacci.py
 
 Advanced Example
 ----------------
@@ -92,7 +92,7 @@ Create ``wordcount.py`` with more complex features::
 
 Convert to Rust::
 
-   mgen convert -t rust wordcount.py
+   multigen convert -t rust wordcount.py
 
 This demonstrates:
 

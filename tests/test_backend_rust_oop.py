@@ -2,8 +2,8 @@
 
 import pytest
 
-from mgen.backends.rust.converter import MGenPythonToRustConverter
-from mgen.backends.errors import UnsupportedFeatureError
+from multigen.backends.rust.converter import MultiGenPythonToRustConverter
+from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestRustOOPBasic:
@@ -11,7 +11,7 @@ class TestRustOOPBasic:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToRustConverter()
+        self.converter = MultiGenPythonToRustConverter()
 
     def test_empty_class(self):
         """Test empty class conversion."""
@@ -109,7 +109,7 @@ class TestRustOOPAdvanced:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToRustConverter()
+        self.converter = MultiGenPythonToRustConverter()
 
     def test_method_calls_on_objects(self):
         """Test calling methods on object instances."""
@@ -232,7 +232,7 @@ class TestRustOOPComplexScenarios:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToRustConverter()
+        self.converter = MultiGenPythonToRustConverter()
 
     def test_class_with_method_chaining(self):
         """Test method calls within method implementations."""

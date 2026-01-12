@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-Using MGen's existing Static Python IR (`static_ir.py`) to target LLVM IR is **strategically sound** and architecturally aligned with the project. Recommendation: Implement as a **7th backend** alongside existing C/C++/Rust/Go/Haskell/OCaml backends, rather than replacing them.
+Using MultiGen's existing Static Python IR (`static_ir.py`) to target LLVM IR is **strategically sound** and architecturally aligned with the project. Recommendation: Implement as a **7th backend** alongside existing C/C++/Rust/Go/Haskell/OCaml backends, rather than replacing them.
 
 **Key Benefits:**
 
@@ -27,7 +27,7 @@ Using MGen's existing Static Python IR (`static_ir.py`) to target LLVM IR is **s
 
 ### What We Have
 
-**Static Python IR** (`src/mgen/frontend/static_ir.py` - 922 lines)
+**Static Python IR** (`src/multigen/frontend/static_ir.py` - 922 lines)
 
 - Well-designed visitor pattern architecture
 - Type system mapping (Python → C types via `IRDataType`)
@@ -70,7 +70,7 @@ For reference, current backend status (v0.1.52):
 
 #### 1. Architectural Alignment
 
-MGen's Static IR was designed to bridge Python AST and code generation. LLVM IR serves the same purpose but with industrial-strength optimization and multiple backend targets.
+MultiGen's Static IR was designed to bridge Python AST and code generation. LLVM IR serves the same purpose but with industrial-strength optimization and multiple backend targets.
 
 ```text
 Current:  Python AST → [Static IR (unused)] → 6 separate backends
@@ -134,7 +134,7 @@ Python AST → Static IR → LLVM IR → {
 ### LLVM Backend Structure
 
 ```text
-src/mgen/backends/llvm/
+src/multigen/backends/llvm/
 ├── __init__.py
 ├── backend.py              # LLVMBackend(LanguageBackend)
 ├── ir_to_llvm.py          # IRModule → llvmlite IR conversion
@@ -143,9 +143,9 @@ src/mgen/backends/llvm/
 ├── type_mapper.py         # IRType → llvmlite type conversion
 ├── containers.py          # Container implementations (via runtime)
 └── runtime/               # C runtime for Python semantics
-    ├── mgen_llvm_runtime.c
-    ├── mgen_llvm_string.c
-    └── mgen_llvm_containers.c
+    ├── multigen_llvm_runtime.c
+    ├── multigen_llvm_string.c
+    └── multigen_llvm_containers.c
 ```
 
 ### Key Components
@@ -153,15 +153,15 @@ src/mgen/backends/llvm/
 #### 1. IRToLLVMConverter (Visitor Pattern)
 
 ```python
-# src/mgen/backends/llvm/ir_to_llvm.py
+# src/multigen/backends/llvm/ir_to_llvm.py
 from llvmlite import ir
 from ...frontend.static_ir import IRVisitor, IRModule, IRFunction, IRDataType
 
 class IRToLLVMConverter(IRVisitor):
-    """Convert MGen Static IR to LLVM IR using llvmlite."""
+    """Convert MultiGen Static IR to LLVM IR using llvmlite."""
 
     def __init__(self):
-        self.module = ir.Module(name="mgen_module")
+        self.module = ir.Module(name="multigen_module")
         self.builder = None
         self.func_symtab = {}
         self.var_symtab = {}
@@ -380,14 +380,14 @@ class IRToLLVMConverter(IRVisitor):
 #### 2. LLVM Backend Class
 
 ```python
-# src/mgen/backends/llvm/backend.py
+# src/multigen/backends/llvm/backend.py
 from pathlib import Path
 from ..base import LanguageBackend
 from .ir_to_llvm import IRToLLVMConverter
 from .builder import LLVMBuilder
 
 class LLVMBackend(LanguageBackend):
-    """LLVM IR backend for MGen."""
+    """LLVM IR backend for MultiGen."""
 
     def __init__(self):
         self.name = "llvm"
@@ -427,7 +427,7 @@ IRDataType.ARRAY     → ir.ArrayType(<elem_type>, <size>)
 **Week 1: Setup & Infrastructure**
 
 - [x] Install llvmlite: `uv add llvmlite`
-- [ ] Create `src/mgen/backends/llvm/` directory structure
+- [ ] Create `src/multigen/backends/llvm/` directory structure
 - [ ] Implement basic `IRToLLVMConverter` skeleton
 - [ ] Implement type mapping (`IRDataType` → llvmlite types)
 - [ ] Test: Convert simple IR to LLVM IR text
@@ -472,7 +472,7 @@ IRDataType.ARRAY     → ir.ArrayType(<elem_type>, <size>)
 **Week 8: Integration**
 
 - [ ] Add LLVM backend to pipeline
-- [ ] Support `mgen --target llvm convert file.py`
+- [ ] Support `multigen --target llvm convert file.py`
 - [ ] Create `LLVMBuilder` for native compilation
 - [ ] Test: All 7 benchmarks (expect 2-3 to pass)
 
@@ -528,19 +528,19 @@ IRDataType.ARRAY     → ir.ArrayType(<elem_type>, <size>)
 
 ```bash
 # Generate LLVM IR (text format)
-mgen --target llvm convert fibonacci.py
+multigen --target llvm convert fibonacci.py
 # Output: fibonacci.ll
 
 # Compile to native binary
-mgen --target llvm build fibonacci.py
+multigen --target llvm build fibonacci.py
 # Output: fibonacci (executable)
 
 # View LLVM IR
-mgen --target llvm convert fibonacci.py --emit-ir
+multigen --target llvm convert fibonacci.py --emit-ir
 cat fibonacci.ll
 
 # With optimization
-mgen --target llvm build fibonacci.py --opt-level 3
+multigen --target llvm build fibonacci.py --opt-level 3
 ```
 
 ### Example Output
@@ -556,7 +556,7 @@ def add(x: int, y: int) -> int:
 **Generated LLVM IR:**
 
 ```llvm
-; ModuleID = "mgen_module"
+; ModuleID = "multigen_module"
 target triple = "unknown-unknown-unknown"
 
 define i64 @add(i64 %x, i64 %y) {
@@ -685,11 +685,11 @@ entry:
    - Version 0.45.0+ requires LLVM 20.x
    - Supports Python 3.10-3.13
 
-### MGen Relevant Files
+### MultiGen Relevant Files
 
-- `src/mgen/frontend/static_ir.py` - IR definition (922 lines)
-- `src/mgen/backends/base.py` - LanguageBackend interface
-- `src/mgen/backends/c/runtime/` - Reusable runtime for LLVM
+- `src/multigen/frontend/static_ir.py` - IR definition (922 lines)
+- `src/multigen/backends/base.py` - LanguageBackend interface
+- `src/multigen/backends/c/runtime/` - Reusable runtime for LLVM
 - `tests/benchmarks/` - 7 benchmark tests to pass
 
 ### Similar Projects
@@ -733,7 +733,7 @@ entry:
 ### Immediate (This Week)
 
 1. Install llvmlite: `uv add llvmlite`
-2. Create directory structure: `src/mgen/backends/llvm/`
+2. Create directory structure: `src/multigen/backends/llvm/`
 3. Implement basic `IRToLLVMConverter` skeleton
 4. Write first test: Convert IR for `add(x, y)` function
 
@@ -760,7 +760,7 @@ entry:
 
 ## Conclusion
 
-Using `static_ir.py` to target LLVM IR is a **strategically sound decision** that aligns with MGen's architecture and goals. The existing Static IR infrastructure provides an excellent foundation, and LLVM offers industrial-strength optimization with multiple target architectures.
+Using `static_ir.py` to target LLVM IR is a **strategically sound decision** that aligns with MultiGen's architecture and goals. The existing Static IR infrastructure provides an excellent foundation, and LLVM offers industrial-strength optimization with multiple target architectures.
 
 **Recommendation:** Proceed with **Phase 1 (Proof of Concept)** as a 7th backend alongside existing C/C++/Rust/Go/Haskell/OCaml backends. This approach:
 

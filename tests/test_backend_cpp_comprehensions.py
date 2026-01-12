@@ -2,15 +2,15 @@
 
 import pytest
 
-from mgen.backends.cpp.converter import MGenPythonToCppConverter
-from mgen.backends.errors import UnsupportedFeatureError
+from multigen.backends.cpp.converter import MultiGenPythonToCppConverter
+from multigen.backends.errors import UnsupportedFeatureError
 
 class TestListComprehensions:
     """Test list comprehension conversion functionality."""
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCppConverter()
+        self.converter = MultiGenPythonToCppConverter()
 
     def test_simple_list_comprehension(self):
         """Test simple list comprehension with range."""
@@ -97,7 +97,7 @@ class TestDictComprehensions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCppConverter()
+        self.converter = MultiGenPythonToCppConverter()
 
     def test_simple_dict_comprehension(self):
         """Test simple dictionary comprehension."""
@@ -152,7 +152,7 @@ class TestSetComprehensions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCppConverter()
+        self.converter = MultiGenPythonToCppConverter()
 
     def test_simple_set_comprehension(self):
         """Test simple set comprehension."""
@@ -205,7 +205,7 @@ class TestComprehensionsAdvanced:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCppConverter()
+        self.converter = MultiGenPythonToCppConverter()
 
     def test_comprehension_with_function_call(self):
         """Test comprehension with function calls in expression."""
@@ -217,7 +217,7 @@ def test_func_call() -> list:
 
         assert "list_comprehension" in cpp_code
         # Should contain abs function call
-        assert "abs" in cpp_code or "mgen::abs" in cpp_code
+        assert "abs" in cpp_code or "multigen::abs" in cpp_code
 
     def test_comprehension_in_class_method(self):
         """Test comprehension used within a class method."""

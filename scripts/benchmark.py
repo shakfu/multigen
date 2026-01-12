@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Automated benchmark runner for MGen backends.
+"""Automated benchmark runner for MultiGen backends.
 
 This script runs benchmarks across all backends and collects performance metrics:
 - Execution time (wall clock)
@@ -21,8 +21,8 @@ from typing import Any
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from mgen.pipeline import MGenPipeline, PipelineConfig, BuildMode, OptimizationLevel
-from mgen.backends.registry import registry
+from multigen.pipeline import MultiGenPipeline, PipelineConfig, BuildMode, OptimizationLevel
+from multigen.backends.registry import registry
 
 
 class BenchmarkMetrics:
@@ -51,7 +51,7 @@ class BenchmarkRunner:
     def copy_runtime_libraries(self, build_dir: Path, backend: str) -> None:
         """Copy runtime libraries for the backend."""
         # Each backend has its own runtime directory
-        src_runtime_dir = Path(__file__).parent.parent / "src" / "mgen" / "backends" / backend / "runtime"
+        src_runtime_dir = Path(__file__).parent.parent / "src" / "multigen" / "backends" / backend / "runtime"
 
         if src_runtime_dir.exists():
             # C++ expects runtime files in a runtime/ subdirectory
@@ -63,15 +63,15 @@ class BenchmarkRunner:
                         dest_file = dest_runtime_dir / src_file.name
                         shutil.copy2(src_file, dest_file)
             elif backend == "go":
-                # Go expects runtime in mgen/ subdirectory with go.mod
-                mgen_dir = build_dir / "mgen"
-                mgen_dir.mkdir(exist_ok=True)
+                # Go expects runtime in multigen/ subdirectory with go.mod
+                multigen_dir = build_dir / "multigen"
+                multigen_dir.mkdir(exist_ok=True)
                 for src_file in src_runtime_dir.glob("*"):
                     if src_file.is_file():
-                        dest_file = mgen_dir / src_file.name
+                        dest_file = multigen_dir / src_file.name
                         shutil.copy2(src_file, dest_file)
                 # Create go.mod file
-                go_mod_content = "module mgenproject\n\ngo 1.21\n"
+                go_mod_content = "module multigenproject\n\ngo 1.21\n"
                 (build_dir / "go.mod").write_text(go_mod_content)
             elif backend == "llvm":
                 # LLVM only needs vec_int_minimal.c (compilation handles linking)
@@ -138,7 +138,7 @@ class BenchmarkRunner:
         candidates = [
             backend_dir / benchmark_name,           # Unix executable
             backend_dir / f"{benchmark_name}.exe",  # Windows executable
-            backend_dir / "target" / "debug" / "mgenproject",  # Rust debug
+            backend_dir / "target" / "debug" / "multigenproject",  # Rust debug
             backend_dir / "target" / "debug" / benchmark_name,  # Rust with name
             backend_dir / "a.out",                   # Default C/C++ output
             backend_dir / benchmark_name.replace("_", "-"),  # Kebab case
@@ -180,7 +180,7 @@ class BenchmarkRunner:
                 build_mode=BuildMode.NONE
             )
 
-            pipeline = MGenPipeline(config=config, target_language=backend)
+            pipeline = MultiGenPipeline(config=config, target_language=backend)
             result = pipeline.convert(source_file, output_path=output_dir)
 
             if not result.success:
@@ -220,16 +220,16 @@ class BenchmarkRunner:
                 # Compile C code - single-header containers but need runtime .c files
                 # Containers are header-only, but other runtime files still have .c implementations
                 project_root = Path(__file__).parent.parent
-                runtime_path = project_root / "src" / "mgen" / "backends" / "c" / "runtime"
-                c_backend_path = project_root / "src" / "mgen" / "backends" / "c"
-                stc_include_path = project_root / "src" / "mgen" / "backends" / "c" / "ext" / "stc" / "include"
+                runtime_path = project_root / "src" / "multigen" / "backends" / "c" / "runtime"
+                c_backend_path = project_root / "src" / "multigen" / "backends" / "c"
+                stc_include_path = project_root / "src" / "multigen" / "backends" / "c" / "ext" / "stc" / "include"
 
                 # Find non-container runtime .c files (containers are header-only now)
                 runtime_c_files = [
                     f for f in runtime_path.glob("*.c")
-                    if not f.name.startswith("mgen_vec_") and
-                       not f.name.startswith("mgen_set_") and
-                       not f.name.startswith("mgen_map_")
+                    if not f.name.startswith("multigen_vec_") and
+                       not f.name.startswith("multigen_set_") and
+                       not f.name.startswith("multigen_map_")
                 ]
 
                 cmd = [
@@ -302,7 +302,7 @@ class BenchmarkRunner:
 
             elif backend == "ocaml":
                 # Compile OCaml code - ocamlopt with runtime module via opam
-                runtime_files = list(output_dir.glob("mgen_*.ml"))
+                runtime_files = list(output_dir.glob("multigen_*.ml"))
                 cmd = [
                     "opam", "exec", "--",
                     "ocamlopt",
@@ -318,7 +318,7 @@ class BenchmarkRunner:
             elif backend == "llvm":
                 # Compile LLVM IR - llc + clang with vec_int runtime
                 project_root = Path(__file__).parent.parent
-                runtime_path = project_root / "src" / "mgen" / "backends" / "llvm" / "runtime"
+                runtime_path = project_root / "src" / "multigen" / "backends" / "llvm" / "runtime"
 
                 # Runtime C files - include all required runtime libraries
                 runtime_c_files = [
@@ -328,7 +328,7 @@ class BenchmarkRunner:
                     runtime_path / "map_int_int_minimal.c",
                     runtime_path / "map_str_int_minimal.c",
                     runtime_path / "set_int_minimal.c",
-                    runtime_path / "mgen_llvm_string.c",
+                    runtime_path / "multigen_llvm_string.c",
                 ]
 
                 # Find llc (try Homebrew path first, then system)
@@ -581,7 +581,7 @@ class BenchmarkRunner:
 
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(description="Run MGen benchmarks")
+    parser = argparse.ArgumentParser(description="Run MultiGen benchmarks")
     parser.add_argument(
         "--benchmarks",
         type=str,

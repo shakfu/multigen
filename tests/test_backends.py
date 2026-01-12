@@ -1,12 +1,12 @@
-"""Tests for MGen backend system."""
+"""Tests for MultiGen backend system."""
 
 import pytest
-from mgen.backends.registry import registry
-from mgen.backends.base import LanguageBackend
-from mgen.backends.c.backend import CBackend
-from mgen.backends.rust.backend import RustBackend
-from mgen.backends.go.backend import GoBackend
-from mgen.backends.cpp.backend import CppBackend
+from multigen.backends.registry import registry
+from multigen.backends.base import LanguageBackend
+from multigen.backends.c.backend import CBackend
+from multigen.backends.rust.backend import RustBackend
+from multigen.backends.go.backend import GoBackend
+from multigen.backends.cpp.backend import CppBackend
 
 
 class TestBackendRegistry:
@@ -179,7 +179,7 @@ class TestBackendInterfaces:
         assert isinstance(build_content, str) and build_content
         # Go uses a fixed module name for consistency
         if backend_name == "go":
-            assert "mgenproject" in build_content
+            assert "multigenproject" in build_content
         else:
             assert "testproject" in build_content
 

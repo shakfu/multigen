@@ -1,4 +1,4 @@
-"""Hello World in MGen."""
+"""Hello World in MultiGen."""
 
 
 def greet(name: str) -> str:

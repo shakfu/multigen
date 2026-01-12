@@ -12,8 +12,8 @@ src_path = project_root / "src"
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
-from mgen.frontend import AnalysisContext, BoundsProver, CorrectnessProver, TheoremProver
-from mgen.frontend.base import AnalysisLevel
+from multigen.frontend import AnalysisContext, BoundsProver, CorrectnessProver, TheoremProver
+from multigen.frontend.base import AnalysisLevel
 
 # Check if Z3 is available
 try:
@@ -144,7 +144,7 @@ class TestVerifierIntegration:
 
     def test_all_verifiers_importable(self):
         """Test that all verifiers can be imported."""
-        from mgen.frontend import BoundsProver, CorrectnessProver, TheoremProver
+        from multigen.frontend import BoundsProver, CorrectnessProver, TheoremProver
 
         assert BoundsProver is not None
         assert CorrectnessProver is not None

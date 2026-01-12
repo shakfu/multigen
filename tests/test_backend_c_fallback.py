@@ -1,7 +1,7 @@
 """Tests for C backend fallback container system."""
 
 import pytest
-from mgen.backends.c.containers import CContainerSystem
+from multigen.backends.c.containers import CContainerSystem
 
 
 class TestCContainerSystemFallback:
@@ -71,10 +71,10 @@ class TestCContainerSystemFallback:
 
         imports = container_system.get_required_imports()
 
-        assert any("mgen_error_handling.h" in imp for imp in imports)
-        assert any("mgen_memory_ops.h" in imp for imp in imports)
-        assert any("mgen_containers_fallback.h" in imp for imp in imports)
-        assert not any("mgen_stc_bridge.h" in imp for imp in imports)
+        assert any("multigen_error_handling.h" in imp for imp in imports)
+        assert any("multigen_memory_ops.h" in imp for imp in imports)
+        assert any("multigen_containers_fallback.h" in imp for imp in imports)
+        assert not any("multigen_stc_bridge.h" in imp for imp in imports)
 
     def test_stc_imports(self):
         """Test STC required imports."""
@@ -83,8 +83,8 @@ class TestCContainerSystemFallback:
 
         imports = container_system.get_required_imports()
 
-        assert any("mgen_stc_bridge.h" in imp for imp in imports)
-        assert any("mgen_error_handling.h" in imp for imp in imports)
+        assert any("multigen_stc_bridge.h" in imp for imp in imports)
+        assert any("multigen_error_handling.h" in imp for imp in imports)
 
     def test_fallback_operations_append(self):
         """Test fallback append operation generation."""
@@ -93,7 +93,7 @@ class TestCContainerSystemFallback:
 
         operations = container_system.generate_container_operations("vec_int", ["append"])
 
-        assert "mgen_dyn_array_append" in operations
+        assert "multigen_dyn_array_append" in operations
         assert "Fallback operations" in operations
 
     def test_fallback_operations_all(self):
@@ -104,14 +104,14 @@ class TestCContainerSystemFallback:
         operations = ["append", "insert", "remove", "get", "set", "size", "clear", "contains"]
         code = container_system.generate_container_operations("vec_int", operations)
 
-        assert "mgen_dyn_array_append" in code
-        assert "mgen_dyn_array_insert" in code
-        assert "mgen_dyn_array_remove" in code
-        assert "mgen_dyn_array_get" in code
-        assert "mgen_dyn_array_set" in code
-        assert "mgen_dyn_array_size" in code
-        assert "mgen_dyn_array_clear" in code
-        assert "mgen_dyn_array_contains" in code
+        assert "multigen_dyn_array_append" in code
+        assert "multigen_dyn_array_insert" in code
+        assert "multigen_dyn_array_remove" in code
+        assert "multigen_dyn_array_get" in code
+        assert "multigen_dyn_array_set" in code
+        assert "multigen_dyn_array_size" in code
+        assert "multigen_dyn_array_clear" in code
+        assert "multigen_dyn_array_contains" in code
 
     def test_fallback_container_includes(self):
         """Test fallback container includes generation."""
@@ -120,7 +120,7 @@ class TestCContainerSystemFallback:
 
         includes = container_system.generate_container_includes()
 
-        assert "mgen_containers_fallback.h" in includes
+        assert "multigen_containers_fallback.h" in includes
         assert "basic fallback" in includes
         assert "STC" not in includes
 
@@ -131,7 +131,7 @@ class TestCContainerSystemFallback:
 
         includes = container_system.generate_container_includes()
 
-        assert "mgen_stc_bridge.h" in includes
+        assert "multigen_stc_bridge.h" in includes
         assert "STC" in includes
 
     def test_fallback_container_declarations(self):
@@ -175,9 +175,9 @@ class TestCContainerSystemFallback:
         code = container_system.generate_container_operations("vec_int", ["append"])
 
         # Check for example usage
-        assert "mgen_dyn_array_new" in code
+        assert "multigen_dyn_array_new" in code
         assert "sizeof(int)" in code
-        assert "mgen_dyn_array_free" in code
+        assert "multigen_dyn_array_free" in code
 
 
 class TestCFallbackRuntimeIntegration:
@@ -187,8 +187,8 @@ class TestCFallbackRuntimeIntegration:
         """Test that fallback header file exists."""
         from pathlib import Path
 
-        runtime_dir = Path(__file__).parent.parent / "src" / "mgen" / "backends" / "c" / "runtime"
-        header_file = runtime_dir / "mgen_containers_fallback.h"
+        runtime_dir = Path(__file__).parent.parent / "src" / "multigen" / "backends" / "c" / "runtime"
+        header_file = runtime_dir / "multigen_containers_fallback.h"
 
         assert header_file.exists(), "Fallback header file should exist"
 
@@ -196,8 +196,8 @@ class TestCFallbackRuntimeIntegration:
         """Test that fallback implementation file exists."""
         from pathlib import Path
 
-        runtime_dir = Path(__file__).parent.parent / "src" / "mgen" / "backends" / "c" / "runtime"
-        impl_file = runtime_dir / "mgen_containers_fallback.c"
+        runtime_dir = Path(__file__).parent.parent / "src" / "multigen" / "backends" / "c" / "runtime"
+        impl_file = runtime_dir / "multigen_containers_fallback.c"
 
         assert impl_file.exists(), "Fallback implementation file should exist"
 
@@ -205,31 +205,31 @@ class TestCFallbackRuntimeIntegration:
         """Test that fallback header has expected content."""
         from pathlib import Path
 
-        runtime_dir = Path(__file__).parent.parent / "src" / "mgen" / "backends" / "c" / "runtime"
-        header_file = runtime_dir / "mgen_containers_fallback.h"
+        runtime_dir = Path(__file__).parent.parent / "src" / "multigen" / "backends" / "c" / "runtime"
+        header_file = runtime_dir / "multigen_containers_fallback.h"
 
         content = header_file.read_text()
 
         # Check for key structures and functions
-        assert "mgen_dyn_array" in content
-        assert "mgen_dyn_array_new" in content
-        assert "mgen_dyn_array_append" in content
-        assert "mgen_dyn_array_get" in content
-        assert "mgen_dyn_array_size" in content
+        assert "multigen_dyn_array" in content
+        assert "multigen_dyn_array_new" in content
+        assert "multigen_dyn_array_append" in content
+        assert "multigen_dyn_array_get" in content
+        assert "multigen_dyn_array_size" in content
 
     def test_fallback_implementation_content(self):
         """Test that fallback implementation has expected content."""
         from pathlib import Path
 
-        runtime_dir = Path(__file__).parent.parent / "src" / "mgen" / "backends" / "c" / "runtime"
-        impl_file = runtime_dir / "mgen_containers_fallback.c"
+        runtime_dir = Path(__file__).parent.parent / "src" / "multigen" / "backends" / "c" / "runtime"
+        impl_file = runtime_dir / "multigen_containers_fallback.c"
 
         content = impl_file.read_text()
 
         # Check for key function implementations
-        assert "mgen_dyn_array_new" in content
-        assert "mgen_dyn_array_append" in content
-        assert "mgen_dyn_array_reserve" in content
-        assert "mgen_dyn_array_contains" in content
+        assert "multigen_dyn_array_new" in content
+        assert "multigen_dyn_array_append" in content
+        assert "multigen_dyn_array_reserve" in content
+        assert "multigen_dyn_array_contains" in content
         assert "realloc" in content
         assert "memmove" in content

@@ -6,7 +6,7 @@ Formal verification components using Z3 theorem prover.
 Bounds Prover
 -------------
 
-.. automodule:: mgen.frontend.verifiers.bounds_prover
+.. automodule:: multigen.frontend.verifiers.bounds_prover
    :members:
    :undoc-members:
    :show-inheritance:
@@ -14,7 +14,7 @@ Bounds Prover
 Theorem Prover
 --------------
 
-.. automodule:: mgen.frontend.verifiers.theorem_prover
+.. automodule:: multigen.frontend.verifiers.theorem_prover
    :members:
    :undoc-members:
    :show-inheritance:
@@ -22,7 +22,7 @@ Theorem Prover
 Correctness Prover
 ------------------
 
-.. automodule:: mgen.frontend.verifiers.correctness_prover
+.. automodule:: multigen.frontend.verifiers.correctness_prover
    :members:
    :undoc-members:
    :show-inheritance:
@@ -30,7 +30,7 @@ Correctness Prover
 Performance Analyzer
 --------------------
 
-.. automodule:: mgen.frontend.verifiers.performance_analyzer
+.. automodule:: multigen.frontend.verifiers.performance_analyzer
    :members:
    :undoc-members:
    :show-inheritance:
@@ -38,7 +38,7 @@ Performance Analyzer
 Z3 Formula Generator
 --------------------
 
-.. automodule:: mgen.frontend.verifiers.z3_formula_generator
+.. automodule:: multigen.frontend.verifiers.z3_formula_generator
    :members:
    :undoc-members:
    :show-inheritance:
@@ -48,7 +48,7 @@ Example Usage
 
 Verifying array bounds::
 
-   from mgen.frontend.verifiers.bounds_prover import BoundsProver
+   from multigen.frontend.verifiers.bounds_prover import BoundsProver
    import ast
 
    code = '''
@@ -70,7 +70,7 @@ Verifying array bounds::
 
 Using with pipeline::
 
-   from mgen.pipeline import MGenPipeline, PipelineConfig
+   from multigen.pipeline import MultiGenPipeline, PipelineConfig
 
    config = PipelineConfig(
        target_language="c",
@@ -78,7 +78,7 @@ Using with pipeline::
        strict_verification=True,
    )
 
-   pipeline = MGenPipeline(config=config)
+   pipeline = MultiGenPipeline(config=config)
    result = pipeline.convert("example.py")
 
 Verification Results
@@ -118,12 +118,12 @@ Z3 Availability
 
 Check if Z3 is available::
 
-   from mgen.frontend.verifiers.bounds_prover import Z3_AVAILABLE
+   from multigen.frontend.verifiers.bounds_prover import Z3_AVAILABLE
 
    if Z3_AVAILABLE:
        print("Z3 is available")
    else:
-       print("Install with: pip install mgen[z3]")
+       print("Install with: pip install multigen[z3]")
 
 Verification is automatically skipped if Z3 is not installed.
 

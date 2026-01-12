@@ -2,15 +2,15 @@
 
 import pytest
 
-from mgen.backends.cpp.converter import MGenPythonToCppConverter
-from mgen.backends.errors import UnsupportedFeatureError
+from multigen.backends.cpp.converter import MultiGenPythonToCppConverter
+from multigen.backends.errors import UnsupportedFeatureError
 
 class TestBasicAugmentedAssignment:
     """Test basic augmented assignment operators."""
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCppConverter()
+        self.converter = MultiGenPythonToCppConverter()
 
     def test_addition_assignment(self):
         """Test += operator."""
@@ -84,7 +84,7 @@ class TestBitwiseAugmentedAssignment:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCppConverter()
+        self.converter = MultiGenPythonToCppConverter()
 
     def test_bitwise_or_assignment(self):
         """Test |= operator."""
@@ -147,7 +147,7 @@ class TestAugmentedAssignmentWithExpressions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCppConverter()
+        self.converter = MultiGenPythonToCppConverter()
 
     def test_augassign_with_variable(self):
         """Test augmented assignment with variable on right side."""
@@ -180,7 +180,7 @@ def test_with_call(x: int, y: int) -> int:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "x += mgen::abs(y);" in cpp_code
+        assert "x += multigen::abs(y);" in cpp_code
 
     def test_multiple_augassign_operations(self):
         """Test multiple augmented assignments in sequence."""
@@ -203,7 +203,7 @@ class TestAugmentedAssignmentInClasses:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCppConverter()
+        self.converter = MultiGenPythonToCppConverter()
 
     def test_augassign_instance_variable(self):
         """Test augmented assignment on instance variables."""
@@ -260,7 +260,7 @@ class TestAugmentedAssignmentComplexCases:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCppConverter()
+        self.converter = MultiGenPythonToCppConverter()
 
     def test_augassign_in_loop(self):
         """Test augmented assignment inside loops."""

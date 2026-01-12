@@ -7,17 +7,19 @@
 ## Problem
 
 The C++ backend had build system issues preventing compilation:
+
 - `compile_direct()` method was failing silently
 - Runtime headers were not being found
 - Working directory issues in subprocess calls
 
 ## Solution
 
-Fixed `src/mgen/backends/cpp/builder.py`:
+Fixed `src/multigen/backends/cpp/builder.py`:
 
 ### Changes Made
 
 **1. Fixed Path Resolution**
+
 ```python
 # Before: Relative paths that broke when cwd changed
 source_path = Path(source_file)
@@ -30,6 +32,7 @@ output_path = out_dir / source_path.stem
 ```
 
 **2. Removed Working Directory Change**
+
 ```python
 # Before: Changed cwd, breaking relative paths
 result = subprocess.run(cmd, capture_output=True, text=True, cwd=output_dir)
@@ -39,6 +42,7 @@ result = subprocess.run(cmd, capture_output=True, text=True)
 ```
 
 **3. Added Error Reporting**
+
 ```python
 # Added debugging output to see compilation errors
 if result.stderr:
@@ -80,6 +84,7 @@ if result.stderr:
 | test_struct_field_access | [X] BUILD_FAIL | - | Feature not implemented |
 
 **Summary**:
+
 - [x] **11 tests PASS** (40.7%)
 - [X] **16 tests FAIL** (59.3%)
   - 2 due to untyped container annotations (same as C backend)
@@ -88,11 +93,13 @@ if result.stderr:
 ## Impact
 
 ### Before Fix
+
 - [X] 0/27 tests passing (0%)
 - Build system completely broken
 - All tests failed with "No executable produced"
 
 ### After Fix
+
 - [x] 11/27 tests passing (40.7%)
 - Build system working correctly
 - Compilation errors now visible for debugging
@@ -128,13 +135,14 @@ These are **separate** from the build system fix and require code generation imp
 | **C++** | 40.7% (11/27) | Build system fixed, needs code gen work |
 
 The C++ backend is now **functional** but needs:
+
 - Bug fixes in set operations
 - String method improvements
 - Feature completions (dataclasses, namedtuples, slicing)
 
 ## Files Modified
 
-- `src/mgen/backends/cpp/builder.py` - Fixed compile_direct() method
+- `src/multigen/backends/cpp/builder.py` - Fixed compile_direct() method
 
 **Total Changes**: ~15 lines in 1 file
 
@@ -142,13 +150,13 @@ The C++ backend is now **functional** but needs:
 
 ```bash
 # Test single file
-uv run mgen build -t cpp tests/translation/simple_test.py
+uv run multigen build -t cpp tests/translation/simple_test.py
 ./build/simple_test  # Exit code: 1 (expected - returns result value)
 
 # Test all files
 for test in tests/translation/*.py; do
   testname=$(basename "$test" .py)
-  uv run mgen build -t cpp "$test" && echo "$testname: PASS"
+  uv run multigen build -t cpp "$test" && echo "$testname: PASS"
 done
 ```
 

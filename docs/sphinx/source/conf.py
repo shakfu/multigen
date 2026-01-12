@@ -10,9 +10,9 @@ sys.path.insert(0, os.path.abspath('../../../src'))
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'MGen'
-copyright = '2025, MGen Contributors'
-author = 'MGen Contributors'
+project = 'MultiGen'
+copyright = '2025, MultiGen Contributors'
+author = 'MultiGen Contributors'
 release = '0.1.70'
 version = '0.1.70'
 

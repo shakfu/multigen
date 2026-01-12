@@ -14,7 +14,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from mgen.backends.llvm.jit_executor import jit_compile_and_run
+from multigen.backends.llvm.jit_executor import jit_compile_and_run
 
 
 def generate_llvm_ir(python_file: Path, output_dir: Path) -> Path:
@@ -27,9 +27,9 @@ def generate_llvm_ir(python_file: Path, output_dir: Path) -> Path:
     Returns:
         Path to generated .ll file
     """
-    # Run mgen to generate LLVM IR
+    # Run multigen to generate LLVM IR
     result = subprocess.run(
-        ["uv", "run", "mgen", "convert", "-t", "llvm", str(python_file)],
+        ["uv", "run", "multigen", "convert", "-t", "llvm", str(python_file)],
         cwd=output_dir,
         capture_output=True,
         text=True,
@@ -61,7 +61,7 @@ def aot_compile_and_run(python_file: Path) -> tuple[float, float, int]:
         # Compile
         compile_start = time.time()
         result = subprocess.run(
-            ["uv", "run", "mgen", "build", "-t", "llvm", str(python_file)],
+            ["uv", "run", "multigen", "build", "-t", "llvm", str(python_file)],
             cwd=output_dir,
             capture_output=True,
             text=True,

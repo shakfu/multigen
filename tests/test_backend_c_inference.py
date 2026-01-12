@@ -1,7 +1,7 @@
 """Tests specifically for Python-to-C inference."""
 
 
-from mgen.backends.c.emitter import MGenPythonToCConverter
+from multigen.backends.c.emitter import MultiGenPythonToCConverter
 
 
 class TestPy2CTypeInference:
@@ -9,7 +9,7 @@ class TestPy2CTypeInference:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_integer_inference(self):
         """Test integer type inference."""

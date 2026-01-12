@@ -1,6 +1,6 @@
-# MGen Sphinx Documentation
+# MultiGen Sphinx Documentation
 
-This directory contains the Sphinx-based documentation for MGen.
+This directory contains the Sphinx-based documentation for MultiGen.
 
 ## Building Documentation
 
@@ -87,7 +87,7 @@ source/
 2. Use autodoc directives:
 
    ```rst
-   .. automodule:: mgen.your_module
+   .. automodule:: multigen.your_module
       :members:
       :undoc-members:
       :show-inheritance:
@@ -152,8 +152,8 @@ Link to other docs:
 Link to Python objects:
 
 ```rst
-:class:`mgen.pipeline.MGenPipeline`
-:func:`mgen.convert`
+:class:`multigen.pipeline.MultiGenPipeline`
+:func:`multigen.convert`
 ```
 
 ## Building for Production

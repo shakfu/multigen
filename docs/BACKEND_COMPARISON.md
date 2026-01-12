@@ -1,4 +1,4 @@
-# MGen Backend Comprehensive Comparison
+# MultiGen Backend Comprehensive Comparison
 
 **Last Updated**: October 15, 2025
 **Version**: v0.1.83
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-MGen supports **7 backends** with varying levels of maturity:
+MultiGen supports **7 backends** with varying levels of maturity:
 
 - **6 Production-Ready**: C++, C, Rust, Go, OCaml, LLVM (all 7/7 benchmarks)
 - **1 Functionally Complete**: Haskell (6/7 benchmarks, 86%)
@@ -57,7 +57,7 @@ MGen supports **7 backends** with varying levels of maturity:
 
 | Backend | indexing | insert | get | contains (in) | keys | values | items | clear | erase/remove |
 |---------|----------|--------|-----|---------------|------|--------|-------|-------|--------------|
-| **C++** | [x] `[]` | [x] `[]` | [x] `[]` | [x] `count()` | [X] | [x] `mgen::values()` | [x] iteration | [X] | [X] |
+| **C++** | [x] `[]` | [x] `[]` | [x] `[]` | [x] `count()` | [X] | [x] `multigen::values()` | [x] iteration | [X] | [X] |
 | **C** | [x] `map_KV_get()` | [x] `map_KV_insert()` | [x] `map_KV_get()` | [x] `map_KV_contains()` | [X] | [X] | [X] | [x] `map_KV_clear()` | [x] `map_KV_erase()` |
 | **Rust** | [x] `get()/insert()` | [x] `insert()` | [x] `get()` | [x] `contains_key()` | [X] | [X] | [X] | [X] | [X] |
 | **Go** | [x] `m[k]` | [x] `m[k]=v` | [x] `m[k]` | [x] `_, ok := m[k]` | [X] | [x] `MapValues()` | [x] `MapItems()` | [X] | [x] `delete()` |
@@ -570,7 +570,7 @@ MGen supports **7 backends** with varying levels of maturity:
 
 ## Conclusion
 
-MGen offers **7 production-quality backends** with different trade-offs:
+MultiGen offers **7 production-quality backends** with different trade-offs:
 
 - **Go**: Best for cloud/microservices (fast execution, fast compilation)
 - **C++/LLVM**: Best for embedded/systems (small binaries)

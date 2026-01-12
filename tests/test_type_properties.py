@@ -1,7 +1,7 @@
 """Tests for type properties system."""
 
 import pytest
-from mgen.backends.c.type_properties import (
+from multigen.backends.c.type_properties import (
     TypeProperties,
     get_type_properties,
     is_registered_type,

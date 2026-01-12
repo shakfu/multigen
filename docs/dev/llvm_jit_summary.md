@@ -152,10 +152,10 @@ JIT: Python → LLVM IR → Execution Engine (in-memory)
 ### Example 1: Quick Test
 
 ```python
-from mgen.backends.llvm.jit_executor import jit_compile_and_run
+from multigen.backends.llvm.jit_executor import jit_compile_and_run
 
 # Generate LLVM IR
-subprocess.run(["uv", "run", "mgen", "convert", "-t", "llvm", "test.py"])
+subprocess.run(["uv", "run", "multigen", "convert", "-t", "llvm", "test.py"])
 
 # JIT execute
 result = jit_compile_and_run("build/src/test.ll", verbose=True)
@@ -164,7 +164,7 @@ result = jit_compile_and_run("build/src/test.ll", verbose=True)
 ### Example 2: Interactive Function Calls
 
 ```python
-from mgen.backends.llvm.jit_executor import LLVMJITExecutor
+from multigen.backends.llvm.jit_executor import LLVMJITExecutor
 
 executor = LLVMJITExecutor()
 try:
@@ -193,10 +193,10 @@ uv run python examples/llvm_jit_demo.py
 
 ### New Files
 
-1. `src/mgen/backends/llvm/jit_executor.py` - JIT executor implementation (223 lines)
+1. `src/multigen/backends/llvm/jit_executor.py` - JIT executor implementation (223 lines)
 2. `tests/test_jit_executor.py` - Test suite (160 lines)
 3. `examples/llvm_jit_demo.py` - Performance demo (228 lines)
-4. `src/mgen/backends/llvm/README_JIT.md` - Documentation (367 lines)
+4. `src/multigen/backends/llvm/README_JIT.md` - Documentation (367 lines)
 5. `docs/dev/llvm_jit_summary.md` - This file
 
 ### Modified Files

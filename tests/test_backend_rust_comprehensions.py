@@ -2,8 +2,8 @@
 
 import pytest
 
-from mgen.backends.rust.converter import MGenPythonToRustConverter
-from mgen.backends.errors import UnsupportedFeatureError
+from multigen.backends.rust.converter import MultiGenPythonToRustConverter
+from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestRustListComprehensions:
@@ -11,7 +11,7 @@ class TestRustListComprehensions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToRustConverter()
+        self.converter = MultiGenPythonToRustConverter()
 
     def test_simple_list_comprehension(self):
         """Test simple list comprehension with range."""
@@ -98,7 +98,7 @@ class TestRustDictComprehensions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToRustConverter()
+        self.converter = MultiGenPythonToRustConverter()
 
     def test_simple_dict_comprehension(self):
         """Test simple dictionary comprehension."""
@@ -153,7 +153,7 @@ class TestRustSetComprehensions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToRustConverter()
+        self.converter = MultiGenPythonToRustConverter()
 
     def test_simple_set_comprehension(self):
         """Test simple set comprehension."""
@@ -206,7 +206,7 @@ class TestRustComprehensionsAdvanced:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToRustConverter()
+        self.converter = MultiGenPythonToRustConverter()
 
     def test_comprehension_with_function_call(self):
         """Test comprehension with function calls in expression."""

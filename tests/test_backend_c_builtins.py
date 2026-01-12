@@ -1,7 +1,7 @@
 """Tests for Python builtins support in C backend."""
 
 
-from mgen.backends.c.converter import MGenPythonToCConverter
+from multigen.backends.c.converter import MultiGenPythonToCConverter
 
 
 class TestPy2CBuiltinFunctions:
@@ -9,7 +9,7 @@ class TestPy2CBuiltinFunctions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_abs_function(self):
         """Test abs() function conversion."""
@@ -19,7 +19,7 @@ def test_abs(x: int) -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "mgen_abs_int(x)" in c_code
+        assert "multigen_abs_int(x)" in c_code
 
     def test_bool_function(self):
         """Test bool() function conversion."""
@@ -29,7 +29,7 @@ def test_bool(x: int) -> bool:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "mgen_bool_int(x)" in c_code
+        assert "multigen_bool_int(x)" in c_code
 
     def test_len_function(self):
         """Test len() function conversion."""

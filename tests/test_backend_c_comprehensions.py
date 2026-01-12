@@ -2,15 +2,15 @@
 
 import pytest
 
-from mgen.backends.c.converter import MGenPythonToCConverter
-from mgen.backends.errors import UnsupportedFeatureError
+from multigen.backends.c.converter import MultiGenPythonToCConverter
+from multigen.backends.errors import UnsupportedFeatureError
 
 class TestListComprehensions:
     """Test list comprehension conversion functionality."""
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_simple_list_comprehension(self):
         """Test simple list comprehension with range."""
@@ -119,7 +119,7 @@ class TestDictComprehensions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_simple_dict_comprehension(self):
         """Test simple dictionary comprehension with range."""
@@ -186,7 +186,7 @@ class TestSetComprehensions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_simple_set_comprehension(self):
         """Test simple set comprehension with range."""
@@ -252,7 +252,7 @@ class TestComprehensionsIntegration:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.converter = MGenPythonToCConverter()
+        self.converter = MultiGenPythonToCConverter()
 
     def test_comprehension_in_assignment(self):
         """Test comprehension assigned to variable."""
@@ -341,7 +341,7 @@ def test_mixed() -> int:
 ])
 def test_comprehension_types_parametrized(comp_type, syntax, expected_container):
     """Test parametrized comprehension type conversion."""
-    converter = MGenPythonToCConverter()
+    converter = MultiGenPythonToCConverter()
 
     python_code = f"""
 def test_comp() -> {comp_type}:
@@ -356,7 +356,7 @@ def test_comp() -> {comp_type}:
 @pytest.mark.integration
 def test_comprehensions_comprehensive():
     """Comprehensive test of comprehensions working together."""
-    converter = MGenPythonToCConverter()
+    converter = MultiGenPythonToCConverter()
 
     python_code = """
 def process_data(n: int) -> dict:
@@ -399,7 +399,7 @@ def sample_comprehensions():
 
 def test_all_comprehension_samples(sample_comprehensions):
     """Test all sample comprehensions convert successfully."""
-    converter = MGenPythonToCConverter()
+    converter = MultiGenPythonToCConverter()
 
     for name, comp_code in sample_comprehensions.items():
         python_code = f"""

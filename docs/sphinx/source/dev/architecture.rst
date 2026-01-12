@@ -1,12 +1,12 @@
 Architecture
 ============
 
-MGen's architecture is designed for extensibility, type safety, and clean separation of concerns.
+MultiGen's architecture is designed for extensibility, type safety, and clean separation of concerns.
 
 Overview
 --------
 
-MGen consists of:
+MultiGen consists of:
 
 - **Frontend**: Python AST analysis, type inference, optimization
 - **Pipeline**: 7-phase conversion pipeline

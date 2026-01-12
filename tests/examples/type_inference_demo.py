@@ -1,6 +1,6 @@
-"""Demonstration of automatic type inference in MGen.
+"""Demonstration of automatic type inference in MultiGen.
 
-MGen can infer types for local variables from their usage,
+MultiGen can infer types for local variables from their usage,
 eliminating the need for explicit type annotations in many cases.
 """
 

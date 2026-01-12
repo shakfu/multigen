@@ -6,12 +6,13 @@
 
 ## Executive Summary
 
-MGen can successfully generate LLVM IR that compiles to WebAssembly. This investigation confirms that **WebAssembly is a viable eighth backend target** for MGen, enabling Python-to-WASM compilation via the existing LLVM infrastructure.
+MultiGen can successfully generate LLVM IR that compiles to WebAssembly. This investigation confirms that **WebAssembly is a viable eighth backend target** for MultiGen, enabling Python-to-WASM compilation via the existing LLVM infrastructure.
 
 **Key Findings:**
+
 - [x] LLVM 21.1.3 (Homebrew) has full WebAssembly support (wasm32, wasm64)
 - [x] llvmlite can target WebAssembly and generate object files
-- [x] MGen-generated LLVM IR compiles successfully to WebAssembly objects
+- [x] MultiGen-generated LLVM IR compiles successfully to WebAssembly objects
 - [x] Pure functions (no runtime dependencies) work out-of-the-box
 - [!] Runtime library integration requires additional work
 - [!] Linking step needs external tooling (wasm-ld, Emscripten, or WASI SDK)
@@ -56,6 +57,7 @@ entry:
 ```
 
 **Compilation:**
+
 ```python
 target = llvm.Target.from_triple("wasm32-unknown-unknown")
 target_machine = target.create_target_machine(opt=2)
@@ -64,11 +66,12 @@ obj_code = target_machine.emit_object(llvm_module)
 
 **Result:** [x] Successfully generated 257-byte WebAssembly object file
 
-### 3. MGen-Generated IR Compilation
+### 3. MultiGen-Generated IR Compilation
 
-Compiled actual MGen LLVM IR (fibonacci.py) to WebAssembly:
+Compiled actual MultiGen LLVM IR (fibonacci.py) to WebAssembly:
 
 **Source Python:**
+
 ```python
 def fibonacci(n: int) -> int:
     if n <= 1:
@@ -79,19 +82,21 @@ def main() -> int:
     return fibonacci(10)
 ```
 
-**MGen Pipeline:**
+**MultiGen Pipeline:**
+
 ```bash
-uv run mgen build fibonacci.py -t llvm
+uv run multigen build fibonacci.py -t llvm
 # Generates build/src/fibonacci.ll
 ```
 
 **WebAssembly Compilation:**
+
 - Original IR: 5,363 bytes (includes all runtime declarations)
 - Extracted pure functions: 1,037 bytes
 - Generated WASM object: 616 bytes
 - WebAssembly text (WAT): 2,510 bytes
 
-**Result:** [x] Successfully compiled MGen IR to WebAssembly
+**Result:** [x] Successfully compiled MultiGen IR to WebAssembly
 
 ### 4. WebAssembly Output Analysis
 
@@ -113,6 +118,7 @@ fibonacci:
 ```
 
 **Analysis:**
+
 - Proper function signatures
 - Stack management via `__stack_pointer` global
 - Efficient use of WebAssembly locals
@@ -122,7 +128,8 @@ fibonacci:
 
 ### Challenge 1: Runtime Library Integration
 
-**Problem:** MGen LLVM IR includes declarations for runtime libraries:
+**Problem:** MultiGen LLVM IR includes declarations for runtime libraries:
+
 ```llvm
 declare void @vec_int_init_ptr(%struct.vec_int* %".1")
 declare void @vec_int_push(%struct.vec_int* %".1", i64 %".2")
@@ -133,11 +140,13 @@ declare i64 @vec_int_at(%struct.vec_int* %".1", i64 %".2")
 **Current Status:** These are compiled as C code and linked with clang.
 
 **WebAssembly Impact:**
+
 - Need to compile C runtime to WebAssembly
 - Link WebAssembly object files together
 - Or: rewrite runtime in pure LLVM IR (no C dependencies)
 
 **Solutions:**
+
 1. **Compile C runtime to WASM** (using Emscripten or WASI SDK)
 2. **Implement runtime in LLVM IR** (generate IR directly, no C)
 3. **Use JavaScript bindings** (import runtime functions from JS)
@@ -148,18 +157,21 @@ declare i64 @vec_int_at(%struct.vec_int* %".1", i64 %".2")
 **Problem:** llvmlite generates WebAssembly *object files*, not complete modules.
 
 **Missing Pieces:**
+
 - Function exports (so JavaScript can call them)
 - Import resolution (for runtime functions)
 - Memory initialization
 - Start function
 
 **Current Tools:**
+
 - `llc` (LLVM): Generates `.wasm` object files [x]
 - `wasm-ld` (LLVM): Links WASM objects → runnable module [X] (not installed)
 - `emcc` (Emscripten): Complete LLVM→WASM toolchain [X] (not installed)
 - `wasi-sdk`: Standalone WASM compilation [X] (not installed)
 
 **Solution Options:**
+
 1. **Add wasm-ld dependency** (`brew install llvm` includes it on some platforms)
 2. **Use Emscripten** (full JavaScript integration)
 3. **Generate complete modules in Python** (using llvmlite + manual WASM generation)
@@ -169,34 +181,39 @@ declare i64 @vec_int_at(%struct.vec_int* %".1", i64 %".2")
 
 **Problem:** WebAssembly has no built-in I/O (no `printf`, `fopen`, etc.)
 
-**MGen Uses:**
+**MultiGen Uses:**
+
 - `printf` for print() statements
 - File I/O operations
 - Standard library functions
 
 **Solutions:**
+
 1. **WASI (WebAssembly System Interface)** - Standardized syscall interface
 2. **JavaScript imports** - Import console.log, file APIs from JS
 3. **Emscripten** - Provides libc emulation
-4. **Disable I/O** - Support pure computation only (subset of MGen)
+4. **Disable I/O** - Support pure computation only (subset of MultiGen)
 
 ## Proposed Implementation Strategy
 
 ### Phase 1: Pure Functions (No Runtime Dependencies)
 
 **Scope:** Support Python programs that don't use:
+
 - Lists, dicts, sets (no containers)
 - String operations (basic strings only)
 - File I/O
 - print() statements
 
 **Capabilities:**
+
 - Arithmetic operations [x]
 - Control flow (if/else, for/while) [x]
 - Function calls and recursion [x]
 - Integer/float types [x]
 
 **Implementation:**
+
 1. Add `wasm32` target to LLVM backend
 2. Filter out unused runtime declarations
 3. Generate minimal IR with proper WebAssembly triple
@@ -210,6 +227,7 @@ declare i64 @vec_int_at(%struct.vec_int* %".1", i64 %".2")
 **Scope:** Enable containers and I/O via JavaScript imports
 
 **Approach:**
+
 ```python
 # Container operations become JavaScript imports
 @wasm_import("env", "vec_int_push")
@@ -217,23 +235,26 @@ def vec_int_push(vec: pointer, value: i64) -> void
 ```
 
 **Implementation:**
+
 1. Generate import declarations in WASM
 2. Provide JavaScript runtime library
 3. Marshal data between WASM and JavaScript
 4. Support print() via console.log
 
-**Deliverable:** Full MGen functionality in browser/Node.js
+**Deliverable:** Full MultiGen functionality in browser/Node.js
 
 ### Phase 3: WASI Support
 
 **Scope:** Standalone WASM with system interface
 
 **Approach:**
+
 - Compile runtime C code to WASM using WASI SDK
 - Link WASM object files with wasm-ld
 - Run with wasmtime or other WASI runtimes
 
 **Implementation:**
+
 1. Add WASI SDK as optional dependency
 2. Cross-compile runtime libraries to WASM
 3. Implement WASI-based I/O (file operations, printf)
@@ -246,23 +267,26 @@ def vec_int_push(vec: pointer, value: i64) -> void
 **Scope:** Full browser integration with Emscripten toolchain
 
 **Approach:**
+
 - Use Emscripten as the LLVM→WASM compiler
 - Leverage Emscripten's libc implementation
 - Generate HTML+JS+WASM packages
 
 **Implementation:**
+
 1. Detect Emscripten installation
 2. Use `emcc` instead of `llc` for WebAssembly target
 3. Generate web-ready output (HTML scaffolding)
 4. Support Emscripten APIs (canvas, WebGL, etc.)
 
-**Deliverable:** MGen → Web Applications
+**Deliverable:** MultiGen → Web Applications
 
 ## Proof of Concept Results
 
 ### Test Case: Fibonacci Benchmark
 
 **Python Source:**
+
 ```python
 def fibonacci(n: int) -> int:
     """Calculate Fibonacci number recursively."""
@@ -274,16 +298,18 @@ def main() -> int:
     return fibonacci(10)
 ```
 
-**MGen Compilation:**
+**MultiGen Compilation:**
+
 ```bash
-uv run mgen build fibonacci.py -t llvm
+uv run multigen build fibonacci.py -t llvm
 ```
 
 **WebAssembly Generation:**
+
 ```python
 from llvmlite import binding as llvm
 
-# Extract pure functions from MGen IR
+# Extract pure functions from MultiGen IR
 ir = extract_pure_functions("build/src/fibonacci.ll")
 
 # Compile to WebAssembly
@@ -297,6 +323,7 @@ Path("fibonacci.wasm").write_bytes(wasm_obj)
 ```
 
 **Results:**
+
 - [x] Python → LLVM IR: 5,363 bytes
 - [x] LLVM IR → WASM object: 616 bytes
 - [x] Module verifies successfully
@@ -320,9 +347,9 @@ Path("fibonacci.wasm").write_bytes(wasm_obj)
 
 ### Performance Characteristics
 
-WebAssembly features that benefit MGen:
+WebAssembly features that benefit MultiGen:
 
-1. **i64 support** - Native 64-bit integers (matches MGen's default int type)
+1. **i64 support** - Native 64-bit integers (matches MultiGen's default int type)
 2. **Stack machine** - Efficient for expression-heavy code
 3. **Fast function calls** - Good for recursive algorithms
 4. **SIMD** (future) - Potential for array operations
@@ -340,6 +367,7 @@ WebAssembly features that benefit MGen:
 ### Browser Support
 
 All modern browsers support WebAssembly:
+
 - Chrome/Edge (V8): Excellent
 - Firefox (SpiderMonkey): Excellent
 - Safari (JavaScriptCore): Excellent
@@ -359,7 +387,7 @@ All modern browsers support WebAssembly:
 - **wabt:** WebAssembly Binary Toolkit (wasm-objdump, wasm-dis, wasm-validate)
 - **Emscripten:** LLVM→WASM compiler with full libc
 - **wasi-sdk:** Standalone WASM compilation
-- **wasm-pack:** Rust→WASM packaging (inspiration for MGen)
+- **wasm-pack:** Rust→WASM packaging (inspiration for MultiGen)
 - **AssemblyScript:** TypeScript→WASM (competing approach)
 
 ## Recommended Next Steps
@@ -435,11 +463,11 @@ All modern browsers support WebAssembly:
 
 ## Conclusion
 
-**WebAssembly is a viable and valuable target for MGen.**
+**WebAssembly is a viable and valuable target for MultiGen.**
 
 The investigation confirms that:
 
-1. **Technical feasibility**: MGen's LLVM backend can target WebAssembly with minimal changes
+1. **Technical feasibility**: MultiGen's LLVM backend can target WebAssembly with minimal changes
 2. **Ecosystem support**: LLVM 21+ has mature WebAssembly support
 3. **Phased approach**: Can start with pure functions, add features incrementally
 4. **Strategic value**: Opens web deployment and universal platform support
@@ -447,7 +475,7 @@ The investigation confirms that:
 
 **Recommended Action:** Proceed with Phase 1 implementation (pure functions) in v0.1.85.
 
-This would make MGen the **first Python-to-WebAssembly compiler via LLVM IR** that supports multiple backends and maintains Python semantics.
+This would make MultiGen the **first Python-to-WebAssembly compiler via LLVM IR** that supports multiple backends and maintains Python semantics.
 
 ## Appendix A: Code Samples
 
@@ -456,9 +484,10 @@ This would make MGen the **first Python-to-WebAssembly compiler via LLVM IR** th
 See `/tmp/compile_to_wasm_v2.py` for complete implementation.
 
 Key steps:
+
 ```python
-# 1. Extract pure functions from MGen IR
-wasm_ir = extract_pure_functions(mgen_ir)
+# 1. Extract pure functions from MultiGen IR
+wasm_ir = extract_pure_functions(multigen_ir)
 
 # 2. Set WebAssembly target triple
 wasm_ir = f'target triple = "wasm32-unknown-unknown"\n{wasm_ir}'
@@ -528,6 +557,6 @@ emcc fibonacci.ll runtime.c -o fibonacci.html
 
 ---
 
-**Report prepared by:** MGen Development Team
+**Report prepared by:** MultiGen Development Team
 **Investigation period:** October 16, 2025
 **Next review:** After Phase 1 implementation

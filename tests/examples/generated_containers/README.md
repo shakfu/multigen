@@ -13,15 +13,15 @@ A working prototype demonstrating **inline container code generation** - an alte
 Instead of:
 
 ```c
-#include "mgen_str_int_map.h"  // External dependency
+#include "multigen_str_int_map.h"  // External dependency
 ```
 
 Generate:
 
 ```c
 // ========== Generated Container: str_int_map ==========
-typedef struct mgen_str_int_entry { ... } mgen_str_int_entry_t;
-typedef struct { ... } mgen_str_int_map_t;
+typedef struct multigen_str_int_entry { ... } multigen_str_int_entry_t;
+typedef struct { ... } multigen_str_int_map_t;
 
 static str_int_map_t* str_int_map_new(void) { ... }
 static bool str_int_map_insert(...) { ... }
@@ -30,10 +30,10 @@ static bool str_int_map_insert(...) { ... }
 
 ## What We Built
 
-### 1. Container Code Generator (`src/mgen/backends/c/container_codegen.py`)
+### 1. Container Code Generator (`src/multigen/backends/c/container_codegen.py`)
 
 ```python
-from mgen.backends.c.container_codegen import ContainerCodeGenerator
+from multigen.backends.c.container_codegen import ContainerCodeGenerator
 
 generator = ContainerCodeGenerator()
 code = generator.generate_str_int_map()
@@ -91,18 +91,18 @@ Word frequencies:
 
 // ========== Generated Container: str_int_map ==========
 // ~220 lines of hash table implementation
-typedef struct mgen_str_int_entry { ... } mgen_str_int_entry_t;
-typedef struct { ... } mgen_str_int_map_t;
+typedef struct multigen_str_int_entry { ... } multigen_str_int_entry_t;
+typedef struct { ... } multigen_str_int_map_t;
 
 static unsigned long str_int_hash(const char* str) { ... }
-static mgen_str_int_map_t* str_int_map_new(void) { ... }
+static multigen_str_int_map_t* str_int_map_new(void) { ... }
 static bool str_int_map_insert(...) { ... }
 static int* str_int_map_get(...) { ... }
 // ... complete API ...
 
 // ========== User Code ==========
 int main(void) {
-    mgen_str_int_map_t* word_counts = str_int_map_new();
+    multigen_str_int_map_t* word_counts = str_int_map_new();
     // ... use the container ...
     return 0;
 }
@@ -112,7 +112,7 @@ int main(void) {
 
 ✅ **Zero External Dependencies**
 
-- No `#include "mgen_*.h"`
+- No `#include "multigen_*.h"`
 - Single `.c` file
 - Fully portable
 
@@ -147,7 +147,7 @@ examples/generated_containers/
 
 ### How It Works
 
-1. **Load Template**: Read `mgen_str_int_map.{h,c}` from runtime directory
+1. **Load Template**: Read `multigen_str_int_map.{h,c}` from runtime directory
 2. **Process**:
    - Strip `#include` directives (handled separately)
    - Strip header guards and `extern "C"` wrappers
@@ -180,7 +180,7 @@ Generated file: 330 lines, 8.3KB
 
 | Aspect | Runtime Library | Generated Code |
 |--------|-----------------|----------------|
-| **Dependencies** | `#include "mgen_str_int_map.h"` | None |
+| **Dependencies** | `#include "multigen_str_int_map.h"` | None |
 | **Files needed** | `.c` + `.h` + runtime libs | Single `.c` file |
 | **Compilation** | Need `-I` flag for includes | `gcc file.c` |
 | **Linking** | Need runtime `.c` files | Nothing |
@@ -230,8 +230,8 @@ Generated file: 330 lines, 8.3KB
 ## Documentation References
 
 - **Design Document**: `/docs/design/GENERATED_CONTAINERS.md`
-- **Code Generator**: `/src/mgen/backends/c/container_codegen.py`
-- **Runtime Templates**: `/src/mgen/backends/c/runtime/mgen_str_int_map.{h,c}`
+- **Code Generator**: `/src/multigen/backends/c/container_codegen.py`
+- **Runtime Templates**: `/src/multigen/backends/c/runtime/multigen_str_int_map.{h,c}`
 
 ## Validation Checklist
 

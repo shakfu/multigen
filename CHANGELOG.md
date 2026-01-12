@@ -22,28 +22,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Fixed
 
 - **String array subscript access**
-  - `words[0]` now generates `mgen_string_array_get(words, 0)` for `mgen_string_array_t*` type
+  - `words[0]` now generates `multigen_string_array_get(words, 0)` for `multigen_string_array_t*` type
   - Enables proper access to string split results
   - test_string_split_simple.py now **BUILD+RUN PASS** [x]
-  - Files: `src/mgen/backends/c/converter.py:2186-2188`
+  - Files: `src/multigen/backends/c/converter.py:2186-2188`
 
 ### Technical Details
 
-**Problem**: Subscript on `mgen_string_array_t*` generated `words[0]` which is invalid C
+**Problem**: Subscript on `multigen_string_array_t*` generated `words[0]` which is invalid C
 
 **Before** (Incorrect):
+
 ```c
-mgen_string_array_t* words = mgen_str_split(text, ",");
+multigen_string_array_t* words = multigen_str_split(text, ",");
 assert((strcmp(words[0], "hello") == 0));  // ERROR: incompatible types
 ```
 
 **After** (Correct):
+
 ```c
-mgen_string_array_t* words = mgen_str_split(text, ",");
-assert((strcmp(mgen_string_array_get(words, 0), "hello") == 0));  // [x] Correct
+multigen_string_array_t* words = multigen_str_split(text, ",");
+assert((strcmp(multigen_string_array_get(words, 0), "hello") == 0));  // [x] Correct
 ```
 
-**Solution**: Added special case in `_convert_subscript()` to detect `mgen_string_array_t*` type and use `mgen_string_array_get()` accessor function.
+**Solution**: Added special case in `_convert_subscript()` to detect `multigen_string_array_t*` type and use `multigen_string_array_get()` accessor function.
 
 ---
 
@@ -60,18 +62,19 @@ Fixed Issue 2.3: Loop variables for container iteration now correctly infer elem
   - Loop variables for `set_int` now correctly typed as `int` (extracted from type name)
   - Generic type extraction: `vec_TYPE` → `TYPE`, `set_TYPE` → `TYPE`
   - test_container_iteration.py now **BUILD+RUN PASS** [x]
-  - Files: `src/mgen/backends/c/converter.py:2029-2037,2057,2068`
+  - Files: `src/multigen/backends/c/converter.py:2029-2037,2057,2068`
 
 - **STC cstr implementation**
   - Added `#define i_implement` before `#include "stc/cstr.h"` to enable implementation
   - Fixes linker errors for `vec_cstr` usage
-  - Files: `src/mgen/backends/c/converter.py:443-445`
+  - Files: `src/multigen/backends/c/converter.py:443-445`
 
 ### Technical Details
 
 **Problem**: Loop variables were hardcoded to `int` type instead of inferring from container element type
 
 **Before** (Incorrect):
+
 ```c
 for (size_t idx = 0; idx < vec_cstr_size(&names); idx++) {
     int name = *vec_cstr_at(&names, idx);  // ERROR: incompatible types
@@ -79,6 +82,7 @@ for (size_t idx = 0; idx < vec_cstr_size(&names); idx++) {
 ```
 
 **After** (Correct):
+
 ```c
 for (size_t idx = 0; idx < vec_cstr_size(&names); idx++) {
     cstr name = *vec_cstr_at(&names, idx);  // [x] Correct type
@@ -86,6 +90,7 @@ for (size_t idx = 0; idx < vec_cstr_size(&names); idx++) {
 ```
 
 **Solution**: Extract element type from container type name by removing prefix:
+
 - `vec_cstr` → `cstr` (remove "vec_" prefix)
 - `set_int` → `int` (remove "set_" prefix)
 
@@ -104,19 +109,19 @@ String literals are now correctly wrapped for STC `vec_cstr` containers. This co
   - String literals in list initialization now wrapped with `cstr_lit()`
   - Added automatic `#include "stc/cstr.h"` when `vec_cstr` type is detected
   - Generates correct code: `vec_cstr_push(&names, cstr_lit("Alice"))`
-  - Files: `src/mgen/backends/c/converter.py:440-446,900-902,1379,1539-1548`
+  - Files: `src/multigen/backends/c/converter.py:440-446,900-902,1379,1539-1548`
 
 ### Changed
 
 - **List method conversion**
   - `_convert_list_method()` now accepts AST args to detect string literal types
   - Detects `vec_cstr` container type and wraps string literals appropriately
-  - Files: `src/mgen/backends/c/converter.py:1519,1539-1548`
+  - Files: `src/multigen/backends/c/converter.py:1519,1539-1548`
 
 - **Container include directives**
   - Added special case for `vec_cstr` to include `stc/cstr.h` before container declaration
   - Ensures `cstr_lit()` macro is available for string literal wrapping
-  - Files: `src/mgen/backends/c/converter.py:440-446`
+  - Files: `src/multigen/backends/c/converter.py:440-446`
 
 ### Known Limitations
 
@@ -137,24 +142,24 @@ Dict comprehensions now correctly support `len()` operations. This is the first 
 ### Fixed
 
 - **Dict length support**
-  - `len()` on `mgen_str_int_map_t*` now generates `mgen_str_int_map_size(result)`
+  - `len()` on `multigen_str_int_map_t*` now generates `multigen_str_int_map_size(result)`
   - `len()` on STC map types now generates `map_TYPE_size(&map)`
-  - Fixed dict comprehension type inference to return `mgen_str_int_map_t*` for string-keyed maps
+  - Fixed dict comprehension type inference to return `multigen_str_int_map_t*` for string-keyed maps
   - test_dict_comprehension.py now builds and runs successfully (returns 5)
-  - Files: `src/mgen/backends/c/converter.py:1291-1295,1717-1722,859`
+  - Files: `src/multigen/backends/c/converter.py:1291-1295,1717-1722,859`
 
 ### Changed
 
 - **Dict comprehension type inference**
   - `_infer_expression_type()` for DictComp now returns correct fallback type
-  - String-keyed maps use `mgen_str_int_map_t*` instead of STC `map_str_int`
+  - String-keyed maps use `multigen_str_int_map_t*` instead of STC `map_str_int`
   - Ensures type consistency between dict creation and length operations
-  - Files: `src/mgen/backends/c/converter.py:1717-1722`
+  - Files: `src/multigen/backends/c/converter.py:1717-1722`
 
 - **Type assignment logic**
-  - Added `"mgen_"` prefix to type prefix check for custom types
-  - Ensures mgen custom types are preferred over generic defaults
-  - Files: `src/mgen/backends/c/converter.py:859`
+  - Added `"multigen_"` prefix to type prefix check for custom types
+  - Ensures multigen custom types are preferred over generic defaults
+  - Files: `src/multigen/backends/c/converter.py:859`
 
 ---
 
@@ -198,7 +203,7 @@ Phase 1 validation fixes complete. C backend translation tests now at 81% actual
 
 ### Notes
 
-**Key Discovery**: test_string_split_simple has a code generation issue (string array type mismatch between `mgen_string_array_t*` and `vec_cstr`), not a validation issue. Moved to Phase 2.
+**Key Discovery**: test_string_split_simple has a code generation issue (string array type mismatch between `multigen_string_array_t*` and `vec_cstr`), not a validation issue. Moved to Phase 2.
 
 **False Positives**: 6 tests (container_iteration_test, simple_infer_test, simple_test, test_list_comprehension, test_set_support, test_struct_field_access) return computed values as exit codes, not errors. When counted correctly, actual pass rate is 81%.
 
@@ -213,21 +218,21 @@ Fixed dict comprehension key type inference to correctly analyze type casting ex
 ### Fixed
 
 - **Dict Comprehension Type Inference**
-  - Dict comprehensions with `str()` key conversion now correctly infer as `mgen_str_int_map_t*` instead of `map_int_int`
+  - Dict comprehensions with `str()` key conversion now correctly infer as `multigen_str_int_map_t*` instead of `map_int_int`
   - Example: `{str(x): x*2 for x in range(5)}` now generates correct string-keyed map
   - Added type casting detection for `str()`, `int()`, `float()`, `bool()` in `_infer_expression_type()`
-  - Files: `src/mgen/backends/c/converter.py:1742-1749`
+  - Files: `src/multigen/backends/c/converter.py:1742-1749`
 
 - **Type Name Sanitization**
   - Fixed `_sanitize_type_name()` to check for `char*` → `str` mapping before character replacement
   - Prevents incorrect `charptr` generation
-  - Files: `src/mgen/backends/c/converter.py:1790-1794`
+  - Files: `src/multigen/backends/c/converter.py:1790-1794`
 
 - **Fallback Type Support in Comprehensions**
-  - Dict comprehensions now use fallback `mgen_str_int_map_t*` type for string-keyed maps
+  - Dict comprehensions now use fallback `multigen_str_int_map_t*` type for string-keyed maps
   - Matches manual dict construction behavior
-  - Generates correct `mgen_str_int_map_new()` and `mgen_str_int_map_insert()` API calls
-  - Files: `src/mgen/backends/c/converter.py:2790-2916`
+  - Generates correct `multigen_str_int_map_new()` and `multigen_str_int_map_insert()` API calls
+  - Files: `src/multigen/backends/c/converter.py:2790-2916`
 
 ### Tests
 
@@ -249,13 +254,13 @@ Implemented nested container type inference for function parameters and return t
   - Functions with `data: list` parameter and 2D subscript access (`data[i][j]`) now generate correct `vec_vec_int` parameter type
   - Leverages existing `_detect_nested_containers()` pattern detection
   - Example: `def sum_matrix(data: list)` with `data[i][j]` → `int sum_matrix(vec_vec_int data)`
-  - Files: `src/mgen/backends/c/converter.py:584-586`
+  - Files: `src/multigen/backends/c/converter.py:584-586`
 
 - **Nested Container Return Types**
   - Functions returning nested containers now generate correct `vec_vec_int` return type
   - AST traversal finds Return statements and checks returned variable against `nested_containers` set
   - Example: `def create_matrix() -> list` returning 2D array → `vec_vec_int create_matrix(void)`
-  - Files: `src/mgen/backends/c/converter.py:610-619`
+  - Files: `src/multigen/backends/c/converter.py:610-619`
 
 ### Notes
 
@@ -286,7 +291,7 @@ Implemented Tier 2 high-priority fixes from translation test failure analysis. A
   - `list[:2]` → slices from start to index 2
   - `list[::2]` → slices with step (every 2nd element)
   - Uses C99 compound literal for expression-level slice creation
-  - Files: `src/mgen/backends/c/converter.py:1970-2078`
+  - Files: `src/multigen/backends/c/converter.py:1970-2078`
 
 - **Set Method Support**
   - `set.add(x)` → `set_int_insert(&set, x)`
@@ -294,7 +299,7 @@ Implemented Tier 2 high-priority fixes from translation test failure analysis. A
   - `set.discard(x)` → `set_int_erase(&set, x)` (safe erase)
   - `set.clear()` → `set_int_clear(&set)`
   - Type-aware method resolution (checks variable_context and inferred_types)
-  - Files: `src/mgen/backends/c/converter.py:1514-1577,1331-1333`
+  - Files: `src/multigen/backends/c/converter.py:1514-1577,1331-1333`
 
 ### Fixed
 
@@ -337,16 +342,16 @@ Implemented Tier 1 high-priority fixes from translation test failure analysis. A
 - **Type Cast Conversion Support**
   - `float(x)` → `(double)x` - Python float() to C double cast
   - `int(x)` → `(int)x` - Python int() to C int cast
-  - `str(x)` → `mgen_int_to_string(x)` - String conversion with runtime support
-  - Pre-scan detection ensures `mgen_string_ops.h` included when needed
+  - `str(x)` → `multigen_int_to_string(x)` - String conversion with runtime support
+  - Pre-scan detection ensures `multigen_string_ops.h` included when needed
   - Preserves existing `bool()` behavior (uses runtime for truthiness semantics)
-  - Files: `src/mgen/backends/c/converter.py:1173-1231,202-215`
+  - Files: `src/multigen/backends/c/converter.py:1173-1231,202-215`
 
 - **String Membership Testing**
   - `substring in text` → `(strstr(text, substring) != NULL)`
   - `substring not in text` → `(!(strstr(text, substring) != NULL))`
   - Automatic `#include <string.h>` when string membership used
-  - Files: `src/mgen/backends/c/converter.py:1078-1103`
+  - Files: `src/multigen/backends/c/converter.py:1078-1103`
 
 ### Fixed
 
@@ -355,7 +360,7 @@ Implemented Tier 1 high-priority fixes from translation test failure analysis. A
   - [x] `test_string_membership.py` - **FULLY FIXED** (builds + runs)
   - [x] `test_struct_field_access.py` - Now builds and runs (was build failure)
   - [x] `test_string_methods_new.py` - Now builds (was build failure, runtime issue separate)
-  -  `test_string_methods.py` - Still has unrelated errors (string concatenation, type inference)
+  - `test_string_methods.py` - Still has unrelated errors (string concatenation, type inference)
 
 ### Test Results
 
@@ -390,7 +395,7 @@ Implemented Phase 3.2 from `C_BACKEND_PLAN.md` with import statement support for
   - Support for `from math import sqrt` → adds `#include <math.h>`
   - Module function calls: `math.sqrt(x)` → `sqrt(x)` (standard C library)
   - Type-only imports ignored: `from typing import ...`, `from dataclasses import ...`
-  - Files: `src/mgen/backends/c/converter.py:187-223,1227-1235,139-144`
+  - Files: `src/multigen/backends/c/converter.py:187-223,1227-1235,139-144`
 
 ### Test Results
 
@@ -424,7 +429,7 @@ Implemented Phase 3.1 from `C_BACKEND_PLAN.md` with full boolean operation suppo
   - Proper parenthesization for precedence
   - Example: `if x > 3 and y < 5:` → `if (((x > 3)) && ((y < 5)))`
   - Example: `if a or b:` → `if (((a)) || ((b)))`
-  - File: `src/mgen/backends/c/converter.py:1031-1056,909-910`
+  - File: `src/multigen/backends/c/converter.py:1031-1056,909-910`
 
 ### Test Results
 
@@ -455,7 +460,7 @@ Implemented Phase 2 from `C_BACKEND_PLAN.md` with proper NamedTuple instantiatio
   - Now uses C99 compound literal syntax: `(ClassName){args...}`
   - Example: `Coordinate(5, 10)` → `(Coordinate){5, 10}`
   - NamedTuple structs generated correctly without constructors (per Python semantics)
-  - File: `src/mgen/backends/c/converter.py:1043-1047`
+  - File: `src/multigen/backends/c/converter.py:1043-1047`
 
 ### Test Results
 
@@ -486,7 +491,7 @@ Major improvements to the C backend implementing Phase 1 fixes from `C_BACKEND_P
   - Handles optional assertion messages as comments
   - Example: `assert result == 1` → `assert(result == 1);`
   - Example: `assert x > 0, "Invalid"` → `assert(x > 0); // Invalid`
-  - File: `src/mgen/backends/c/converter.py:1725-1779`
+  - File: `src/multigen/backends/c/converter.py:1725-1779`
 
 - **Dataclass Support**
   - Full support for `@dataclass` decorator
@@ -494,12 +499,12 @@ Major improvements to the C backend implementing Phase 1 fixes from `C_BACKEND_P
   - Auto-generates constructor functions: `make_StructName(args...)`
   - Handles type annotations including generic types
   - Example: `@dataclass class Point: x: int; y: int` → `typedef struct {int x; int y;} Point;` + `Point make_Point(int x, int y)`
-  - Files: `src/mgen/backends/c/converter.py:2128-2235`
+  - Files: `src/multigen/backends/c/converter.py:2128-2235`
 
 - **NamedTuple Support**
   - Detection of `NamedTuple` base class
   - Generates struct definition without constructor (as per Python semantics)
-  - File: `src/mgen/backends/c/converter.py:2153-2174`
+  - File: `src/multigen/backends/c/converter.py:2153-2174`
 
 ### Fixed
 
@@ -509,20 +514,20 @@ Major improvements to the C backend implementing Phase 1 fixes from `C_BACKEND_P
   - Allows compilation to succeed with `-I` include directories
   - This was the root cause preventing most translation tests from building
   - Fixed for vec.h, hmap.h, and hset.h (3 includes total)
-  - File: `src/mgen/backends/c/converter.py:363,385,399`
+  - File: `src/multigen/backends/c/converter.py:363,385,399`
   - **Impact**: Enabled 5 additional tests to pass (20% → 26% pass rate)
 
 - **Error Handling**
   - Removed broken fallback that generated `/* TODO: Enhanced statement generation */`
   - Now raises clear `UnsupportedFeatureError` for truly unsupported features
   - Prevents cascading failures where one unsupported statement breaks entire function
-  - File: `src/mgen/backends/c/emitter.py:67-74`
+  - File: `src/multigen/backends/c/emitter.py:67-74`
 
 - **CLI Success Message**
   - Fixed misleading "Compilation successful! Executable: None" message
   - Now properly reports `Build failed: No executable produced` when build fails
   - Exits with code 1 on build failure
-  - File: `src/mgen/backends/c/cli/main.py:646-650`
+  - File: `src/multigen/backends/c/cli/main.py:646-650`
 
 ### Test Results
 
@@ -545,7 +550,8 @@ Major improvements to the C backend implementing Phase 1 fixes from `C_BACKEND_P
 
 ### Implementation
 
-Based on comprehensive analysis comparing mgen C backend with cgen reference implementation (see `C_BACKEND_PLAN.md`):
+Based on comprehensive analysis comparing multigen C backend with cgen reference implementation (see `C_BACKEND_PLAN.md`):
+
 - Assert implementation: ~40 lines (method + detection + includes)
 - Dataclass implementation: ~110 lines (detection + field extraction + constructor generation)
 - Error handling fix: ~8 lines
@@ -565,7 +571,7 @@ See `C_BACKEND_PLAN.md` for Phase 2 (NamedTuple enhancement) and Phase 3 (BoolOp
 
 **Haskell Backend Improvements - Production-Ready Functional Code Generation!**
 
-MGen's Haskell backend now generates cleaner, more idiomatic Haskell code with automatic type constraints, proper list operations, and support for functional programming patterns.
+MultiGen's Haskell backend now generates cleaner, more idiomatic Haskell code with automatic type constraints, proper list operations, and support for functional programming patterns.
 
 ### Added
 
@@ -581,13 +587,13 @@ MGen's Haskell backend now generates cleaner, more idiomatic Haskell code with a
   - Example: `def quicksort(arr: list) -> list:` → `quicksort :: (Ord a) => [a] -> [a]`
   - Visitor pattern analyzes function body for needed constraints
   - Only adds constraints for polymorphic types (skips concrete types like `[Int]`)
-  - File: `src/mgen/backends/haskell/function_converter.py` (lines 16-45, 219-230)
+  - File: `src/multigen/backends/haskell/function_converter.py` (lines 16-45, 219-230)
 
 - **Inline Type Annotations for Concrete Types**
   - Generates inline type annotations for annotated assignments
   - Example: `arr: list[int] = [1, 2, 3]` → `let arr :: [Int] = [1, 2, 3]`
   - Resolves Haskell's ambiguous type errors for numeric literals
-  - File: `src/mgen/backends/haskell/statement_visitor.py` (lines 98-116)
+  - File: `src/multigen/backends/haskell/statement_visitor.py` (lines 98-116)
 
 ### Fixed
 
@@ -596,7 +602,7 @@ MGen's Haskell backend now generates cleaner, more idiomatic Haskell code with a
   - Type-aware detection: checks if operands are lists
   - Handles nested BinOps and function calls returning lists
   - Example: `quicksort(less) + [pivot] + quicksort(greater)` → `quicksort less ++ [pivot] ++ quicksort greater`
-  - File: `src/mgen/backends/haskell/converter.py` (lines 519-556)
+  - File: `src/multigen/backends/haskell/converter.py` (lines 519-556)
 
 - **Early Return Pattern with Bindings**
   - Enhanced pattern detector handles bindings between early return and final return
@@ -615,7 +621,7 @@ MGen's Haskell backend now generates cleaner, more idiomatic Haskell code with a
         pivot = arr !! 0
         rest = drop 1 arr
     ```
-  - Files: `src/mgen/backends/haskell/function_converter.py` (lines 214-233), `statement_visitor.py` (lines 250-265)
+  - Files: `src/multigen/backends/haskell/function_converter.py` (lines 214-233), `statement_visitor.py` (lines 250-265)
 
 ### Changed
 
@@ -628,7 +634,7 @@ MGen's Haskell backend now generates cleaner, more idiomatic Haskell code with a
   - `_infer_type_from_node()` now handles:
     - BinOp with Add: recursively checks for list types
     - Function calls: recognizes functions returning lists (quicksort, filter, map, sorted)
-  - File: `src/mgen/backends/haskell/converter.py` (lines 1429-1462)
+  - File: `src/multigen/backends/haskell/converter.py` (lines 1429-1462)
 
 ### Documentation
 
@@ -648,11 +654,13 @@ MGen's Haskell backend now generates cleaner, more idiomatic Haskell code with a
 ### Technical Details
 
 **Implementation Files:**
-- `src/mgen/backends/haskell/converter.py` - List concatenation, type inference
-- `src/mgen/backends/haskell/function_converter.py` - Type constraints, early return
-- `src/mgen/backends/haskell/statement_visitor.py` - Inline annotations, pattern detection
+
+- `src/multigen/backends/haskell/converter.py` - List concatenation, type inference
+- `src/multigen/backends/haskell/function_converter.py` - Type constraints, early return
+- `src/multigen/backends/haskell/statement_visitor.py` - Inline annotations, pattern detection
 
 **Design Patterns Used:**
+
 - Visitor pattern for constraint detection
 - Strategy pattern for type-aware operator selection
 - Recursive type inference for complex expressions
@@ -661,31 +669,32 @@ MGen's Haskell backend now generates cleaner, more idiomatic Haskell code with a
 
 **Built-in Functions - `any()` and `all()` Support! [x]**
 
-MGen now supports the `any()` and `all()` built-in functions across all production backends. These boolean aggregate functions enable clean, expressive code for checking conditions across collections.
+MultiGen now supports the `any()` and `all()` built-in functions across all production backends. These boolean aggregate functions enable clean, expressive code for checking conditions across collections.
 
 ### Added
 
 - **Built-in Functions** - `any()` and `all()` support across 6 production backends
-  - **C++**: Template functions `mgen::any()` and `mgen::all()` with automatic `bool_value()` conversion
-    - Runtime: `src/mgen/backends/cpp/runtime/mgen_cpp_runtime.hpp` (lines 165-178)
+  - **C++**: Template functions `multigen::any()` and `multigen::all()` with automatic `bool_value()` conversion
+    - Runtime: `src/multigen/backends/cpp/runtime/multigen_cpp_runtime.hpp` (lines 165-178)
     - Works with any container type, converts elements to bool automatically
   - **Rust**: `Builtins::any()` and `Builtins::all()` using Rust iterator methods
-    - Runtime: `src/mgen/backends/rust/runtime/mgen_rust_runtime.rs` (lines 116-123)
+    - Runtime: `src/multigen/backends/rust/runtime/multigen_rust_runtime.rs` (lines 116-123)
     - Idiomatic Rust: `vec.iter().any(|&x| x)` and `vec.iter().all(|&x| x)`
-  - **Go**: `mgen.Any()` and `mgen.All()` functions for `[]bool` slices
-    - Runtime: `src/mgen/backends/go/runtime/mgen_go_runtime.go` (lines 142-160)
+  - **Go**: `multigen.Any()` and `multigen.All()` functions for `[]bool` slices
+    - Runtime: `src/multigen/backends/go/runtime/multigen_go_runtime.go` (lines 142-160)
     - Simple loop-based implementation
   - **Haskell**: Native `or` and `and` functions (direct mapping to Prelude)
     - Converter: Maps `any(list)` → `or list`, `all(list)` → `and list`
     - Zero runtime overhead - uses built-in functions
   - **OCaml**: `any'` and `all'` using `List.exists` and `List.for_all`
-    - Runtime: `src/mgen/backends/ocaml/runtime/mgen_runtime.ml` (lines 116-117, 216-217)
+    - Runtime: `src/multigen/backends/ocaml/runtime/multigen_runtime.ml` (lines 116-117, 216-217)
     - Functional implementation using standard library
   - **C**: Added to builtin function mapping
-    - Converter: `src/mgen/backends/c/converter.py` (line 1024)
+    - Converter: `src/multigen/backends/c/converter.py` (line 1024)
     - Runtime implementation pending
 
 - **Usage Examples**
+
   ```python
   # any() - returns True if ANY element is True
   result: bool = any([False, False, True])  # True
@@ -716,9 +725,9 @@ MGen now supports the `any()` and `all()` built-in functions across all producti
 
 ## [0.1.86] - 2025-10-16
 
-**F-String Support - Modern Python String Formatting! **
+**F-String Support - Modern Python String Formatting!**
 
-MGen now supports Python f-strings (formatted string literals), one of the most commonly requested features. F-strings work across 6 out of 7 production backends, providing idiomatic string formatting in each target language.
+MultiGen now supports Python f-strings (formatted string literals), one of the most commonly requested features. F-strings work across 6 out of 7 production backends, providing idiomatic string formatting in each target language.
 
 ### Added
 
@@ -735,7 +744,7 @@ MGen now supports Python f-strings (formatted string literals), one of the most 
   - **Go**: `fmt.Sprintf()` with `%v` placeholders
   - **Haskell**: String concatenation (`++`) with `show` and heuristics
   - **OCaml**: String concatenation (`^`) with `string_of_*` functions
-  - **C**: Runtime helper functions (`mgen_sprintf_string`, `mgen_int_to_string`)
+  - **C**: Runtime helper functions (`multigen_sprintf_string`, `multigen_int_to_string`)
 
 - **Validation & Testing**
   - F-strings marked as Tier 1, FULLY_SUPPORTED in `subset_validator.py`
@@ -750,7 +759,7 @@ MGen now supports Python f-strings (formatted string literals), one of the most 
 ### Fixed
 
 - **C Backend Compilation** - Fixed 4 failing tests where executables weren't being created
-  - Added missing `#include <stdbool.h>` in `mgen_string_ops.h` (line 15)
+  - Added missing `#include <stdbool.h>` in `multigen_string_ops.h` (line 15)
   - Fixed path resolution in `compile_direct()` by removing `cwd=output_dir` and using absolute paths
   - All C backend compilation tests now pass (100%)
 
@@ -767,9 +776,9 @@ MGen now supports Python f-strings (formatted string literals), one of the most 
 
 ## [0.1.85] - 2025-10-16
 
-**WebAssembly Target - Experimental Support! **
+**WebAssembly Target - Experimental Support!**
 
-MGen can now compile Python to WebAssembly via its LLVM backend, opening the door to web deployment, universal platform support, and sandboxed execution. This experimental feature demonstrates MGen as the **first Python-to-WebAssembly compiler via LLVM IR** that preserves Python semantics across multiple backends.
+MultiGen can now compile Python to WebAssembly via its LLVM backend, opening the door to web deployment, universal platform support, and sandboxed execution. This experimental feature demonstrates MultiGen as the **first Python-to-WebAssembly compiler via LLVM IR** that preserves Python semantics across multiple backends.
 
 ### Added
 
@@ -778,7 +787,7 @@ MGen can now compile Python to WebAssembly via its LLVM backend, opening the doo
   - Support for 4 WebAssembly targets: wasm32-unknown-unknown, wasm64, wasm32-wasi, wasm32-emscripten
   - `extract_pure_functions()` method to isolate user code from runtime dependencies
   - `compile_to_wasm()` for LLVM IR → WebAssembly object compilation
-  - `compile_mgen_ir()` for end-to-end MGen IR → WASM workflow
+  - `compile_multigen_ir()` for end-to-end MultiGen IR → WASM workflow
   - Both binary (.wasm) and text (.wat) output formats
   - Optimization level support (O0-O3)
   - Comprehensive error handling and validation
@@ -786,11 +795,11 @@ MGen can now compile Python to WebAssembly via its LLVM backend, opening the doo
 - **WebAssembly Tests** (`tests/test_wasm_compiler.py` - NEW, 295 lines)
   - 12 comprehensive tests (100% pass rate)
   - Compiler initialization and target selection
-  - Pure function extraction from MGen IR
+  - Pure function extraction from MultiGen IR
   - Binary and text format generation
   - Optimization level testing
   - Error handling validation
-  - Integration with MGen-generated LLVM IR
+  - Integration with MultiGen-generated LLVM IR
 
 - **Investigation Report** (`docs/WASM_INVESTIGATION_REPORT.md` - NEW, ~2,500 lines)
   - 40-page comprehensive technical analysis
@@ -810,24 +819,27 @@ MGen can now compile Python to WebAssembly via its LLVM backend, opening the doo
 ### Technical Details
 
 **WebAssembly Compilation Pipeline:**
-```
-Python (.py) → [MGen] → LLVM IR (.ll) → [WebAssemblyCompiler] → WASM (.wasm)
+
+```text
+Python (.py) → [MultiGen] → LLVM IR (.ll) → [WebAssemblyCompiler] → WASM (.wasm)
 ```
 
 **Supported Targets:**
+
 - `wasm32-unknown-unknown` - Standard WebAssembly 32-bit (default)
 - `wasm64-unknown-unknown` - WebAssembly 64-bit
 - `wasm32-wasi` - WASI (WebAssembly System Interface) for standalone execution
 - `wasm32-emscripten` - Emscripten toolchain for full browser integration
 
 **Example Usage:**
+
 ```python
-from mgen.backends.llvm.wasm_compiler import WebAssemblyCompiler
+from multigen.backends.llvm.wasm_compiler import WebAssemblyCompiler
 from pathlib import Path
 
-# Compile MGen IR to WebAssembly
+# Compile MultiGen IR to WebAssembly
 compiler = WebAssemblyCompiler(target_triple="wasm32-unknown-unknown")
-compiler.compile_mgen_ir(
+compiler.compile_multigen_ir(
     ir_path=Path("build/src/fibonacci.ll"),
     output_path=Path("fibonacci.wasm"),
     opt_level=2,
@@ -836,6 +848,7 @@ compiler.compile_mgen_ir(
 ```
 
 **Code Size Comparison:**
+
 | Source | Size | Format |
 |--------|------|--------|
 | Python | 181 bytes | `.py` source |
@@ -849,16 +862,19 @@ compiler.compile_mgen_ir(
 ### Future Roadmap
 
 **Phase 2: JavaScript Runtime Bridge** (v0.2.0 planned)
+
 - Container operations via JavaScript imports
 - print() support via console.log
-- Full MGen functionality in browser/Node.js
+- Full MultiGen functionality in browser/Node.js
 
 **Phase 3: WASI Support** (v0.3.0 planned)
+
 - Compile C runtime to WebAssembly
 - Standalone WASM binaries with system interface
 - Run with wasmtime, wasmer, or other WASI runtimes
 
 **Phase 4: Emscripten Integration** (v0.4.0 planned)
+
 - Full browser integration
 - HTML+JS+WASM package generation
 - Web application deployment
@@ -885,7 +901,7 @@ See `docs/WASM_INVESTIGATION_REPORT.md` for complete technical analysis, proof-o
 
 ## [0.1.84] - 2025-10-16
 
-**LLVM Backend: Full Optimization Pass Pipeline - 36.5% Performance Breakthrough! **
+**LLVM Backend: Full Optimization Pass Pipeline - 36.5% Performance Breakthrough!**
 
 The LLVM backend now includes a complete optimization pass infrastructure using llvmlite's new pass manager API, delivering up to **36.5% performance improvement** with O3 optimization while maintaining minimal compilation overhead. This positions LLVM as a top-tier backend for production deployments.
 
@@ -965,6 +981,7 @@ The LLVM backend now includes a complete optimization pass infrastructure using 
 | O3    | 424ms (+4%) | **54.3ms**   | 37.3KB      | 44%          | **+36.5% faster** |
 
 **Key Findings:**
+
 - **36.5% performance improvement** with O3 (54ms vs 86ms)
 - **Minimal compilation overhead**: Only 3-5% slower (15-20ms)
 - **Binary size unchanged**: All levels produce ~37KB binaries
@@ -974,6 +991,7 @@ The LLVM backend now includes a complete optimization pass infrastructure using 
 ### IR Transformations
 
 **O3 Optimizations Observed:**
+
 - Tail call optimization (recursive calls → `tail call`)
 - Loop transformations (restructured control flow)
 - Function inlining (helper functions inlined into main)
@@ -1003,13 +1021,15 @@ The LLVM backend now includes a complete optimization pass infrastructure using 
 ### Technical Details
 
 **Architecture:**
-```
+
+```text
 Python → Static IR → LLVM IR → Optimizer (60+ passes) → llc → Object → Executable
                                      ↓
                               Optimized IR (.opt.ll)
 ```
 
 **LLVM Pass Manager API:**
+
 - Uses llvmlite's new pass manager (LLVM 13+)
 - `create_pipeline_tuning_options()` for configuration
 - `create_pass_builder()` with target machine
@@ -1017,6 +1037,7 @@ Python → Static IR → LLVM IR → Optimizer (60+ passes) → llc → Object �
 - 60+ `add_*_pass()` methods available
 
 **Future Enhancements:**
+
 - Profile-Guided Optimization (PGO): 5-15% additional gains
 - Link-Time Optimization (LTO): Cross-module optimization
 - Custom passes: Python-specific optimizations
@@ -1025,11 +1046,13 @@ Python → Static IR → LLVM IR → Optimizer (60+ passes) → llc → Object �
 ### Impact
 
 **Before:**
+
 - LLVM ranked 2nd in execution speed (224.5ms avg)
 - No IR-level optimization passes
 - Limited optimization infrastructure
 
 **After:**
+
 - **Up to 36.5% faster** with O3 optimization
 - **Competitive with Go** on performance-critical code
 - **Production-ready optimization pipeline**
@@ -1039,18 +1062,18 @@ This release marks a **major milestone** for the LLVM backend, establishing it a
 
 ## [0.1.83] - 2025-10-15
 
-**LLVM Backend: Advanced String Methods & Better Error Messages! **
+**LLVM Backend: Advanced String Methods & Better Error Messages!**
 
 The LLVM backend now includes 5 additional string methods (join, replace, upper, startswith, endswith) with comprehensive tests, plus improved error messages across all runtime libraries for better debugging.
 
 ### Added
 
-- **String Methods** (`backends/llvm/runtime/mgen_llvm_string.c`)
-  - `mgen_str_join()` - joins string array with separator (~43 lines)
-  - `mgen_str_replace()` - replaces all occurrences of substring (~52 lines)
-  - `mgen_str_upper()` - converts string to uppercase (~11 lines)
-  - `mgen_str_startswith()` - checks if string starts with prefix (~9 lines)
-  - `mgen_str_endswith()` - checks if string ends with suffix (~9 lines)
+- **String Methods** (`backends/llvm/runtime/multigen_llvm_string.c`)
+  - `multigen_str_join()` - joins string array with separator (~43 lines)
+  - `multigen_str_replace()` - replaces all occurrences of substring (~52 lines)
+  - `multigen_str_upper()` - converts string to uppercase (~11 lines)
+  - `multigen_str_startswith()` - checks if string starts with prefix (~9 lines)
+  - `multigen_str_endswith()` - checks if string ends with suffix (~9 lines)
   - All methods handle edge cases (empty strings, NULL pointers, etc.)
 
 - **String Method Tests** (`tests/test_llvm_string_methods.py` - NEW, ~420 lines)
@@ -1067,7 +1090,7 @@ The LLVM backend now includes 5 additional string methods (join, replace, upper,
   - `__method_replace__` handler with 3 arguments
   - `__method_startswith__` handler with i32→i1 conversion
   - `__method_endswith__` handler with i32→i1 conversion
-  - `__method_join__` handler with vec_str* → mgen_string_array_t* bitcast
+  - `__method_join__` handler with vec_str* → multigen_string_array_t* bitcast
 
 - **Runtime Declarations** (`backends/llvm/runtime_decls.py`)
   - LLVM IR function declarations for all 5 new string methods
@@ -1107,7 +1130,7 @@ The LLVM backend now includes 5 additional string methods (join, replace, upper,
 
 ## [0.1.82] - 2025-10-15
 
-**LLVM Backend: Memory Safety Verification Complete! **
+**LLVM Backend: Memory Safety Verification Complete!**
 
 The LLVM backend now includes comprehensive memory leak detection using AddressSanitizer (ASAN), with all 7 benchmarks passing memory tests (0 leaks, 0 errors). This achievement confirms the backend is production-ready with memory safety guarantees.
 
@@ -1171,17 +1194,19 @@ The LLVM backend now includes comprehensive memory leak detection using AddressS
 | set_ops | Data Structure | [x] No leaks |
 
 **Runtime Library Verification** (~8,300 lines total):
+
 - vec_int_minimal.c - [x] Memory safe
 - vec_vec_int_minimal.c - [x] Memory safe
 - vec_str_minimal.c - [x] Memory safe
 - map_int_int_minimal.c - [x] Memory safe
 - map_str_int_minimal.c - [x] Memory safe
 - set_int_minimal.c - [x] Memory safe
-- mgen_llvm_string.c - [x] Memory safe
+- multigen_llvm_string.c - [x] Memory safe
 
 ### Performance
 
 **AddressSanitizer Overhead** (for testing only):
+
 - Runtime: ~2x slower (acceptable for testing)
 - Memory: ~2.5x usage (due to shadow memory)
 - Binary size: +50% (instrumentation code)
@@ -1198,6 +1223,7 @@ The LLVM backend now includes comprehensive memory leak detection using AddressS
 ### Documentation Updates
 
 All documentation now reflects LLVM backend production-ready status:
+
 - 6 production-ready backends (C, C++, Rust, Go, OCaml, LLVM)
 - 7/7 benchmarks passing for LLVM
 - Complete feature parity with other backends
@@ -1264,7 +1290,7 @@ The LLVM backend now supports two compilation modes: AOT (ahead-of-time) for pro
 
 ## [0.1.80] - 2025-10-10
 
-**LLVM Backend: 100% Benchmarks Complete! **
+**LLVM Backend: 100% Benchmarks Complete!**
 
 The LLVM backend has reached feature parity with other backends, passing all 7/7 benchmarks (100%). This release implements full set iteration support and fixes dict type annotation parsing.
 
@@ -1320,7 +1346,7 @@ The LLVM backend has reached feature parity with other backends, passing all 7/7
 
 - **Benchmark Script** (`scripts/benchmark.py`)
   - Fixed LLVM runtime linking - now includes all required C runtime files (lines 321-330)
-  - Added: `vec_str_minimal.c`, `map_int_int_minimal.c`, `map_str_int_minimal.c`, `set_int_minimal.c`, `mgen_llvm_string.c`
+  - Added: `vec_str_minimal.c`, `map_int_int_minimal.c`, `map_str_int_minimal.c`, `set_int_minimal.c`, `multigen_llvm_string.c`
   - Fixes linking errors for dict, set, and string operations
 
 ### Metrics
@@ -1356,7 +1382,7 @@ Major improvements to LLVM backend with set comprehension support and significan
   - `_visit_set_comprehension()` - Full set comprehension support (lines 1146-1306)
   - Range-based iteration: `{expr for var in range(n) if condition}`
   - Heap allocation with `malloc()` for dynamic sizing
-  - Bitcast for `split()` - Converts `mgen_string_array_t*` to `vec_str*` (lines 1646-1669)
+  - Bitcast for `split()` - Converts `multigen_string_array_t*` to `vec_str*` (lines 1646-1669)
   - `len()` support for sets (lines 1742-1746)
   - SET type handling in `_convert_type()` (lines 2113-2117)
   - NULL pointer initialization for uninitialized containers (lines 222-230)
@@ -1382,7 +1408,7 @@ Major improvements to LLVM backend with set comprehension support and significan
   - Solution: Changed to pointer-based initialization (`set_int_init_ptr()`)
   - Prevents undefined behavior on ARM64 calling convention
 
-- **String List Type Mismatch**: `split()` returned `mgen_string_array_t*` but code expected `vec_str*`
+- **String List Type Mismatch**: `split()` returned `multigen_string_array_t*` but code expected `vec_str*`
   - Solution: Added bitcast in IR generation to convert types safely
   - Both types have identical memory layout (char**, size_t, size_t)
 
@@ -1770,7 +1796,7 @@ Major advancement in LLVM backend with full list (dynamic array) support, includ
   - No struct copying - mutations visible across operations
 
 - **Runtime Linking**
-  - Created symlinks: `src/mgen/backends/llvm/runtime/` → `../c/runtime/`
+  - Created symlinks: `src/multigen/backends/llvm/runtime/` → `../c/runtime/`
   - Runtime compiled separately: `clang -c vec_int_minimal.c -o vec_int.o`
   - Linked at compile time: `clang code.ll vec_int.o -o executable`
 
@@ -1848,15 +1874,15 @@ LLVM:         %ptr = load %"struct.vec_int"*, %"struct.vec_int"** %data
 
 **New Files**:
 
-- `src/mgen/backends/llvm/runtime_decls.py` (118 lines)
-- `src/mgen/backends/llvm/runtime/vec_int_minimal.c` (130 lines)
-- `src/mgen/backends/llvm/runtime/` (symlinks to C runtime)
+- `src/multigen/backends/llvm/runtime_decls.py` (118 lines)
+- `src/multigen/backends/llvm/runtime/vec_int_minimal.c` (130 lines)
+- `src/multigen/backends/llvm/runtime/` (symlinks to C runtime)
 
 **Modified Files**:
 
-- `src/mgen/frontend/static_ir.py` - Added LIST/DICT/SET types, list literal/subscript/method handling
-- `src/mgen/backends/llvm/ir_to_llvm.py` - List operations, type conversion, runtime integration
-- `src/mgen/backends/llvm/backend.py` - Updated for container system
+- `src/multigen/frontend/static_ir.py` - Added LIST/DICT/SET types, list literal/subscript/method handling
+- `src/multigen/backends/llvm/ir_to_llvm.py` - List operations, type conversion, runtime integration
+- `src/multigen/backends/llvm/backend.py` - Updated for container system
 
 **Lines of Code**:
 
@@ -1903,7 +1929,7 @@ Major advancement of the LLVM backend with global variables, string support, I/O
   - Extensible architecture for future container type support
 
 - **Native Compilation Infrastructure**
-  - New `LLVMCompiler` class (`src/mgen/backends/llvm/compiler.py`)
+  - New `LLVMCompiler` class (`src/multigen/backends/llvm/compiler.py`)
   - `compile_ir_to_object()` - Generates native object files via llvmlite binding
   - `compile_ir_to_executable()` - Links object files to standalone binaries
   - `compile_and_run()` - One-shot compilation and execution
@@ -2141,7 +2167,7 @@ The LLVM backend now supports:
 
 **LLVM IR Backend: 7th Backend with Native Compilation Support**
 
-Implemented complete LLVM IR backend for MGen, adding industry-standard intermediate representation with native compilation support.
+Implemented complete LLVM IR backend for MultiGen, adding industry-standard intermediate representation with native compilation support.
 
 ### Added
 
@@ -2155,7 +2181,7 @@ Implemented complete LLVM IR backend for MGen, adding industry-standard intermed
   - `backends/llvm/__init__.py` - Module exports
 
 - **Backend Registration & Preferences**
-  - Registered in `BackendRegistry` - now discoverable via `mgen backends`
+  - Registered in `BackendRegistry` - now discoverable via `multigen backends`
   - `LLVMPreferences` class with 35 configuration options:
     - Target triple (native, x86_64, aarch64, wasm32)
     - Optimization levels (0-3)
@@ -2200,9 +2226,9 @@ Implemented complete LLVM IR backend for MGen, adding industry-standard intermed
 ### Changed
 
 - **makefilegen.py Integration** (from CGen)
-  - Generalized CGen-specific code for MGen use
+  - Generalized CGen-specific code for MultiGen use
   - Added `additional_sources` parameter for runtime libraries
-  - Updated STC import paths for mgen structure
+  - Updated STC import paths for multigen structure
   - Fixed type annotations (Union instead of TypeAlias for Python 3.9)
   - Integrated into C and C++ backends
   - All 884 tests passing after integration
@@ -2240,11 +2266,11 @@ Implemented complete LLVM IR backend for MGen, adding industry-standard intermed
 
 ```bash
 # List backends (LLVM now included)
-$ mgen backends
+$ multigen backends
   llvm     - generates .ll files
 
 # Convert Python to LLVM IR
-$ mgen convert -t llvm program.py
+$ multigen convert -t llvm program.py
 # Output: build/src/program.ll
 
 # Compile with Homebrew LLVM
@@ -2367,7 +2393,7 @@ config = PipelineConfig(
     enable_formal_verification=True,
     strict_verification=True  # NEW
 )
-pipeline = MGenPipeline(config=config)
+pipeline = MultiGenPipeline(config=config)
 result = pipeline.convert("unsafe_code.py")
 # result.success = False if verification finds issues
 # result.errors contains verification failures
@@ -2390,14 +2416,14 @@ Made Z3 an optional dependency installable via pip extras syntax, following stan
 
 - **Optional Dependencies in pyproject.toml**
   - Added `[project.optional-dependencies]` section
-  - `pip install mgen[z3]` - Install with Z3 formal verification support
-  - `pip install mgen[verification]` - Alias for backward compatibility
+  - `pip install multigen[z3]` - Install with Z3 formal verification support
+  - `pip install multigen[verification]` - Alias for backward compatibility
   - Z3 minimum version: 4.13.0
 
 ### Changed
 
 - **Updated Install Instructions**
-  - Pipeline warning now says: `pip install mgen[z3]` (was: `uv pip install --extra verification mgen`)
+  - Pipeline warning now says: `pip install multigen[z3]` (was: `uv pip install --extra verification multigen`)
   - Z3 proof-of-concept example updated with new install command
   - Cleaner, standard pip install syntax
 
@@ -2405,7 +2431,7 @@ Made Z3 an optional dependency installable via pip extras syntax, following stan
 
 - Z3 remains optional (not in core dependencies)
 - Verification disabled gracefully when Z3 not available
-- Both `mgen[z3]` and `mgen[verification]` extras work
+- Both `multigen[z3]` and `multigen[verification]` extras work
 
 ## [0.1.67] - 2025-10-06
 
@@ -2439,7 +2465,7 @@ Fully integrated Z3 theorem prover into the pipeline, enabling formal verificati
 
 ### Added
 
-- **Z3 Integration in Pipeline** (`src/mgen/pipeline.py`)
+- **Z3 Integration in Pipeline** (`src/multigen/pipeline.py`)
   - Added `enable_formal_verification` flag to `PipelineConfig` (default: `False`)
   - Imports verifiers (`BoundsProver`, `CorrectnessProver`, `TheoremProver`) when enabled
   - Checks Z3 availability and provides helpful install message if missing
@@ -2447,7 +2473,7 @@ Fully integrated Z3 theorem prover into the pipeline, enabling formal verificati
   - **Verification runs during validation phase** - analyzes each function and reports warnings
   - Verification results added to pipeline warnings (non-blocking)
 
-- **Z3 Formula Generator** (`src/mgen/frontend/verifiers/z3_formula_generator.py` - 266 lines)
+- **Z3 Formula Generator** (`src/multigen/frontend/verifiers/z3_formula_generator.py` - 266 lines)
   - Converts Python AST expressions to Z3 formulas
   - Generates array bounds safety formulas: `0 <= index < arr_len`
   - Generates loop bounds formulas with universal quantifiers
@@ -2494,7 +2520,7 @@ config = PipelineConfig(
     enable_formal_verification=True,
     enable_advanced_analysis=True
 )
-pipeline = MGenPipeline(config=config)
+pipeline = MultiGenPipeline(config=config)
 result = pipeline.convert("my_code.py")
 
 # Verification warnings will appear in result.warnings
@@ -2531,11 +2557,11 @@ Completed migration from monolithic `constraint_checker.py` to specialized modul
 
 ### Changed
 
-- **Frontend Exports** (`src/mgen/frontend/__init__.py`)
+- **Frontend Exports** (`src/multigen/frontend/__init__.py`)
   - Removed exports: `StaticConstraintChecker`, `ConstraintReport`, `ConstraintViolation`, `ConstraintSeverity`, `ConstraintCategory`
   - Users should use `PythonConstraintChecker` and `PythonConstraintViolation` instead
 
-- **Pipeline** (`src/mgen/pipeline.py`)
+- **Pipeline** (`src/multigen/pipeline.py`)
   - Removed `StaticConstraintChecker` import and instantiation
   - Added comment noting deprecation and replacement modules
 
@@ -2562,7 +2588,7 @@ Refactored monolithic constraint checker into two specialized, well-architected 
 
 ### Added
 
-- **MemorySafetyChecker** (`src/mgen/backends/c/memory_safety.py` - 198 lines)
+- **MemorySafetyChecker** (`src/multigen/backends/c/memory_safety.py` - 198 lines)
   - C/C++-specific memory safety validation (manual memory management)
   - **MS001**: Buffer overflow detection (variable indices, off-by-one errors)
   - **MS002**: Null pointer dereference detection (nullable function returns)
@@ -2570,7 +2596,7 @@ Refactored monolithic constraint checker into two specialized, well-architected 
   - **MS004**: Dangling pointer detection (returning local containers in C)
   - Integrated into pipeline validation phase for C/C++ targets only
 
-- **PythonConstraintChecker** (`src/mgen/frontend/python_constraints.py` - 398 lines)
+- **PythonConstraintChecker** (`src/multigen/frontend/python_constraints.py` - 398 lines)
   - Universal Python code quality validation (all backends)
   - **Type Safety**: TS001 (type consistency), TS002 (implicit conversions), TS003 (division by zero), TS004 (integer overflow)
   - **Static Analysis**: SA001 (unreachable code), SA002 (unused variables), SA005 (parameter mutability hints)
@@ -2580,19 +2606,19 @@ Refactored monolithic constraint checker into two specialized, well-architected 
 
 ### Changed
 
-- **Pipeline Integration** (`src/mgen/pipeline.py`)
+- **Pipeline Integration** (`src/multigen/pipeline.py`)
   - Validation phase now runs MemorySafetyChecker for C/C++ targets
   - Analysis phase now runs PythonConstraintChecker after immutability analysis
   - Both checkers report violations as errors/warnings in pipeline results
   - Critical violations (severity="error") cause pipeline to fail
 
-- **Frontend Exports** (`src/mgen/frontend/__init__.py`)
+- **Frontend Exports** (`src/multigen/frontend/__init__.py`)
   - Added `PythonConstraintChecker`, `PythonConstraintViolation`, `PythonConstraintCategory`
   - Kept existing exports for backwards compatibility
 
 ### Deprecated
 
-- **StaticConstraintChecker** (`src/mgen/frontend/constraint_checker.py`)
+- **StaticConstraintChecker** (`src/multigen/frontend/constraint_checker.py`)
   - Added deprecation warning at module level
   - Module now emits `DeprecationWarning` on import
   - Users directed to `PythonConstraintChecker` and `MemorySafetyChecker`
@@ -2618,7 +2644,7 @@ Significantly improved validation error messages to provide specific, actionable
 
 ### Changed
 
-- **Enhanced Validation Error Messages** (`src/mgen/frontend/subset_validator.py`)
+- **Enhanced Validation Error Messages** (`src/multigen/frontend/subset_validator.py`)
   - Function validation errors now include function name, line number, and specific issue
   - **Before**: "Validation failed for Function Definitions" (repeated 8 times)
   - **After**: Precise diagnostics with context:
@@ -2652,8 +2678,8 @@ Completely redesigned CLI workflow based on comprehensive usability analysis. Th
   - Changed `--target` to `-t`/`--to` for more natural language flow
   - Moved target specification from global to subcommand level
   - Target comes before files to allow multiple file processing
-  - New syntax: `mgen convert -t rust app.py` (was: `mgen --target rust convert app.py`)
-  - Supports multiple files: `mgen convert -t rust app1.py app2.py`
+  - New syntax: `multigen convert -t rust app.py` (was: `multigen --target rust convert app.py`)
+  - Supports multiple files: `multigen convert -t rust app1.py app2.py`
   - Both `-t` (short) and `--to` (long) forms supported
 
 - **Enhanced CLI Features**
@@ -2690,8 +2716,8 @@ Completely redesigned CLI workflow based on comprehensive usability analysis. Th
 ### Changed
 
 - **Breaking Change**: CLI syntax updated for better UX
-  - **Old**: `mgen --target rust convert app.py`
-  - **New**: `mgen convert -t rust app.py` or `mgen convert --to rust app.py`
+  - **Old**: `multigen --target rust convert app.py`
+  - **New**: `multigen convert -t rust app.py` or `multigen convert --to rust app.py`
   - Global `--target` flag removed in favor of per-command `-t`/`--to`
   - Target flag comes before files to enable multi-file processing
   - All commands (convert, build, batch) now accept `-t`/`--to` directly
@@ -2707,25 +2733,25 @@ Completely redesigned CLI workflow based on comprehensive usability analysis. Th
 **Before (v0.1.61 and earlier)**:
 
 ```bash
-mgen --target rust convert app.py
-mgen --target go build app.py
-mgen --target c batch -s src/
+multigen --target rust convert app.py
+multigen --target go build app.py
+multigen --target c batch -s src/
 ```
 
 **After (v0.1.62)**:
 
 ```bash
-mgen convert -t rust app.py                    # Single file
-mgen convert -t c app1.py app2.py              # Multiple files
-mgen build -t go app.py                        # Build single file
-mgen batch -t c -s src/                        # Batch directory
+multigen convert -t rust app.py                    # Single file
+multigen convert -t c app1.py app2.py              # Multiple files
+multigen build -t go app.py                        # Build single file
+multigen batch -t c -s src/                        # Batch directory
 ```
 
 **Backward Compatibility**: The old `--target` global flag has been removed. All users must update scripts to use the new `-t`/`--to` syntax.
 
 ### Technical Details
 
-- Modified `src/mgen/cli/main.py` to move target specification to subcommands
+- Modified `src/multigen/cli/main.py` to move target specification to subcommands
 - Added `cli/progress.py` module with ProgressIndicator and Spinner classes
 - Updated all command handlers to use `args.to` instead of `args.target`
 - Enhanced error messages with better context and suggestions
@@ -2733,9 +2759,9 @@ mgen batch -t c -s src/                        # Batch directory
 
 ### Benefits
 
-- **More intuitive**: Matches user expectations (`mgen convert -t TARGET FILE`)
+- **More intuitive**: Matches user expectations (`multigen convert -t TARGET FILE`)
 - **Consistent**: Aligns with cargo, go, npm command patterns
-- **Multi-file support**: `mgen convert -t rust app1.py app2.py app3.py`
+- **Multi-file support**: `multigen convert -t rust app1.py app2.py app3.py`
 - **Flexible**: Supports both `-t` (quick) and `--to` (explicit)
 - **Discoverable**: Target appears in subcommand help, not just global help
 - **Professional**: Progress bars and dry-run like modern build tools
@@ -2873,15 +2899,15 @@ Implemented comprehensive error message improvements with source location tracki
 
 ### Added
 
-- **Enhanced Error System** (`src/mgen/errors.py`)
+- **Enhanced Error System** (`src/multigen/errors.py`)
   - `SourceLocation` class for tracking file/line/column
   - `ErrorCode` enum for categorizing errors (E1xxx-E5xxx)
-  - `MGenError` base class with rich context
+  - `MultiGenError` base class with rich context
   - `UnsupportedFeatureError` and `TypeMappingError` with source context
   - `ErrorContext` dataclass for additional error information
   - Helper functions: `suggest_fix()`, `create_unsupported_feature_error()`
 
-- **Colored Error Formatter** (`src/mgen/error_formatter.py`)
+- **Colored Error Formatter** (`src/multigen/error_formatter.py`)
   - Beautiful colored error output similar to rustc/tsc
   - Source code snippets with line numbers and carets
   - Auto-detection of terminal color support
@@ -2938,7 +2964,7 @@ error[E1001]: Generator expressions are not supported
                ^^^^^^^^^^^^^^^^^^^^^^
    |
 help: Use a list comprehension instead: [x for x in range(10)]
-note: See https://github.com/yourusername/mgen/docs/supported-features.md
+note: See https://github.com/yourusername/multigen/docs/supported-features.md
 ```
 
 ### Metrics
@@ -3024,19 +3050,19 @@ Successfully implemented loop conversion using Strategy pattern for Haskell and 
 
 ### Added
 
-- **Loop Conversion Strategy System** (`src/mgen/backends/loop_conversion_strategies.py`) [x] COMPLETE
+- **Loop Conversion Strategy System** (`src/multigen/backends/loop_conversion_strategies.py`) [x] COMPLETE
   - `ForLoopStrategy` abstract base class
   - `LoopContext` for backend-specific helpers
   - `ForLoopConverter` strategy coordinator with fallback mechanism
 
-- **Haskell Loop Conversion Strategies** (`src/mgen/backends/haskell/loop_strategies.py`) [x] COMPLETE
+- **Haskell Loop Conversion Strategies** (`src/multigen/backends/haskell/loop_strategies.py`) [x] COMPLETE
   - `HaskellNestedListBuildingStrategy` - nested 2D list patterns
   - `HaskellListAppendStrategy` - simple list.append() to foldl/foldM
   - `HaskellAccumulationStrategy` - augmented assignment (+=, -=)
   - `HaskellAssignmentInMainStrategy` - assignment in IO context
   - `create_haskell_loop_converter()` factory function
 
-- **OCaml Loop Conversion Strategies** (`src/mgen/backends/ocaml/loop_strategies.py`) [x] COMPLETE
+- **OCaml Loop Conversion Strategies** (`src/multigen/backends/ocaml/loop_strategies.py`) [x] COMPLETE
   - `OCamlSimpleAssignmentStrategy` - simple assignment with no mutations
   - `OCamlAccumulationStrategy` - augmented assignment with mutation tracking
   - `OCamlGeneralLoopStrategy` - catch-all using List.iter
@@ -3082,7 +3108,7 @@ Successfully implemented unified type inference system using Strategy pattern ac
 
 ### Added
 
-- **Type Inference Strategy System** (`src/mgen/backends/type_inference_strategies.py`) [x] COMPLETE
+- **Type Inference Strategy System** (`src/multigen/backends/type_inference_strategies.py`) [x] COMPLETE
   - `TypeInferenceStrategy` abstract base class
   - `InferenceContext` for backend-specific type mapping
   - `TypeInferenceEngine` strategy coordinator
@@ -3095,7 +3121,7 @@ Successfully implemented unified type inference system using Strategy pattern ac
     - `CallInferenceStrategy` - function/method calls
     - `ComprehensionInferenceStrategy` - list/dict/set comprehensions
 
-- **C++ Type Inference Extensions** (`src/mgen/backends/cpp/type_inference.py`) [x] COMPLETE
+- **C++ Type Inference Extensions** (`src/multigen/backends/cpp/type_inference.py`) [x] COMPLETE
   - `CppListInferenceStrategy` - `std::vector<T>` formatting
   - `CppDictInferenceStrategy` - `std::unordered_map<K,V>` formatting
   - `CppSetInferenceStrategy` - `std::unordered_set<T>` formatting
@@ -3103,7 +3129,7 @@ Successfully implemented unified type inference system using Strategy pattern ac
   - `CppBinOpInferenceStrategy` - binary operation type promotion
   - `create_cpp_type_inference_engine()` factory function
 
-- **Rust Type Inference Extensions** (`src/mgen/backends/rust/type_inference.py`) [x] COMPLETE
+- **Rust Type Inference Extensions** (`src/multigen/backends/rust/type_inference.py`) [x] COMPLETE
   - `RustListInferenceStrategy` - `Vec<T>` formatting
   - `RustDictInferenceStrategy` - `std::collections::HashMap<K,V>` formatting
   - `RustSetInferenceStrategy` - `std::collections::HashSet<T>` formatting
@@ -3114,7 +3140,7 @@ Successfully implemented unified type inference system using Strategy pattern ac
   - `RustSubscriptInferenceStrategy` - element type extraction from containers
   - `create_rust_type_inference_engine()` factory function
 
-- **Go Type Inference Extensions** (`src/mgen/backends/go/type_inference.py`) [x] COMPLETE
+- **Go Type Inference Extensions** (`src/multigen/backends/go/type_inference.py`) [x] COMPLETE
   - `GoListInferenceStrategy` - `[]T` formatting
   - `GoDictInferenceStrategy` - `map[K]V` formatting
   - `GoSetInferenceStrategy` - `map[T]bool` formatting (Go's set idiom)
@@ -3182,7 +3208,7 @@ Phase 1 of complexity reduction roadmap complete! Successfully refactored two ma
 
 ### Added
 
-- **Container Operation Strategy Pattern** (`src/mgen/backends/c/ext/stc/operation_strategies.py`) [x] COMPLETE
+- **Container Operation Strategy Pattern** (`src/multigen/backends/c/ext/stc/operation_strategies.py`) [x] COMPLETE
   - `ContainerOperationStrategy` abstract base class
   - `ListOperationStrategy` for list/vector operations (11 methods)
   - `DictOperationStrategy` for dict/map operations (9 methods)
@@ -3190,7 +3216,7 @@ Phase 1 of complexity reduction roadmap complete! Successfully refactored two ma
   - `StringOperationStrategy` for string/cstr operations (9 methods)
   - `ContainerOperationTranslator` coordinator class
 
-- **Haskell Visitor Pattern Infrastructure** (`src/mgen/backends/haskell/`) [x] COMPLETE
+- **Haskell Visitor Pattern Infrastructure** (`src/multigen/backends/haskell/`) [x] COMPLETE
   - `HaskellStatementVisitor` abstract base class (`statement_visitor.py`)
   - `MainFunctionVisitor` for IO do-notation functions
   - `PureFunctionVisitor` for pure functional code
@@ -3404,7 +3430,7 @@ This release achieves perfect 7/7 (100%) benchmark success for the OCaml backend
 
 ### Benchmark Results
 
-- **OCaml**: 7/7 (100%) - **PRODUCTION READY**  (up from 1/7, 14%)
+- **OCaml**: 7/7 (100%) - **PRODUCTION READY** (up from 1/7, 14%)
   - [x] **fibonacci** (514229) ← already working
   - [x] **quicksort** (5) ← NEWLY FIXED (ref parameter exclusion)
   - [x] **matmul** (120) ← NEWLY FIXED (fold ref handling)
@@ -3438,7 +3464,7 @@ This release achieves perfect 7/7 (100%) benchmark success for the OCaml backend
 
 ## [0.1.51] - 2025-10-04
 
-** Haskell Backend: Advanced Functional Patterns & Array Mutation Detection**
+**Haskell Backend: Advanced Functional Patterns & Array Mutation Detection**
 
 This release improves the Haskell backend from 5/7 (71%) to 6/7 (85.7%) benchmark success through sophisticated nested loop pattern detection, 2D list type inference, generalized array mutation detection, and full slice notation support.
 
@@ -3517,7 +3543,7 @@ This release improves the Haskell backend from 5/7 (71%) to 6/7 (85.7%) benchmar
 
 ## [0.1.49]
 
-** Go Backend: 100% Benchmark Success Rate**
+**Go Backend: 100% Benchmark Success Rate**
 
 This release achieves perfect 7/7 (100%) benchmark success for the Go backend, up from 29% (2/7), through advanced multi-pass type inference, comprehensive runtime library additions, smart code generation enhancements, and unused variable detection.
 
@@ -3610,7 +3636,7 @@ This release achieves perfect 7/7 (100%) benchmark success for the Go backend, u
 
 - [x] 867 unit tests passing (100%)
 - [x] 102 source files pass strict mypy type checking (0 errors)
-- [x] 7/7 Go benchmarks passing (100% success rate) 
+- [x] 7/7 Go benchmarks passing (100% success rate)
   - fibonacci: [x] 514229
   - quicksort: [x] 5
   - matmul: [x] 120
@@ -3621,13 +3647,13 @@ This release achieves perfect 7/7 (100%) benchmark success for the Go backend, u
 
 ### Statistics
 
-- **Benchmark Success Rate**: 29% → 100% (2/7 → 7/7) 
+- **Benchmark Success Rate**: 29% → 100% (2/7 → 7/7)
 - **Go Backend Performance**:
   - Avg compilation time: 0.053s
   - Avg execution time: 0.047s
   - Avg binary size: 2.4MB
   - Avg lines of code: 38
-- **Files Modified**: 2 (converter.py, mgen_go_runtime.go)
+- **Files Modified**: 2 (converter.py, multigen_go_runtime.go)
 - **New Runtime Functions**: 6
 - **Type Inference Passes**: 5
 - **Pattern Detection Methods**: 6
@@ -3688,12 +3714,12 @@ return found_count
 
 **Architecture Improvements**:
 
-- **Converter (src/mgen/backends/go/converter.py)**: ~2800 lines
+- **Converter (src/multigen/backends/go/converter.py)**: ~2800 lines
   - 6 pattern detection methods
   - 5-pass type inference system
   - Unused variable detection and marking
   - Smart comprehension generation
-- **Runtime (src/mgen/backends/go/runtime/mgen_go_runtime.go)**: 413 lines
+- **Runtime (src/multigen/backends/go/runtime/multigen_go_runtime.go)**: 413 lines
   - Pure Go stdlib, zero external dependencies
   - Generic type parameters (Go 1.18+)
   - 6 new comprehension functions added
@@ -3729,14 +3755,14 @@ OCaml     | 1/7 (14%)  | 0.211      | 0.248      | 789.2      | [ ] In Progress
 
 ## [0.1.48] - 2025-10-04
 
-** Single-Header Container Libraries**
+**Single-Header Container Libraries**
 
-This release refactors all C backend container libraries from dual-file (.h + .c) format to industry-standard single-header libraries, following the stb-library pattern. This simplifies the template system, improves maintainability, and makes MGen's generated code more portable and debuggable.
+This release refactors all C backend container libraries from dual-file (.h + .c) format to industry-standard single-header libraries, following the stb-library pattern. This simplifies the template system, improves maintainability, and makes MultiGen's generated code more portable and debuggable.
 
 ### Changed
 
 - **Container Library Architecture** - Converted all 10 C backend containers to single-header format
-  - **Files Converted**: mgen_vec_int, mgen_vec_float, mgen_vec_double, mgen_vec_cstr, mgen_vec_vec_int, mgen_set_int, mgen_set_str, mgen_map_int_int, mgen_map_str_int, mgen_map_str_str
+  - **Files Converted**: multigen_vec_int, multigen_vec_float, multigen_vec_double, multigen_vec_cstr, multigen_vec_vec_int, multigen_set_int, multigen_set_str, multigen_map_int_int, multigen_map_str_int, multigen_map_str_str
   - **Pattern**: All functions marked `static` or `static inline` for internal linkage
   - **Style**: Adopted stb-library conventions with clear separation of declarations and implementations
   - **Benefits**:
@@ -3760,8 +3786,8 @@ This release refactors all C backend container libraries from dual-file (.h + .c
 
 ### Fixed
 
-- **Function Ordering** - mgen_str_int_map.h function declaration order
-  - Moved `mgen_str_int_map_new_with_capacity()` before `mgen_str_int_map_new()` to fix forward declaration issue
+- **Function Ordering** - multigen_str_int_map.h function declaration order
+  - Moved `multigen_str_int_map_new_with_capacity()` before `multigen_str_int_map_new()` to fix forward declaration issue
   - Prevents compilation errors in single-header format
 
 ### Verified
@@ -3803,7 +3829,7 @@ static container_t* container_new(void) {
 }
 ```
 
-**ContainerCodeGenerator Changes** (src/mgen/backends/c/container_codegen.py):
+**ContainerCodeGenerator Changes** (src/multigen/backends/c/container_codegen.py):
 
 - Before: Load `.h` + `.c`, merge, strip headers
 - After: Load single `.h`, strip headers once
@@ -3815,15 +3841,15 @@ static container_t* container_new(void) {
 # Find non-container runtime .c files (containers are header-only)
 runtime_c_files = [
     f for f in runtime_path.glob("*.c")
-    if not f.name.startswith("mgen_vec_") and
-       not f.name.startswith("mgen_set_") and
-       not f.name.startswith("mgen_map_")
+    if not f.name.startswith("multigen_vec_") and
+       not f.name.startswith("multigen_set_") and
+       not f.name.startswith("multigen_map_")
 ]
 ```
 
 ## [0.1.47] - 2025-10-04
 
-** Rust Backend Production Ready - 7/7 Benchmarks Passing**
+**Rust Backend Production Ready - 7/7 Benchmarks Passing**
 
 This release achieves 100% benchmark success rate for the Rust backend, marking it as the third backend to reach production-ready status. Through advanced dictionary type inference, ownership-aware code generation, and strategic cloning for read-only parameters, all 7 performance benchmarks now compile and execute correctly.
 
@@ -3902,9 +3928,9 @@ This release achieves 100% benchmark success rate for the Rust backend, marking 
 
 ## [0.1.46] - 2025-10-04
 
-** Real-World Example Applications**
+**Real-World Example Applications**
 
-This release adds a comprehensive collection of example applications demonstrating MGen's practical capabilities across multiple domains. All examples work with all 6 backends (C, C++, Rust, Go, Haskell, OCaml) and showcase real-world use cases.
+This release adds a comprehensive collection of example applications demonstrating MultiGen's practical capabilities across multiple domains. All examples work with all 6 backends (C, C++, Rust, Go, Haskell, OCaml) and showcase real-world use cases.
 
 ### Added
 
@@ -3955,7 +3981,7 @@ This release adds a comprehensive collection of example applications demonstrati
 
 ## [0.1.45] - 2025-10-04
 
-** Phase 3 Complete: Parameterized Container Generation System**
+**Phase 3 Complete: Parameterized Container Generation System**
 
 This release completes the parameterized template system, achieving full integration with ContainerCodeGenerator. The system now generates container code from 6 generic templates instead of 10+ hardcoded implementations, reducing code duplication by ~500 lines while supporting unlimited type combinations through type parameter extraction and template substitution.
 
@@ -4027,7 +4053,7 @@ This release completes the parameterized template system, achieving full integra
 ### Added
 
 - **set_str (String Hash Sets)** - Hash set for string storage with deduplication
-  - New template files: `mgen_set_str.h` (85 lines), `mgen_set_str.c` (269 lines)
+  - New template files: `multigen_set_str.h` (85 lines), `multigen_set_str.c` (269 lines)
   - Element type: `char*` (strings with ownership management)
   - STC-compatible API: `set_str_insert`, `set_str_contains`, `set_str_erase`, `set_str_size`, `set_str_drop`
   - **Implementation**: Open addressing with linear probing, FNV-1a hash function
@@ -4052,8 +4078,8 @@ This release completes the parameterized template system, achieving full integra
 ### Added
 
 - **vec_float and vec_double (Floating-Point Arrays)** - Dynamic arrays for float and double values
-  - New template files: `mgen_vec_float.h` (75 lines), `mgen_vec_float.c` (120 lines)
-  - New template files: `mgen_vec_double.h` (75 lines), `mgen_vec_double.c` (120 lines)
+  - New template files: `multigen_vec_float.h` (75 lines), `multigen_vec_float.c` (120 lines)
+  - New template files: `multigen_vec_double.h` (75 lines), `multigen_vec_double.c` (120 lines)
   - Element types: `float` and `double` (value-based, IEEE 754 floating-point)
   - STC-compatible API: `vec_float_push`, `vec_float_at`, `vec_float_size`, `vec_float_drop` (same for vec_double)
   - Supports `{0}` initialization with automatic capacity growth
@@ -4077,7 +4103,7 @@ This release completes the parameterized template system, achieving full integra
 ### Added
 
 - **vec_cstr (String Arrays)** - Dynamic array of C strings for string list operations
-  - New template files: `mgen_vec_cstr.h` (87 lines), `mgen_vec_cstr.c` (155 lines)
+  - New template files: `multigen_vec_cstr.h` (87 lines), `multigen_vec_cstr.c` (155 lines)
   - Element type: `char*` (C strings with ownership management)
   - STC-compatible API: `vec_cstr_push`, `vec_cstr_at`, `vec_cstr_size`, `vec_cstr_drop`
   - **String ownership**: Uses `strdup()` on push, `free()` on pop/clear/drop
@@ -4101,7 +4127,7 @@ This release completes the parameterized template system, achieving full integra
 ### Added
 
 - **vec_vec_int (2D Integer Arrays)** - Nested vector container for matrix operations
-  - New template files: `mgen_vec_vec_int.h` (80 lines), `mgen_vec_vec_int.c` (140 lines)
+  - New template files: `multigen_vec_vec_int.h` (80 lines), `multigen_vec_vec_int.c` (140 lines)
   - Element type: `vec_int` (vector of vectors, value-based nesting)
   - STC-compatible API: `vec_vec_int_push`, `vec_vec_int_at`, `vec_vec_int_size`, `vec_vec_int_drop`
   - Proper memory management: calls `vec_int_drop()` on each row during cleanup
@@ -4127,14 +4153,14 @@ This release completes the parameterized template system, achieving full integra
 
 - **Extended Container Code Generation System** - Expanded to support 4 fundamental container types
   - **vec_int (Integer Vectors)** - Dynamic array implementation
-    - New template files: `mgen_vec_int.h` (75 lines), `mgen_vec_int.c` (119 lines)
+    - New template files: `multigen_vec_int.h` (75 lines), `multigen_vec_int.c` (119 lines)
     - STC-compatible API: `vec_int_push`, `vec_int_at`, `vec_int_size`, `vec_int_drop`
     - Value-based type (not pointer) - supports `{0}` initialization
     - Automatic capacity growth (8 → 16 → 32 → ...)
     - Generates ~183 lines of inline code
     - Verified with list_ops benchmark (output: 166750)
   - **set_int (Integer Hash Sets)** - Hash table with separate chaining
-    - New template files: `mgen_set_int.h` (95 lines), `mgen_set_int.c` (218 lines)
+    - New template files: `multigen_set_int.h` (95 lines), `multigen_set_int.c` (218 lines)
     - Hash-based container with lazy bucket allocation for `{0}` initialization
     - **Iterator Protocol**: `set_int_iter`, `set_int_begin()`, `set_int_next()` for set comprehensions
     - STC-compatible API: `set_int_insert`, `set_int_contains`, `set_int_remove`
@@ -4142,7 +4168,7 @@ This release completes the parameterized template system, achieving full integra
     - Generates ~220+ lines of inline code (with iterator)
     - Verified with set_ops benchmark (output: 234)
   - **map_int_int (Integer→Integer Maps)** - Hash table for int→int mappings
-    - New template files: `mgen_map_int_int.h` (78 lines), `mgen_map_int_int.c` (180 lines)
+    - New template files: `multigen_map_int_int.h` (78 lines), `multigen_map_int_int.c` (180 lines)
     - Hash-based container with lazy bucket allocation for `{0}` initialization
     - STC-compatible API: `map_int_int_insert`, `map_int_int_get`, `map_int_int_contains`
     - Separate chaining for collision resolution
@@ -4195,7 +4221,7 @@ This release completes the parameterized template system, achieving full integra
 - **Container Code Generation System** - Revolutionary approach to C container implementation
   - **Architecture**: Generate clean, type-specific C code directly inline (no external dependencies)
   - **Philosophy**: Code generators should produce self-contained, complete code (similar to C++ template monomorphization)
-  - **New Module**: `src/mgen/backends/c/container_codegen.py` (~200 lines)
+  - **New Module**: `src/multigen/backends/c/container_codegen.py` (~200 lines)
     - `ContainerCodeGenerator` class - converts runtime libraries into code generation templates
     - Template loading from runtime library files
     - `_strip_includes_and_headers()` - removes includes for standalone code
@@ -4211,7 +4237,7 @@ This release completes the parameterized template system, achieving full integra
     - New preference: `container_mode = "runtime" | "generated"` in `CPreferences`
     - Default: `"runtime"` (backward compatible)
     - CLI usage: `--prefer container_mode=generated`
-  - **Converter Integration** (`src/mgen/backends/c/converter.py`):
+  - **Converter Integration** (`src/multigen/backends/c/converter.py`):
     - Updated `__init__()` to accept `BackendPreferences` parameter
     - Initialized `self.container_generator = ContainerCodeGenerator()`
     - Modified `_convert_module()` to check container mode and branch accordingly
@@ -4233,8 +4259,8 @@ This release completes the parameterized template system, achieving full integra
 
 ### Changed
 
-- **C Emitter** (`src/mgen/backends/c/emitter.py`):
-  - Pass preferences to converter: `MGenPythonToCConverter(preferences)`
+- **C Emitter** (`src/multigen/backends/c/emitter.py`):
+  - Pass preferences to converter: `MultiGenPythonToCConverter(preferences)`
   - Enables preference-driven code generation
 
 ## [0.1.37] - 2025-10-04
@@ -4243,17 +4269,17 @@ This release completes the parameterized template system, achieving full integra
 
 - **C Backend Vanilla Hash Table** - Replaced STC's `map_str_int` with clean vanilla C implementation
   - **New Runtime Files**:
-    - `src/mgen/backends/c/runtime/mgen_str_int_map.h` - Clean API header (87 lines)
-    - `src/mgen/backends/c/runtime/mgen_str_int_map.c` - Implementation with proper string ownership (191 lines)
+    - `src/multigen/backends/c/runtime/multigen_str_int_map.h` - Clean API header (87 lines)
+    - `src/multigen/backends/c/runtime/multigen_str_int_map.c` - Implementation with proper string ownership (191 lines)
   - **Hash Table Features**:
     - Separate chaining for collision resolution
     - djb2 hash function for string hashing
     - Proper string ownership with `strdup`/`free` (eliminates `cstr_raw` confusion)
     - Complete API: `new()`, `insert()`, `get()`, `contains()`, `remove()`, `size()`, `clear()`, `free()`
     - Default capacity of 16 buckets
-  - **Converter Integration** (`src/mgen/backends/c/converter.py`):
-    - Type declarations use `mgen_str_int_map_t*` instead of `map_str_int`
-    - Initialization: `mgen_str_int_map_new()` instead of `{0}`
+  - **Converter Integration** (`src/multigen/backends/c/converter.py`):
+    - Type declarations use `multigen_str_int_map_t*` instead of `map_str_int`
+    - Initialization: `multigen_str_int_map_new()` instead of `{0}`
     - API calls use direct pointer (no `&` prefix like STC)
     - Get operation returns `int*` to dereference instead of `->second` struct access
     - Skips STC macro generation for `map_str_int`
@@ -4280,7 +4306,7 @@ This release completes the parameterized template system, achieving full integra
   - Changed `str | None` to `Optional[str]` for Python 3.9 compatibility
   - Added explicit `isinstance(x, ast.Name)` type guards before accessing `.id` attribute
   - Lines affected: 1199, 1445, 1501-1502, 2040-2041
-  - File: `src/mgen/backends/c/converter.py`
+  - File: `src/multigen/backends/c/converter.py`
 
 ### Changed
 
@@ -4305,17 +4331,17 @@ This release completes the parameterized template system, achieving full integra
 
 ```c
 // Clean API without macro magic
-mgen_str_int_map_t* map = mgen_str_int_map_new();
-mgen_str_int_map_insert(map, "key", 42);
-int* value = mgen_str_int_map_get(map, "key");
+multigen_str_int_map_t* map = multigen_str_int_map_new();
+multigen_str_int_map_insert(map, "key", 42);
+int* value = multigen_str_int_map_get(map, "key");
 if (value) printf("%d\n", *value);
-mgen_str_int_map_free(map);
+multigen_str_int_map_free(map);
 ```
 
 **STC Replacement Comparison**:
 
 - **Before (STC)**: `map_str_int_get(&map, key)->second` with `cstr_raw` non-owning pointers
-- **After (Vanilla C)**: `*mgen_str_int_map_get(map, key)` with owned `strdup` strings
+- **After (Vanilla C)**: `*multigen_str_int_map_get(map, key)` with owned `strdup` strings
 - **Lines of Code**: ~300 lines of readable C vs opaque macro expansion
 - **Debugging**: Standard gdb/lldb works vs difficult macro expansion debugging
 
@@ -4327,16 +4353,16 @@ mgen_str_int_map_free(map);
   - **Nested Container Detection**: Analyze append operations and nested subscript patterns (`a[i][j]`) to infer types like `std::vector<std::vector<int>>`
     - `_analyze_append_operations()`: Detects when vectors are appended to containers
     - `_analyze_nested_subscripts()`: Detects 2D array access patterns
-    - File: `src/mgen/backends/cpp/converter.py:197-256,356-386`
+    - File: `src/multigen/backends/cpp/converter.py:197-256,356-386`
   - **String-Keyed Dictionary Inference**: Automatically detect string literals and variables as dictionary keys
     - `_analyze_dict_key_types()`: Analyzes `dict[key]` subscripting and `dict.count(key)` patterns
     - Correctly generates `std::unordered_map<std::string, int>` instead of `<int, int>`
-    - File: `src/mgen/backends/cpp/converter.py:319-385`
+    - File: `src/multigen/backends/cpp/converter.py:319-385`
   - **Pre-Pass Type Computation**: `_infer_all_variable_types()` runs before code generation
     - Four-pass analysis: initial types → append refinement → nested detection → string key detection
-    - File: `src/mgen/backends/cpp/converter.py:258-317`
+    - File: `src/multigen/backends/cpp/converter.py:258-317`
   - **Smart Variable Context**: Modified `_convert_annotated_assignment()` to use pre-computed types
-    - File: `src/mgen/backends/cpp/converter.py:815-836`
+    - File: `src/multigen/backends/cpp/converter.py:815-836`
 
 ### Fixed
 
@@ -4345,11 +4371,11 @@ mgen_str_int_map_free(map);
   - Prevents `auto var = value` shadowing outer `var` declarations
   - Generates correct reassignment `var = value` for existing variables
   - **Impact**: matmul benchmark now executes correctly (was segfaulting due to shadowed result variable)
-  - File: `src/mgen/backends/cpp/converter.py:869-892`
+  - File: `src/multigen/backends/cpp/converter.py:869-892`
 
 ### Changed
 
-- **C++ Backend Status**:  **FIRST BACKEND TO ACHIEVE 100% BENCHMARK SUCCESS** (7/7 passing)
+- **C++ Backend Status**: **FIRST BACKEND TO ACHIEVE 100% BENCHMARK SUCCESS** (7/7 passing)
   - [x] list_ops: 166750 operations, 0.246s execution
   - [x] dict_ops: 6065 operations, 0.254s execution
   - [x] set_ops: 234 operations, 0.243s execution
@@ -4368,26 +4394,26 @@ mgen_str_int_map_free(map);
 - **Cross-Backend Code Generation Quality** - Fixed 7 critical code generation bugs improving benchmark success rate from 9.5% to 14.3% (4/42 to 6/42)
   - **C++ Type Safety**: Fixed type-check error in dict literal conversion where `Optional[expr]` keys (from dictionary unpacking like `{**kwargs}`) were not handled
     - Added None check in `_convert_dict_literal()` to skip unpacking operations
-    - File: `src/mgen/backends/cpp/emitter.py:1114`
+    - File: `src/multigen/backends/cpp/emitter.py:1114`
   - **C++ Docstring Handling**: Fixed bare string expression statements causing compiler warnings
     - Convert docstrings to C++ comments (`// docstring`) instead of generating bare string expressions
-    - File: `src/mgen/backends/cpp/emitter.py:792`
+    - File: `src/multigen/backends/cpp/emitter.py:792`
   - **C++ Container Methods**: Fixed incorrect container method names
     - Map Python's `append()` to C++'s `push_back()` for vector operations
-    - File: `src/mgen/backends/cpp/emitter.py:982`
+    - File: `src/multigen/backends/cpp/emitter.py:982`
   - **Haskell Membership Testing**: Implemented `in` and `not in` operators
     - Use `Data.Map.member` for membership testing in maps
-    - File: `src/mgen/backends/haskell/emitter.py:601`
+    - File: `src/multigen/backends/haskell/emitter.py:601`
   - **OCaml Membership Testing**: Implemented `in` and `not in` operators
     - Use `List.mem_assoc` for membership testing in association lists
-    - File: `src/mgen/backends/ocaml/emitter.py:458`
+    - File: `src/multigen/backends/ocaml/emitter.py:458`
   - **Go Append Operations**: Fixed container append semantics
     - Convert Python's `list.append(x)` to Go's `list = append(list, x)` pattern using marker-based detection
-    - File: `src/mgen/backends/go/emitter.py:683,867`
+    - File: `src/multigen/backends/go/emitter.py:683,867`
   - **Go Variable Shadowing**: Fixed variable redeclaration with `:=` operator
     - Track declared variables in `self.declared_vars` to prevent shadowing
     - Use `=` instead of `:=` for already-declared variables
-    - File: `src/mgen/backends/go/emitter.py:595`
+    - File: `src/multigen/backends/go/emitter.py:595`
 
 ### Changed
 
@@ -4467,7 +4493,7 @@ mgen_str_int_map_free(map);
 
 - **Haskell Backend Compilation**: Fixed all compilation issues for production-ready Haskell code generation
   - **Main Function Generation**: Implemented proper `do` notation with `let` bindings for variable assignments
-  - **String Method Qualification**: Added `MGenRuntime.` prefix to string methods (upper, lower, strip, etc.) to avoid variable shadowing
+  - **String Method Qualification**: Added `MultiGenRuntime.` prefix to string methods (upper, lower, strip, etc.) to avoid variable shadowing
   - **Type Class Instances**: Added `{-# OVERLAPPING #-}` pragma to `ToString String` instance to resolve instance conflicts
   - **Literal Newlines**: Fixed string joining to use actual newlines instead of literal `\n` characters
 
@@ -4484,8 +4510,8 @@ mgen_str_int_map_free(map);
 
 - **Go Backend**: Fixed main function signature and module system
   - **Main Signature**: Changed from `func main() int` to `func main()` (Go requirement)
-  - **Module Names**: Standardized on `mgenproject` for consistency across generated projects
-  - **Import Paths**: Updated to use `mgenproject/mgen` for runtime package imports
+  - **Module Names**: Standardized on `multigenproject` for consistency across generated projects
+  - **Import Paths**: Updated to use `multigenproject/multigen` for runtime package imports
 
 - **Rust Backend**: Fixed main function signature
   - **Main Signature**: Changed from `fn main() -> i32` to `fn main()` (Rust requirement)
@@ -4499,8 +4525,8 @@ mgen_str_int_map_free(map);
 
 - **Test Suite Updates**: Updated tests to reflect new backend behaviors
   - C builder test: Updated expected C standard from `-std=c99` to `-std=c11`
-  - Go import path tests: Updated to expect `"mgenproject/mgen"` instead of `"mgen"`
-  - Haskell string methods test: Updated to expect qualified `MGenRuntime.` calls
+  - Go import path tests: Updated to expect `"multigenproject/multigen"` instead of `"multigen"`
+  - Haskell string methods test: Updated to expect qualified `MultiGenRuntime.` calls
   - Rust main signature test: Updated to expect `fn main()` without return type
   - Go module name test: Added special case for Go's fixed module name
 
@@ -4516,13 +4542,13 @@ mgen_str_int_map_free(map);
 
 **Files Modified**:
 
-- `src/mgen/backends/haskell/emitter.py`: Main function generation, qualified method calls
-- `src/mgen/backends/haskell/runtime/MGenRuntime.hs`: Added OVERLAPPING pragma
-- `src/mgen/backends/ocaml/emitter.py`: Type-aware print, docstring handling, type annotations
-- `src/mgen/backends/ocaml/builder.py`: Opam integration, compile_direct fixes
-- `src/mgen/backends/ocaml/runtime/mgen_runtime.ml`: Fixed to_string function
-- `src/mgen/backends/go/emitter.py`: Main function signature
-- `src/mgen/backends/rust/emitter.py`: Main function signature
+- `src/multigen/backends/haskell/emitter.py`: Main function generation, qualified method calls
+- `src/multigen/backends/haskell/runtime/MultiGenRuntime.hs`: Added OVERLAPPING pragma
+- `src/multigen/backends/ocaml/emitter.py`: Type-aware print, docstring handling, type annotations
+- `src/multigen/backends/ocaml/builder.py`: Opam integration, compile_direct fixes
+- `src/multigen/backends/ocaml/runtime/multigen_runtime.ml`: Fixed to_string function
+- `src/multigen/backends/go/emitter.py`: Main function signature
+- `src/multigen/backends/rust/emitter.py`: Main function signature
 - `tests/test_backend_c_integration.py`: C standard version test
 - `tests/test_backend_go_basics.py`: Import path test
 - `tests/test_backend_go_integration.py`: Import path test
@@ -4549,57 +4575,57 @@ mgen_str_int_map_free(map);
 
 **New Runtime Libraries**:
 
-- `mgen_file_ops.h` / `mgen_file_ops.c`: Complete file I/O implementation
+- `multigen_file_ops.h` / `multigen_file_ops.c`: Complete file I/O implementation
 
 **Core File Operations**:
 
-- `mgen_open()`, `mgen_close()`: Python `open()` and `close()` equivalents
-- `mgen_read()`, `mgen_readline()`, `mgen_readlines()`: File reading operations
-- `mgen_write()`, `mgen_writelines()`: File writing operations
-- Context manager support: `mgen_with_file()` for automatic cleanup
+- `multigen_open()`, `multigen_close()`: Python `open()` and `close()` equivalents
+- `multigen_read()`, `multigen_readline()`, `multigen_readlines()`: File reading operations
+- `multigen_write()`, `multigen_writelines()`: File writing operations
+- Context manager support: `multigen_with_file()` for automatic cleanup
 
 **Path Operations** (os.path equivalents):
 
-- `mgen_exists()`, `mgen_isfile()`, `mgen_isdir()`: Path validation
-- `mgen_getsize()`: File size queries
-- `mgen_basename()`, `mgen_dirname()`: Path manipulation
-- `mgen_path_join()`: Platform-aware path joining
+- `multigen_exists()`, `multigen_isfile()`, `multigen_isdir()`: Path validation
+- `multigen_getsize()`: File size queries
+- `multigen_basename()`, `multigen_dirname()`: Path manipulation
+- `multigen_path_join()`: Platform-aware path joining
 
 **Convenience Functions**:
 
-- `mgen_read_file()`: Read entire file in one call
-- `mgen_write_file()`, `mgen_append_file()`: Quick file operations
+- `multigen_read_file()`: Read entire file in one call
+- `multigen_write_file()`, `multigen_append_file()`: Quick file operations
 
 #### Advanced Container Operations (C Backend Runtime)
 
 **New Runtime Libraries**:
 
-- `mgen_container_ops.h` / `mgen_container_ops.c`: Container helper operations
+- `multigen_container_ops.h` / `multigen_container_ops.c`: Container helper operations
 
 **Python-Style Operations**:
 
-- `mgen_vec_enumerate()`: Python `enumerate()` for vectors with index
-- `mgen_hmap_items()`: Python `dict.items()` for hashmaps
-- `mgen_in_vec()`, `mgen_in_hmap()`: Python `in` operator support
-- `mgen_len()`, `mgen_bool_container()`: Python len() and bool() for containers
+- `multigen_vec_enumerate()`: Python `enumerate()` for vectors with index
+- `multigen_hmap_items()`: Python `dict.items()` for hashmaps
+- `multigen_in_vec()`, `multigen_in_hmap()`: Python `in` operator support
+- `multigen_len()`, `multigen_bool_container()`: Python len() and bool() for containers
 
 **Container Management**:
 
-- Container registry: `mgen_container_registry_new()`, `mgen_register_container()`, `mgen_cleanup_containers()`
+- Container registry: `multigen_container_registry_new()`, `multigen_register_container()`, `multigen_cleanup_containers()`
 - Automatic cleanup for registered containers
-- Safe bounds checking: `mgen_vec_bounds_check()`, `mgen_vec_at_safe()`
+- Safe bounds checking: `multigen_vec_bounds_check()`, `multigen_vec_at_safe()`
 
 **Container Utilities**:
 
-- `mgen_vec_equal()`, `mgen_hmap_equal()`: Deep equality comparison
-- `mgen_vec_repr()`, `mgen_hmap_repr()`: Python-style string representation
-- `mgen_string_array_to_vec_cstr()`, `mgen_vec_cstr_to_string_array()`: Container conversions
+- `multigen_vec_equal()`, `multigen_hmap_equal()`: Deep equality comparison
+- `multigen_vec_repr()`, `multigen_hmap_repr()`: Python-style string representation
+- `multigen_string_array_to_vec_cstr()`, `multigen_vec_cstr_to_string_array()`: Container conversions
 
 #### Module Import System
 
 **New Common Module**:
 
-- `mgen/common/module_system.py`: Complete module resolution and import handling
+- `multigen/common/module_system.py`: Complete module resolution and import handling
 
 **Module Resolution**:
 
@@ -4625,15 +4651,15 @@ mgen_str_int_map_free(map);
 
 **String Array Support**:
 
-- `mgen_string_array_t`: Dynamic string array structure
-- `mgen_string_array_new()`, `mgen_string_array_free()`: Array lifecycle
-- `mgen_string_array_add()`, `mgen_string_array_get()`, `mgen_string_array_size()`: Array operations
-- `mgen_join()`: Python `str.join()` equivalent for string arrays
+- `multigen_string_array_t`: Dynamic string array structure
+- `multigen_string_array_new()`, `multigen_string_array_free()`: Array lifecycle
+- `multigen_string_array_add()`, `multigen_string_array_get()`, `multigen_string_array_size()`: Array operations
+- `multigen_join()`: Python `str.join()` equivalent for string arrays
 
 **Integration**:
 
 - All string array functions integrated with file I/O operations
-- Used by `mgen_readlines()` and `mgen_writelines()`
+- Used by `multigen_readlines()` and `multigen_writelines()`
 - Container operations use string arrays for representation
 
 ### Technical Details
@@ -4642,35 +4668,35 @@ mgen_str_int_map_free(map);
 
 - All new runtime files automatically included via builder's `glob("*.c")` pattern
 - Platform-aware implementations (Windows/Unix path separators)
-- Consistent error handling using mgen_error_handling system
+- Consistent error handling using multigen_error_handling system
 - Zero external dependencies - pure C99 standard library
 
 **Files Added**:
 
-- `src/mgen/backends/c/runtime/mgen_file_ops.h` (148 lines)
-- `src/mgen/backends/c/runtime/mgen_file_ops.c` (384 lines)
-- `src/mgen/backends/c/runtime/mgen_container_ops.h` (215 lines)
-- `src/mgen/backends/c/runtime/mgen_container_ops.c` (387 lines)
-- `src/mgen/common/module_system.py` (316 lines)
+- `src/multigen/backends/c/runtime/multigen_file_ops.h` (148 lines)
+- `src/multigen/backends/c/runtime/multigen_file_ops.c` (384 lines)
+- `src/multigen/backends/c/runtime/multigen_container_ops.h` (215 lines)
+- `src/multigen/backends/c/runtime/multigen_container_ops.c` (387 lines)
+- `src/multigen/common/module_system.py` (316 lines)
 
 **Files Modified**:
 
-- `src/mgen/backends/c/runtime/mgen_string_ops.h`: Added string array type and operations
-- `src/mgen/backends/c/runtime/mgen_string_ops.c`: Implemented string array functions
-- `src/mgen/common/__init__.py`: Exported module_system
+- `src/multigen/backends/c/runtime/multigen_string_ops.h`: Added string array type and operations
+- `src/multigen/backends/c/runtime/multigen_string_ops.c`: Implemented string array functions
+- `src/multigen/common/__init__.py`: Exported module_system
 
 ### Impact
 
-- [x] **Feature Parity**: MGen C backend now includes all CGen features
+- [x] **Feature Parity**: MultiGen C backend now includes all CGen features
 - [x] **File I/O**: Can translate Python code with file operations
 - [x] **Multi-Module**: Support for multi-module Python projects with imports
 - [x] **Container Utilities**: More Pythonic container operations
 - [x] **Zero Regressions**: All 717 tests passing (0.36s execution time)
-- [x] **CGen Replacement**: MGen can now fully replace CGen for all use cases
+- [x] **CGen Replacement**: MultiGen can now fully replace CGen for all use cases
 
 ### Migration from CGen
 
-**MGen now supports everything CGen has, plus:**
+**MultiGen now supports everything CGen has, plus:**
 
 - Multi-backend architecture (C, C++, Rust, Go, Haskell, OCaml)
 - Fallback container system for environments without STC
@@ -4678,7 +4704,7 @@ mgen_str_int_map_free(map);
 - Modern Python 3.9+ type annotations
 - Faster test execution (<0.5s vs 1.0s)
 
-**CGen development can be discontinued** - all unique features have been integrated into MGen.
+**CGen development can be discontinued** - all unique features have been integrated into MultiGen.
 
 ## [0.1.30]
 
@@ -4693,7 +4719,7 @@ mgen_str_int_map_free(map);
 
 ### Technical Details
 
-- **Files Modified**: `src/mgen/backends/cpp/emitter.py`
+- **Files Modified**: `src/multigen/backends/cpp/emitter.py`
 - **Imports Added**: converter_utils functions and constants
 - **Dictionaries Eliminated**:
   - 3× binop_map dictionaries → get_standard_binary_operator()
@@ -4901,8 +4927,8 @@ mgen_str_int_map_free(map);
 ### Added
 
 - **C Backend Fallback Container System**: Complete fallback implementation for environments without STC
-  - **Runtime Library**: New `mgen_containers_fallback.h` and `mgen_containers_fallback.c` providing generic dynamic arrays
-  - **Dynamic Array Structure**: `mgen_dyn_array_t` with size/capacity tracking and automatic growth
+  - **Runtime Library**: New `multigen_containers_fallback.h` and `multigen_containers_fallback.c` providing generic dynamic arrays
+  - **Dynamic Array Structure**: `multigen_dyn_array_t` with size/capacity tracking and automatic growth
   - **Complete Operations**: All container operations implemented (append, insert, remove, get, set, size, clear, contains)
   - **Memory Safety**: Bounds checking, safe reallocation, and error handling for all operations
   - **STC Availability Detection**: Runtime detection of STC library availability with automatic fallback
@@ -4914,7 +4940,7 @@ mgen_str_int_map_free(map);
   - `check_stc_availability()`: Detects if STC library is present in runtime directory
   - `set_use_stc(bool)`: Manually enable/disable STC usage
   - `auto_detect_stc()`: Automatically detect and configure based on STC availability
-  - Fallback container operations generate `mgen_dyn_array` calls instead of TODO comments
+  - Fallback container operations generate `multigen_dyn_array` calls instead of TODO comments
 
 ### Fixed
 
@@ -4939,8 +4965,8 @@ mgen_str_int_map_free(map);
   - O(n) insert, remove, contains operations (linear search/shift)
 
 - **Runtime Library Integration**:
-  - Depends on existing `mgen_memory_ops.h` for safe allocation
-  - Uses `mgen_error_handling.h` for consistent error reporting
+  - Depends on existing `multigen_memory_ops.h` for safe allocation
+  - Uses `multigen_error_handling.h` for consistent error reporting
   - Zero external dependencies beyond standard C library
 
 ### Testing
@@ -5022,7 +5048,7 @@ mgen_str_int_map_free(map);
   - Abstract methods for language-specific formatting (literals, operators, control flow)
   - Concrete implementations of common AST node processing
   - Proper error handling with `UnsupportedFeatureError` and `TypeMappingError`
-  - Location: `/Users/sa/projects/mgen/src/mgen/backends/base_converter.py` (1,010 lines)
+  - Location: `/Users/sa/projects/multigen/src/multigen/backends/base_converter.py` (1,010 lines)
 
 - **Converter Utilities Module**: Practical utilities for immediate use across all backends
   - **AST Analysis Utilities**: `uses_comprehensions()`, `uses_classes()`, `uses_string_methods()`, `uses_builtin_functions()`
@@ -5032,7 +5058,7 @@ mgen_str_int_map_free(map);
   - **String Utilities**: `escape_string_for_c_family()`, `to_snake_case()`, `to_camel_case()`, `to_mixed_case()`
   - **Default Value Utilities**: Common default values and numeric defaults
   - **Augmented Assignment**: Operator mapping for `+=`, `-=`, etc.
-  - Location: `/Users/sa/projects/mgen/src/mgen/backends/converter_utils.py` (370 lines)
+  - Location: `/Users/sa/projects/multigen/src/multigen/backends/converter_utils.py` (370 lines)
 
 ### Architecture
 
@@ -5055,7 +5081,7 @@ These modules provide:
 ### Verified
 
 - **Haskell Runtime Library**: Comprehensive verification of Haskell backend runtime library
-  - **Runtime Library Exists**: Confirmed `/Users/sa/projects/mgen/src/mgen/backends/haskell/runtime/MGenRuntime.hs` (214 lines)
+  - **Runtime Library Exists**: Confirmed `/Users/sa/projects/multigen/src/multigen/backends/haskell/runtime/MultiGenRuntime.hs` (214 lines)
   - **Compilation Successful**: Runtime library compiles successfully with GHC without errors
   - **All Tests Pass**: 93/93 Haskell backend tests passing (100% pass rate)
   - **Feature Complete**: All Python operations supported
@@ -5069,7 +5095,7 @@ These modules provide:
   - **Code Quality**: Idiomatic functional programming patterns with proper type safety
 
 - **OCaml Runtime Library**: Comprehensive verification of OCaml backend runtime library
-  - **Runtime Library Exists**: Confirmed `/Users/sa/projects/mgen/src/mgen/backends/ocaml/runtime/mgen_runtime.ml` (216 lines)
+  - **Runtime Library Exists**: Confirmed `/Users/sa/projects/multigen/src/multigen/backends/ocaml/runtime/multigen_runtime.ml` (216 lines)
   - **All Tests Pass**: 25/25 OCaml backend tests passing (100% pass rate)
   - **Feature Complete**: All Python operations supported
     - String operations: `upper`, `lower`, `strip`, `find`, `replace`, `split`
@@ -5121,7 +5147,7 @@ These modules provide:
 ### Enhanced
 
 - **Go Runtime Library Verification**: Comprehensive verification of Go runtime library
-  - **Runtime Library Exists**: Confirmed `mgen/src/mgen/backends/go/runtime/mgen_go_runtime.go` is fully functional (413 lines)
+  - **Runtime Library Exists**: Confirmed `multigen/src/multigen/backends/go/runtime/multigen_go_runtime.go` is fully functional (413 lines)
   - **Complete Functionality**: All required components present and operational
     - `StringOps` struct with all Python string methods (`Upper()`, `Lower()`, `Strip()`, `StripChars()`, `Find()`, `Replace()`, `Split()`, `SplitSep()`)
     - `BuiltinOps` struct with Python built-in functions (`Len()`, `Abs()`, `Min()`, `Max()`, `Sum()`, `BoolValue()`)
@@ -5148,7 +5174,7 @@ These modules provide:
 ### Enhanced
 
 - **Rust Runtime Library Verification**: Comprehensive verification of Rust runtime library
-  - **Runtime Library Exists**: Confirmed `/Users/sa/projects/mgen/src/mgen/backends/rust/runtime/mgen_rust_runtime.rs` is fully functional (304 lines)
+  - **Runtime Library Exists**: Confirmed `/Users/sa/projects/multigen/src/multigen/backends/rust/runtime/multigen_rust_runtime.rs` is fully functional (304 lines)
   - **Complete Functionality**: All required components present and operational
     - `StrOps` struct with all Python string methods (`upper()`, `lower()`, `strip()`, `strip_chars()`, `find()`, `replace()`, `split()`, `split_sep()`)
     - `Builtins` struct with Python built-in functions (`len_string()`, `len_vec()`, `abs_i32()`, `abs_f64()`, `min_i32()`, `max_i32()`, `sum_i32()`, `sum_f64()`)
@@ -5172,9 +5198,9 @@ These modules provide:
 ### Enhanced
 
 - **C++ Runtime Library Verification**: Comprehensive verification and enhancement of C++ runtime library
-  - **Runtime Library Exists**: Confirmed `/Users/sa/projects/mgen/src/mgen/backends/cpp/runtime/mgen_cpp_runtime.hpp` is fully functional (9KB, 357 lines)
+  - **Runtime Library Exists**: Confirmed `/Users/sa/projects/multigen/src/multigen/backends/cpp/runtime/multigen_cpp_runtime.hpp` is fully functional (9KB, 357 lines)
   - **Complete Functionality**: All required components present and operational
-    - `namespace mgen` with built-in functions (`len()`, `abs()`, `min()`, `max()`, `sum()`, `bool_value()`)
+    - `namespace multigen` with built-in functions (`len()`, `abs()`, `min()`, `max()`, `sum()`, `bool_value()`)
     - `StringOps` class with all Python string methods (`upper()`, `lower()`, `strip()`, `find()`, `replace()`, `split()`)
     - `Range` class with iterator support for Python-like range() operations
     - Comprehension helpers: `list_comprehension()`, `dict_comprehension()`, `set_comprehension()`
@@ -5364,7 +5390,7 @@ These modules provide:
     - Type system options (`type_annotations`, `polymorphic_variants`)
     - Code style settings (`naming_convention`, `indent_size`)
   - **Complete Test Coverage**: 25 comprehensive tests covering all functionality (100% success rate)
-  - **Runtime Library**: Complete OCaml runtime (`mgen_runtime.ml`) using only standard library
+  - **Runtime Library**: Complete OCaml runtime (`multigen_runtime.ml`) using only standard library
 
 ### Enhanced
 
@@ -5376,7 +5402,7 @@ These modules provide:
 
 ### Added
 
-- **Universal Backend Preference System**: Complete preference system generalized to all MGen backends
+- **Universal Backend Preference System**: Complete preference system generalized to all MultiGen backends
   - **All-Backend Support**: Preferences now available for Haskell, C, C++, Rust, and Go backends
   - **Comprehensive Preference Classes**:
     - `HaskellPreferences`: 12 Haskell-specific preferences (comprehensions, type system, style)
@@ -5410,19 +5436,19 @@ These modules provide:
 
 ```bash
 # Haskell with native comprehensions
-mgen convert app.py --target haskell --prefer use_native_comprehensions=true
+multigen convert app.py --target haskell --prefer use_native_comprehensions=true
 
 # C with custom container settings
-mgen convert app.py --target c --prefer use_stc_containers=false --prefer indent_size=2
+multigen convert app.py --target c --prefer use_stc_containers=false --prefer indent_size=2
 
 # C++ with modern features
-mgen convert app.py --target cpp --prefer cpp_standard=c++20 --prefer use_modern_cpp=true
+multigen convert app.py --target cpp --prefer cpp_standard=c++20 --prefer use_modern_cpp=true
 
 # Rust with edition targeting
-mgen convert app.py --target rust --prefer rust_edition=2018 --prefer clone_strategy=explicit
+multigen convert app.py --target rust --prefer rust_edition=2018 --prefer clone_strategy=explicit
 
 # Go with version control
-mgen convert app.py --target go --prefer go_version=1.19 --prefer use_generics=false
+multigen convert app.py --target go --prefer go_version=1.19 --prefer use_generics=false
 ```
 
 ## [0.1.14]
@@ -5458,14 +5484,14 @@ mgen convert app.py --target go --prefer go_version=1.19 --prefer use_generics=f
 ### Added
 
 - **Complete Haskell Backend Implementation**: Advanced Haskell backend development with comprehensive functional programming support
-  - **Haskell Standard Library Runtime System**: Complete `MGenRuntime.hs` module using only Haskell standard library
+  - **Haskell Standard Library Runtime System**: Complete `MultiGenRuntime.hs` module using only Haskell standard library
     - String operations module (`StrOps`) with pure functional implementations (`upper`, `lower`, `strip`, `find`, `replace`, `split`)
     - Built-in functions module (`Builtins`) providing Python-like operations (`len'`, `abs'`, `min'`, `max'`, `sum'`, `bool'`)
     - Range generation system (`Range`, `range`, `range2`, `range3`) for Python-style iteration patterns
     - Comprehension operations (`listComprehension`, `dictComprehension`, `setComprehension`) using Haskell's functional programming paradigms
     - Type-safe container operations with `Data.Map` and `Data.Set` integration
     - ToString type class for seamless value-to-string conversion across all supported types
-  - **Advanced Python-to-Haskell Converter**: Sophisticated `MGenPythonToHaskellConverter` with comprehensive AST translation
+  - **Advanced Python-to-Haskell Converter**: Sophisticated `MultiGenPythonToHaskellConverter` with comprehensive AST translation
     - Object-oriented programming: Python classes to Haskell data types with record syntax and constructor functions
     - Functional programming patterns: Python functions to Haskell functions with proper type signatures
     - Pure functional approach: Immutable data structures and functional transformations
@@ -5507,7 +5533,7 @@ mgen convert app.py --target go --prefer go_version=1.19 --prefer use_generics=f
   - Type-safe Haskell code with proper type signatures and language extensions
   - Functional programming patterns with pure functions and immutable data structures
   - Integration with Haskell ecosystem tools (GHC, Cabal) for seamless development workflow
-- **Complete Test Suite Integration**: Successful integration with MGen's comprehensive testing framework
+- **Complete Test Suite Integration**: Successful integration with MultiGen's comprehensive testing framework
   - Fixed test expectations to align with Haskell's functional programming paradigm
   - Resolved type annotation conversion issues for proper () type handling
   - Updated integration tests to match simplified method implementations while maintaining coverage
@@ -5517,13 +5543,13 @@ mgen convert app.py --target go --prefer go_version=1.19 --prefer use_generics=f
 ### Added
 
 - **Complete Rust Backend Enhancement**: Advanced Rust backend development achieving full feature parity with C, C++, and Go backends
-  - **Rust Standard Library Runtime System**: Comprehensive `mgen_rust_runtime.rs` using only Rust standard library
+  - **Rust Standard Library Runtime System**: Comprehensive `multigen_rust_runtime.rs` using only Rust standard library
     - String operations using Rust's standard library (`StrOps::upper`, `lower`, `strip`, `find`, `replace`, `split`)
     - Built-in functions (`Builtins::len_string`, `abs_i32`, `min_i32`, `max_i32`, `sum_vec`) with Rust's `std` modules
     - Range generation (`new_range`, `new_range_with_start`, `new_range_with_step`) for Python-like iteration
     - Comprehension operations (`list_comprehension`, `dict_comprehension`, `set_comprehension`) using functional programming patterns
     - Type conversion utilities and print operations for seamless Python-to-Rust translation
-  - **Advanced Python-to-Rust Converter**: Sophisticated `MGenPythonToRustConverter` with comprehensive AST translation
+  - **Advanced Python-to-Rust Converter**: Sophisticated `MultiGenPythonToRustConverter` with comprehensive AST translation
     - Object-oriented programming: Python classes to Rust structs with impl blocks and methods
     - Smart type inference with explicit annotations for constants and type inference for expressions
     - Context-aware method conversion with proper `&mut self` receiver patterns
@@ -5603,9 +5629,9 @@ def process_accounts() -> list:
 ```rust
 use std::collections::{HashMap, HashSet};
 
-// Include MGen Rust runtime
-mod mgen_rust_runtime;
-use mgen_rust_runtime::*;
+// Include MultiGen Rust runtime
+mod multigen_rust_runtime;
+use multigen_rust_runtime::*;
 
 #[derive(Clone)]
 struct BankAccount {
@@ -5651,13 +5677,13 @@ fn process_accounts() -> Vec<String> {
 ### Added
 
 - **Complete Go Backend Enhancement**: Advanced Go backend development achieving full feature parity with C and C++ backends
-  - **Go Standard Library Runtime System**: Comprehensive `mgen_go_runtime.go` using only Go standard library
+  - **Go Standard Library Runtime System**: Comprehensive `multigen_go_runtime.go` using only Go standard library
     - String operations using Go's `strings` package (`StringOps.Upper`, `Lower`, `Strip`, `Find`, `Replace`, `Split`)
     - Built-in functions (`Builtins.Len`, `Abs`, `Min`, `Max`, `Sum`) with Go's `math`, `sort`, and `strconv` packages
     - Type conversion utilities (`ToBool`, `ToInt`, `ToFloat`, `ToStr`) with proper Go type handling
     - Range generation (`NewRange`) supporting start/stop/step parameters for Python-like iteration
     - Comprehension operations (`ListComprehension`, `DictComprehension`, `SetComprehension`) using functional programming patterns
-  - **Advanced Python-to-Go Converter**: Sophisticated `MGenPythonToGoConverter` with comprehensive AST translation
+  - **Advanced Python-to-Go Converter**: Sophisticated `MultiGenPythonToGoConverter` with comprehensive AST translation
     - Object-oriented programming: Python classes to Go structs with receiver methods
     - Smart variable scope tracking with proper assignment vs declaration handling (`:=` vs `=`)
     - Context-aware `self` to `obj` conversion in method bodies with proper CamelCase method names
@@ -5728,7 +5754,7 @@ def process_accounts() -> list:
 ```go
 package main
 
-import "mgen"
+import "multigen"
 
 type BankAccount struct {
     AccountNumber string
@@ -5747,16 +5773,16 @@ func (obj *BankAccount) Deposit(amount float64) {
 }
 
 func (obj *BankAccount) GetFormattedInfo() string {
-    balance_str := mgen.ToStr(obj.Balance)
-    return (mgen.StrOps.Upper(obj.AccountNumber) + (": " + balance_str))
+    balance_str := multigen.ToStr(obj.Balance)
+    return (multigen.StrOps.Upper(obj.AccountNumber) + (": " + balance_str))
 }
 
 func process_accounts() []interface{} {
-    return mgen.Comprehensions.ListComprehensionWithFilter(
-        mgen.NewRange(3),
+    return multigen.Comprehensions.ListComprehensionWithFilter(
+        multigen.NewRange(3),
         func(item interface{}) interface{} {
             i := item.(int)
-            return NewBankAccount(("ACC" + mgen.ToStr(i)), float64((i * 100))).GetFormattedInfo()
+            return NewBankAccount(("ACC" + multigen.ToStr(i)), float64((i * 100))).GetFormattedInfo()
         },
         func(item interface{}) bool {
             i := item.(int)
@@ -5805,12 +5831,12 @@ func process_accounts() []interface{} {
 ### Added
 
 - **Enhanced C++ Backend**: Complete C++ backend overhaul to match C backend feature parity using modern STL
-  - **STL-Based Runtime System**: Comprehensive `mgen_cpp_runtime.hpp` with STL containers and Python-like operations
+  - **STL-Based Runtime System**: Comprehensive `multigen_cpp_runtime.hpp` with STL containers and Python-like operations
     - String operations using C++ STL string methods (`StringOps::upper`, `lower`, `strip`, `find`, `replace`, `split`)
-    - Python built-in functions (`mgen::abs`, `len`, `min`, `max`, `sum`, `bool_value`)
+    - Python built-in functions (`multigen::abs`, `len`, `min`, `max`, `sum`, `bool_value`)
     - Range class for Python-like iteration (`Range(start, stop, step)`)
     - List/Dict/Set comprehension helpers with STL containers and lambda expressions
-  - **Advanced Python-to-C++ Converter**: Sophisticated `MGenPythonToCppConverter` with comprehensive language support
+  - **Advanced Python-to-C++ Converter**: Sophisticated `MultiGenPythonToCppConverter` with comprehensive language support
     - Object-oriented programming: classes, methods, constructors with proper `this->` handling
     - Advanced control flow: if/elif/else chains, while loops, for loops with range
     - Complex expressions with proper operator precedence and type inference
@@ -5880,10 +5906,10 @@ def process_accounts() -> list:
 #include <vector>
 #include <unordered_map>
 #include <memory>
-#include "runtime/mgen_cpp_runtime.hpp"
+#include "runtime/multigen_cpp_runtime.hpp"
 
 using namespace std;
-using namespace mgen;
+using namespace multigen;
 
 class BankAccount {
 public:
@@ -5931,16 +5957,16 @@ std::vector<std::string> process_accounts() {
   - Enhanced exception handling to properly propagate `TypeMappingError` and `UnsupportedFeatureError`
 - **Complete String Methods Support**: Python string operations with robust C runtime implementation
   - Core string methods: `str.upper()`, `str.lower()`, `str.strip()`, `str.find()`, `str.replace()`, `str.split()`
-  - Intelligent AST pre-scanning for automatic include detection (`#include "mgen_string_ops.h"`)
+  - Intelligent AST pre-scanning for automatic include detection (`#include "multigen_string_ops.h"`)
   - Enhanced type detection system supporting attribute access patterns (`self.text.strip()`, `obj.name.upper()`)
-  - MGen string operations runtime library with memory-safe implementations
+  - MultiGen string operations runtime library with memory-safe implementations
   - Advanced class integration: string methods work seamlessly on instance variables and object attributes
   - Support for string literals (`"hello".upper()`) and variables with proper type inference
 
 ### Technical Achievements
 
 - **Augmented Assignment Engine**: Complete AST.AugAssign handling with operator mapping and type validation
-- **String Operations Runtime**: Lightweight C library (`mgen_string_ops.h/.c`) with proper memory management
+- **String Operations Runtime**: Lightweight C library (`multigen_string_ops.h/.c`) with proper memory management
 - **Enhanced Type System**: Advanced `_is_string_type()` method supporting complex attribute access patterns
 - **Smart Include Generation**: Pre-scan detection with `_detect_string_methods()` for optimal header inclusion
 - **Class Attribute Tracking**: Enhanced struct information storage for string method detection on class attributes
@@ -5971,7 +5997,7 @@ def test_operations() -> str:
 **Generated C Output:**
 
 ```c
-#include "mgen_string_ops.h"
+#include "multigen_string_ops.h"
 
 typedef struct Calculator {
     int value;
@@ -5981,13 +6007,13 @@ typedef struct Calculator {
 void Calculator_process(Calculator* self, int amount) {
     self->value += (amount * 2);
     self->value /= 3;
-    return mgen_str_upper(self->name);
+    return multigen_str_upper(self->name);
 }
 
 char* test_operations(void) {
     Calculator calc = Calculator_new(10, "calc");
     char* result = Calculator_process(&calc, 5);
-    return mgen_str_strip(result);
+    return multigen_str_strip(result);
 }
 ```
 
@@ -6003,10 +6029,10 @@ char* test_operations(void) {
   - Conditional filtering with `if` clauses for selective element inclusion
   - Range-based iteration with start, stop, and step parameters
 - **Complete STC Library Integration**: Full Smart Template Container (STC) library support
-  - Integrated 864KB STC library from CGen into `src/mgen/backends/c/ext/stc/`
+  - Integrated 864KB STC library from CGen into `src/multigen/backends/c/ext/stc/`
   - Complete STC headers and Python integration modules for high-performance C containers
   - Automatic STC include path configuration in build system and compiler flags
-  - Updated MGen runtime bridge to use proper STC include paths
+  - Updated MultiGen runtime bridge to use proper STC include paths
 - **Enhanced STC Container Operations**: Smart Template Container operations for comprehensions
   - Automatic vector initialization and push operations for list comprehensions
   - HashMap insert operations for dictionary comprehensions with proper key-value handling
@@ -6088,8 +6114,8 @@ dict process_numbers(int n) {
 ### Changed
 
 - **Architecture Consolidation**: Complete merger of py2c converter functionality into emitter module
-  - Merged `src/mgen/backends/c/py2c_converter.py` into `src/mgen/backends/c/emitter.py` (1,160 total lines)
-  - Consolidated `MGenPythonToCConverter` class, exception classes, and all OOP functionality in single module
+  - Merged `src/multigen/backends/c/py2c_converter.py` into `src/multigen/backends/c/emitter.py` (1,160 total lines)
+  - Consolidated `MultiGenPythonToCConverter` class, exception classes, and all OOP functionality in single module
   - Simplified import structure by removing separate py2c_converter dependency
   - Updated all test files to import from unified emitter module
 - **Code Organization**: Enhanced C backend architecture with streamlined module structure
@@ -6200,11 +6226,11 @@ int create_rect(void) {
 ### Added
 
 - **Advanced Python-to-C Converter**: Sophisticated py2c conversion engine with complex Python support
-  - Complete `MGenPythonToCConverter` class with advanced AST-to-C translation
+  - Complete `MultiGenPythonToCConverter` class with advanced AST-to-C translation
   - Complex control flow support: if/elif/else chains, while loops, for loops with range()
   - Advanced expression handling: arithmetic precedence, comparison operations, unary operators
   - Intelligent type inference system with automatic type mapping and container support
-  - Built-in function integration with MGen runtime (abs, bool, len, min, max, sum)
+  - Built-in function integration with MultiGen runtime (abs, bool, len, min, max, sum)
 - **Enhanced Code Generation Features**: Production-ready C code generation capabilities
   - Sophisticated function conversion with parameter handling and return types
   - Local variable declarations with automatic type inference
@@ -6235,7 +6261,7 @@ int create_rect(void) {
 - **Complex Python Feature Support**: if/elif/else, while loops, for-range loops, recursion
 - **Advanced Type System**: Automatic inference, annotation support, container type mapping
 - **Expression Engine**: Full operator support with proper precedence and parenthesization
-- **Runtime Integration**: Seamless MGen runtime library integration with automatic inclusion
+- **Runtime Integration**: Seamless MultiGen runtime library integration with automatic inclusion
 - **Test Coverage**: Comprehensive validation of all py2c converter and enhanced backend features
 
 ## [0.1.3]
@@ -6243,8 +6269,8 @@ int create_rect(void) {
 ### Added
 
 - **Enhanced C Backend**: Direct integration of CGen's sophisticated C translation capabilities
-  - Integrated CGen runtime libraries (50KB+ of C code) directly into MGen C backend
-  - MGen runtime system with error handling, memory management, and Python operations
+  - Integrated CGen runtime libraries (50KB+ of C code) directly into MultiGen C backend
+  - MultiGen runtime system with error handling, memory management, and Python operations
   - Smart Template Containers (STC) support with Python-semantic container operations
   - Enhanced code generation with proper function body implementation
   - Runtime-aware build system with automatic source inclusion
@@ -6262,29 +6288,29 @@ int create_rect(void) {
   - Enhanced container system from basic pointers to STC-based high-performance containers
   - Improved build system to automatically include runtime libraries
   - Updated code generation to use integrated runtime instead of external dependencies
-- **Runtime Integration**: CGen runtime libraries fully integrated into MGen codebase
-  - All runtime code copied and adapted with `mgen_*` prefixes for independence
-  - No external CGen dependencies - fully self-contained MGen implementation
+- **Runtime Integration**: CGen runtime libraries fully integrated into MultiGen codebase
+  - All runtime code copied and adapted with `multigen_*` prefixes for independence
+  - No external CGen dependencies - fully self-contained MultiGen implementation
   - Enhanced Makefile generation with development targets (test, debug, release)
 
 ### Technical Details
 
 - **Runtime Components**: Error handling, Python operations, memory management, STC bridge
 - **Container Support**: vec_T, map_K_V, set_T with Python-like operations and bounds checking
-- **Code Quality**: All 67 tests passing, maintains full MGen API compatibility
+- **Code Quality**: All 67 tests passing, maintains full MultiGen API compatibility
 - **Build Integration**: Automatic runtime source detection and inclusion in compilation
 
 ## [0.1.2]
 
 ### Added
 
-- **C++ Backend**: Complete C++ backend implementation following MGen architecture
+- **C++ Backend**: Complete C++ backend implementation following MultiGen architecture
   - Full C++ code generation with modern C++17 features
   - STL container support (std::vector, std::map, std::set, etc.)
   - Comprehensive Makefile generation with development targets
   - CMake support as alternative build system
   - Direct compilation support with g++
-- **Enhanced 7-Phase Pipeline**: Integrated CGen's sophisticated pipeline into MGen
+- **Enhanced 7-Phase Pipeline**: Integrated CGen's sophisticated pipeline into MultiGen
   - Validation Phase: Static-python style validation and translatability assessment
   - Analysis Phase: AST parsing and semantic element breakdown
   - Python Optimization Phase: Compile-time evaluation, loop analysis, function specialization
@@ -6292,8 +6318,8 @@ int create_rect(void) {
   - Target Optimization Phase: Language-specific optimizations
   - Generation Phase: Target language code generation
   - Build Phase: Direct compilation or build file generation
-- **Multi-Language CLI**: Complete CLI conversion from CGen-specific to MGen architecture
-  - Dynamic backend discovery and listing (`mgen backends`)
+- **Multi-Language CLI**: Complete CLI conversion from CGen-specific to MultiGen architecture
+  - Dynamic backend discovery and listing (`multigen backends`)
   - Language-aware runtime library management
   - Multi-language batch processing support
   - Consistent command interface across all target languages
@@ -6319,7 +6345,7 @@ int create_rect(void) {
   - Fixed constraint checking conflicts with non-C backends
   - Resolved abstract method implementation issues in C++ backend
   - Enhanced test coverage to 67 passing tests across all backends
-- **Pipeline Integration**: Resolved compatibility issues between CGen and MGen pipelines
+- **Pipeline Integration**: Resolved compatibility issues between CGen and MultiGen pipelines
   - Fixed missing method implementations in abstract base classes
   - Corrected type annotation requirements for multi-language validation
 
@@ -6331,10 +6357,10 @@ int create_rect(void) {
 - **CLI Commands**:
 
   ```bash
-  mgen --target cpp convert file.py        # Generate C++ code
-  mgen --target rust build file.py -m      # Generate Rust + Cargo.toml
-  mgen backends                             # List available languages
-  mgen --target go batch --source-dir src/ # Batch convert to Go
+  multigen --target cpp convert file.py        # Generate C++ code
+  multigen --target rust build file.py -m      # Generate Rust + Cargo.toml
+  multigen backends                             # List available languages
+  multigen --target go batch --source-dir src/ # Batch convert to Go
   ```
 
 ## [0.0.1]

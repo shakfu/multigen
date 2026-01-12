@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-The Z3 integration transforms mgen from "code translator" to "**verified code translator**" with mathematical safety guarantees. The combination of Z3 formal verification + strict mode creates a production-ready safety net that prevents buffer overflows before they reach compilation or production.
+The Z3 integration transforms multigen from "code translator" to "**verified code translator**" with mathematical safety guarantees. The combination of Z3 formal verification + strict mode creates a production-ready safety net that prevents buffer overflows before they reach compilation or production.
 
 **Value proposition**: Mathematical certainty about memory safety vs. best-effort translation.
 
@@ -55,7 +55,7 @@ config = PipelineConfig(
 
 ### 3. Professional-Grade Tool
 
-Z3 integration elevates mgen from "code translator" to "**verified code translator**":
+Z3 integration elevates multigen from "code translator" to "**verified code translator**":
 
 | Without Z3 | With Z3 |
 |------------|---------|
@@ -64,7 +64,7 @@ Z3 integration elevates mgen from "code translator" to "**verified code translat
 | Hope tests catch bugs | Bugs caught before compilation |
 | Developer responsibility | Tool-enforced safety |
 
-This puts mgen in the same category as:
+This puts multigen in the same category as:
 
 - **Rust** (borrow checker = compile-time proof)
 - **SPARK Ada** (formal verification for safety-critical)
@@ -95,7 +95,7 @@ for i in range(n + 1):  # Bug!
 
 The implementation is **perfect**:
 
-- [x] Optional dependency: `pip install mgen[z3]`
+- [x] Optional dependency: `pip install multigen[z3]`
 - [x] Graceful degradation without Z3
 - [x] Zero overhead when disabled (default: verification off)
 - [x] Clear documentation & examples
@@ -200,7 +200,7 @@ def unsafe_array_access(arr: list[int], n: int) -> int:
     return total
 ```
 
-**Z3 verdict**:  UNSAFE (with counterexample)
+**Z3 verdict**: UNSAFE (with counterexample)
 **Counterexample**: When `n=5` and `len(arr)=5`, loop accesses `arr[5]` which is out of bounds
 **Strict mode**: Code generation **halted**, no C code produced
 
@@ -210,7 +210,7 @@ def unsafe_array_access(arr: list[int], n: int) -> int:
 # .github/workflows/build.yml
 - name: Generate C code with verification
   run: |
-    mgen --target c \
+    multigen --target c \
          --verify \
          --strict \
          src/critical_module.py
@@ -226,7 +226,7 @@ def unsafe_array_access(arr: list[int], n: int) -> int:
 ### Competitive Differentiation
 
 **Most Python-to-C translators**: Hope for the best, test thoroughly
-**MGen with Z3**: Mathematical guarantee of memory safety
+**MultiGen with Z3**: Mathematical guarantee of memory safety
 
 ### Use Cases Enabled
 
@@ -267,7 +267,7 @@ The Z3 integration is **infrastructure** for more verification:
 ### Default Experience (Z3 not installed)
 
 ```python
-pipeline = MGenPipeline(target_language="c")
+pipeline = MultiGenPipeline(target_language="c")
 result = pipeline.convert("my_code.py")
 # Works perfectly, no verification overhead
 ```
@@ -277,9 +277,9 @@ result = pipeline.convert("my_code.py")
 ### Opt-in Verification (Warning Mode)
 
 ```python
-pipeline = MGenPipeline(
+pipeline = MultiGenPipeline(
     target_language="c",
-    enable_formal_verification=True  # Requires: pip install mgen[z3]
+    enable_formal_verification=True  # Requires: pip install multigen[z3]
 )
 result = pipeline.convert("my_code.py")
 # Warnings if unsafe, but code still generated
@@ -290,7 +290,7 @@ result = pipeline.convert("my_code.py")
 ### Strict Verification (Safety-Critical)
 
 ```python
-pipeline = MGenPipeline(
+pipeline = MultiGenPipeline(
     target_language="c",
     enable_formal_verification=True,
     strict_verification=True  # Halt on verification failure
@@ -310,13 +310,13 @@ if not result.success:
 
 ### Documentation Provided
 
-1. **Installation**: Clear pip extras syntax (`pip install mgen[z3]`)
+1. **Installation**: Clear pip extras syntax (`pip install multigen[z3]`)
 2. **Examples**:
    - `examples/z3_array_bounds_poc.py` - Demonstrates Z3 capabilities
    - `examples/strict_verification_demo.py` - Shows all three modes
 3. **Tests**: 51 verification tests serve as examples
 4. **CHANGELOG**: Comprehensive documentation of features
-5. **Error messages**: Clear, actionable ("Install with: pip install mgen[z3]")
+5. **Error messages**: Clear, actionable ("Install with: pip install multigen[z3]")
 
 ### Expected Adoption
 
@@ -368,7 +368,7 @@ if not result.success:
 
 **Yes, absolutely.**
 
-The Z3 integration transforms mgen from "interesting translator" to "**production-grade verified translator**".
+The Z3 integration transforms multigen from "interesting translator" to "**production-grade verified translator**".
 
 The strict verification mode (v0.1.69) is particularly powerful - it's the difference between:
 
@@ -401,7 +401,7 @@ This is **invaluable**. The mathematical proof is worth far more than any amount
 
 ## Conclusion
 
-The Z3 integration was not just worth it - it was **essential** for mgen to be taken seriously as a production tool for systems programming.
+The Z3 integration was not just worth it - it was **essential** for multigen to be taken seriously as a production tool for systems programming.
 
 The combination of:
 
@@ -413,7 +413,7 @@ The combination of:
 
 ...creates a **best-in-class** formal verification experience for a code translation tool.
 
-**Recommendation**: Continue investing in verification features. This is mgen's competitive advantage.
+**Recommendation**: Continue investing in verification features. This is multigen's competitive advantage.
 
 ---
 
@@ -430,5 +430,5 @@ The combination of:
 ---
 
 *Document authored by: Claude (Sonnet 4.5)*
-*Project: MGen - Python-to-Many Code Translation*
+*Project: MultiGen - Python-to-Many Code Translation*
 *Status: Living document - will be updated as verification capabilities expand*

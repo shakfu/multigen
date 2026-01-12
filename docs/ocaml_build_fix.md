@@ -7,6 +7,7 @@
 ## Problem
 
 The OCaml backend had build system issues preventing compilation:
+
 - `compile_direct()` method was failing due to path issues
 - Runtime module not being found during compilation ("Unbound module")
 - Working directory issues in subprocess calls
@@ -14,11 +15,12 @@ The OCaml backend had build system issues preventing compilation:
 
 ## Solution
 
-Fixed `src/mgen/backends/ocaml/builder.py`:
+Fixed `src/multigen/backends/ocaml/builder.py`:
 
 ### Changes Made
 
 **1. Fixed Path Resolution**
+
 ```python
 # Before: Relative paths that broke
 base_path = Path(output_dir)
@@ -30,18 +32,20 @@ out_dir = Path(output_dir).absolute()
 ```
 
 **2. Fixed Runtime Module Location**
+
 ```python
 # Before: Runtime copied to output directory
-runtime_path = base_path / "mgen_runtime.ml"
+runtime_path = base_path / "multigen_runtime.ml"
 self._copy_runtime_files(base_path)
 
 # After: Copy to source directory where OCaml expects it
 source_dir = source_path.parent
-runtime_path = source_dir / "mgen_runtime.ml"
+runtime_path = source_dir / "multigen_runtime.ml"
 self._copy_runtime_files(source_dir)
 ```
 
 **3. Removed Working Directory Change**
+
 ```python
 # Before: Changed cwd, breaking relative paths
 result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(base_path))
@@ -51,6 +55,7 @@ result = subprocess.run(cmd, capture_output=True, text=True)
 ```
 
 **4. Added Module Resolution Path**
+
 ```python
 # CRITICAL FIX: Add -I flag for module resolution
 cmd = [
@@ -61,9 +66,11 @@ cmd = [
     str(source_path)
 ]
 ```
+
 **Why**: OCaml's module system requires the `-I` flag when using absolute paths to resolve `open Mgen_runtime` statements.
 
 **5. Added Error Reporting**
+
 ```python
 # Changed from logger to print for consistency
 if result.returncode != 0:
@@ -107,6 +114,7 @@ if result.returncode != 0:
 | test_struct_field_access | [X] BUILD_FAIL | - | Feature not implemented |
 
 **Summary**:
+
 - [x] **6 tests PASS** (22.2%)
 - [X] **21 tests FAIL** (77.8%)
   - 1 due to untyped container annotations
@@ -115,11 +123,13 @@ if result.returncode != 0:
 ## Impact
 
 ### Before Fix
+
 - [X] 0/27 tests passing (0%)
 - Build system completely broken
 - All tests failed with "Unbound module Mgen_runtime" errors
 
 ### After Fix
+
 - [x] 6/27 tests passing (22.2%)
 - Build system working correctly
 - Compilation errors now visible for debugging
@@ -129,11 +139,14 @@ if result.returncode != 0:
 ## OCaml-Specific Details
 
 ### Module System
+
 OCaml automatically capitalizes module names from filenames:
-- File: `mgen_runtime.ml` → Module: `Mgen_runtime`
+
+- File: `multigen_runtime.ml` → Module: `Mgen_runtime`
 - Import: `open Mgen_runtime`
 
 **Critical Issue**: When using absolute paths, OCaml cannot resolve modules without the `-I` include flag:
+
 ```bash
 # Fails with "Unbound module"
 ocamlc -o prog /abs/path/runtime.ml /abs/path/source.ml
@@ -143,14 +156,17 @@ ocamlc -I /abs/path -o prog /abs/path/runtime.ml /abs/path/source.ml
 ```
 
 ### Compilation Command
+
 OCaml is compiled via opam/ocamlc:
+
 ```bash
-opam exec -- ocamlc -I /source/dir -o executable mgen_runtime.ml source.ml
+opam exec -- ocamlc -I /source/dir -o executable multigen_runtime.ml source.ml
 ```
 
 The runtime module must be compiled first (listed before the source file in the command).
 
 ### Exit Codes
+
 OCaml programs exit with code 0 on success, or may return computed values depending on the generated code structure.
 
 ## Remaining Issues
@@ -191,7 +207,7 @@ The OCaml backend is now **functional** and outperforms Haskell by 2x!
 
 ## Files Modified
 
-- `src/mgen/backends/ocaml/builder.py` - Fixed compile_direct() method
+- `src/multigen/backends/ocaml/builder.py` - Fixed compile_direct() method
 
 **Total Changes**: ~25 lines in 1 file
 
@@ -199,14 +215,14 @@ The OCaml backend is now **functional** and outperforms Haskell by 2x!
 
 ```bash
 # Test single file
-uv run mgen build -t ocaml tests/translation/nested_2d_simple.py
+uv run multigen build -t ocaml tests/translation/nested_2d_simple.py
 ./build/nested_2d_simple  # Exit code: 0
 
 # Test all files
 for test in tests/translation/*.py; do
   testname=$(basename "$test" .py)
   echo -n "$testname: "
-  if uv run mgen build -t ocaml "$test" > /dev/null 2>&1; then
+  if uv run multigen build -t ocaml "$test" > /dev/null 2>&1; then
     if timeout 5 build/"$testname" > /dev/null 2>&1; then
       echo "PASS"
     else

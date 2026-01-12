@@ -3,10 +3,10 @@ Pipeline API
 
 The pipeline module provides the main entry point for code conversion.
 
-MGenPipeline
+MultiGenPipeline
 ------------
 
-.. autoclass:: mgen.pipeline.MGenPipeline
+.. autoclass:: multigen.pipeline.MultiGenPipeline
    :members:
    :undoc-members:
    :show-inheritance:
@@ -14,7 +14,7 @@ MGenPipeline
 PipelineConfig
 --------------
 
-.. autoclass:: mgen.pipeline.PipelineConfig
+.. autoclass:: multigen.pipeline.PipelineConfig
    :members:
    :undoc-members:
    :show-inheritance:
@@ -22,7 +22,7 @@ PipelineConfig
 PipelineResult
 --------------
 
-.. autoclass:: mgen.pipeline.PipelineResult
+.. autoclass:: multigen.pipeline.PipelineResult
    :members:
    :undoc-members:
    :show-inheritance:
@@ -32,10 +32,10 @@ Example Usage
 
 Basic conversion::
 
-   from mgen.pipeline import MGenPipeline, PipelineConfig
+   from multigen.pipeline import MultiGenPipeline, PipelineConfig
 
    config = PipelineConfig(target_language="c")
-   pipeline = MGenPipeline(config=config)
+   pipeline = MultiGenPipeline(config=config)
    result = pipeline.convert("example.py")
 
    if result.success:
@@ -52,7 +52,7 @@ With verification::
        enable_formal_verification=True,
        strict_verification=True,
    )
-   pipeline = MGenPipeline(config=config)
+   pipeline = MultiGenPipeline(config=config)
    result = pipeline.convert("example.py")
 
 Pipeline Phases

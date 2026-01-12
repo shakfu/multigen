@@ -9,6 +9,7 @@
 ## Executive Summary
 
 The C backend has reached **93% pass rate** (25/27 tests) through systematic fixes:
+
 - [x] Phase 1 (v0.1.100): Validation errors fixed - 81% pass rate (22/27)
 - [x] Phase 2 (v0.1.101-102): Code generation bugs fixed - 85% pass rate (23/27)
   - [x] Dict comprehension with `len()` (v0.1.101)
@@ -18,6 +19,7 @@ The C backend has reached **93% pass rate** (25/27 tests) through systematic fix
 - ⏳ Phase 3 (v0.1.105): Advanced nested containers - targeting 96%+ pass rate
 
 **Recent progress**:
+
 - [x] Type casting support (v0.1.93)
 - [x] String operations (v0.1.94-97)
 - [x] Nested 2D arrays (v0.1.98)
@@ -34,7 +36,7 @@ The C backend has reached **93% pass rate** (25/27 tests) through systematic fix
 
 ---
 
-##  Final Status: Production Ready (93%)
+## Final Status: Production Ready (93%)
 
 **Achievement**: Increased from 70% to **93% pass rate** in 5 releases (v0.1.100-104)
 
@@ -53,6 +55,7 @@ The C backend has reached **93% pass rate** (25/27 tests) through systematic fix
 ### Workarounds for Remaining Limitations
 
 **For `dict[str, list[int]]` (nested_dict_list.py)**:
+
 ```python
 # Instead of:
 groups: dict[str, list[int]] = {"evens": [0, 2, 4], "odds": [1, 3, 5]}
@@ -66,6 +69,7 @@ groups: dict[str, str] = {"evens": "0,2,4", "odds": "1,3,5"}
 ```
 
 **For bare `list` types (nested_containers_comprehensive.py)**:
+
 ```python
 # Instead of:
 matrix: list = [[1, 2], [3, 4]]  # Bare type
@@ -78,7 +82,7 @@ matrix: list[list[int]] = [[1, 2], [3, 4]]  # Clear and works!
 
 1. **Documentation** - Feature matrix, examples, migration guide
 2. **Other backends** - Haskell quicksort fix (→ 100%), performance benchmarks
-3. **Showcase projects** - Real-world MGen applications
+3. **Showcase projects** - Real-world MultiGen applications
 4. **Only if user specifically needs**: Implement nested dict-list support
 
 ---
@@ -88,6 +92,7 @@ matrix: list[list[int]] = [[1, 2], [3, 4]]  # Clear and works!
 ### [x] Passing Tests (25/27 - 93%)
 
 **Build + Run Passing (19 tests)**:
+
 1. nested_2d_simple.py
 2. string_methods_test.py
 3. test_2d_simple.py
@@ -118,9 +123,10 @@ matrix: list[list[int]] = [[1, 2], [3, 4]]  # Clear and works!
 
 **Actual pass rate**: **25/27 = 93%**
 
-###  Build Failures (2 tests)
+### Build Failures (2 tests)
 
 **Tier 3 - Missing Features (2 tests)**:
+
 - nested_dict_list.py - Dict with list values not supported
 - nested_containers_comprehensive.py - Complex nested type inference
 
@@ -135,21 +141,26 @@ matrix: list[list[int]] = [[1, 2], [3, 4]]  # Clear and works!
 **Impact**: +3 tests → 74% pass rate
 
 #### Issue 1.1: test_math_import.py
+
 **Problem**: Missing return type annotations on test functions
+
 ```python
 def test_math_functions():  # Missing -> None
     ...
 ```
+
 **Fix**: Add return type annotations to test file
 **Files**: `tests/translation/test_math_import.py`
 **Code changes**: User fixes (documentation issue)
 
 #### Issue 1.2: test_simple_string_ops.py
+
 **Problem**: Missing return type annotations
 **Fix**: Add `-> None` to test functions
 **Files**: `tests/translation/test_simple_string_ops.py`
 
 #### Issue 1.3: test_string_split_simple.py
+
 **Problem**: Missing return type annotation
 **Fix**: Add `-> None` to test function
 **Files**: `tests/translation/test_string_split_simple.py`
@@ -165,39 +176,43 @@ def test_math_functions():  # Missing -> None
 #### Issue 2.1: test_dict_comprehension.py - Dict Length Function
 
 **Problem**:
+
 ```python
 result: dict[str, int] = {str(x): x * 2 for x in range(3)}
 return len(result)  # Generates map_str_int_size() which doesn't exist
 ```
 
 Generated C code:
+
 ```c
-mgen_str_int_map_t* result = ...;
+multigen_str_int_map_t* result = ...;
 return map_str_int_size(result);  // ERROR: Wrong function
 ```
 
-**Root Cause**: `_convert_builtin_with_runtime()` doesn't handle `len()` on `mgen_str_int_map_t*`
+**Root Cause**: `_convert_builtin_with_runtime()` doesn't handle `len()` on `multigen_str_int_map_t*`
 
 **Fix**:
+
 1. Detect dict type in `len()` conversion
-2. Map `mgen_str_int_map_t*` → `mgen_str_int_map_size()`
+2. Map `multigen_str_int_map_t*` → `multigen_str_int_map_size()`
 3. Map STC `map_int_int` → `map_int_int_size()`
 
 **Implementation**:
+
 ```python
 # In _convert_builtin_with_runtime() at converter.py:~1260
 elif func_name == "len":
     # ... existing code ...
 
     # Add after vec and set handling:
-    elif container_type == "mgen_str_int_map_t*":
-        return f"mgen_str_int_map_size({container_name})"
+    elif container_type == "multigen_str_int_map_t*":
+        return f"multigen_str_int_map_size({container_name})"
     elif container_type and container_type.startswith("map_"):
         # STC map types
         return f"{container_type}_size(&{container_name})"
 ```
 
-**Files**: `src/mgen/backends/c/converter.py`
+**Files**: `src/multigen/backends/c/converter.py`
 **Complexity**: Easy
 **Estimated Time**: 30 minutes
 
@@ -206,11 +221,13 @@ elif func_name == "len":
 #### Issue 2.2: test_container_iteration.py - String Literal Wrapping
 
 **Problem**:
+
 ```python
 names: list = ["Alice", "Bob", "Charlie"]
 ```
 
 Generated C code:
+
 ```c
 vec_cstr names = {0};
 vec_cstr_push(&names, "Alice");  // ERROR: Need cstr_from()
@@ -219,10 +236,12 @@ vec_cstr_push(&names, "Alice");  // ERROR: Need cstr_from()
 **Root Cause**: String literals need `cstr_from()` wrapper when used with `vec_cstr` type
 
 **Fix**:
+
 1. Detect when pushing to `vec_cstr` container
 2. Wrap string literals with `cstr_from()`
 
 **Implementation**:
+
 ```python
 # In _convert_method_call() for list.append()
 if container_type == "vec_cstr" and isinstance(arg, ast.Constant) and isinstance(arg.value, str):
@@ -231,7 +250,7 @@ else:
     arg_str = self._convert_expression(arg)
 ```
 
-**Files**: `src/mgen/backends/c/converter.py`
+**Files**: `src/multigen/backends/c/converter.py`
 **Complexity**: Medium
 **Estimated Time**: 1-2 hours (need to handle all string literal contexts)
 
@@ -246,6 +265,7 @@ else:
 #### Issue 3.1: nested_dict_list.py - Dict with List Values
 
 **Problem**: No support for `dict[str, list[int]]` type
+
 ```python
 groups: dict = {}
 group1: list = [1, 2, 3]
@@ -256,28 +276,32 @@ groups["team1"] = group1  # Needs map_str_vec_int type
 
 **Fix Options**:
 
-**Option A**: Extend mgen custom map (Easier)
-- Modify `mgen_str_int_map_t` to support `vec_int*` values
-- Create `mgen_str_vecint_map_t` type
+**Option A**: Extend multigen custom map (Easier)
+
+- Modify `multigen_str_int_map_t` to support `vec_int*` values
+- Create `multigen_str_vecint_map_t` type
 - Update runtime library
 
 **Option B**: Create STC template (Harder but cleaner)
+
 - Generate STC template for `map_str_vec_int`
 - Handle nested container cleanup
 - More complex memory management
 
-**Recommended**: Option A (extend mgen custom map)
+**Recommended**: Option A (extend multigen custom map)
 
 **Implementation Approach**:
-1. Create `mgen_str_vecint_map.h` and `.c` files
+
+1. Create `multigen_str_vecint_map.h` and `.c` files
 2. Modify type inference to detect `dict[str, list[int]]`
 3. Update code generation for nested value access
 4. Add cleanup/free handling for nested structures
 
 **Files**:
-- `src/mgen/backends/c/runtime/mgen_str_vecint_map.h` (new)
-- `src/mgen/backends/c/runtime/mgen_str_vecint_map.c` (new)
-- `src/mgen/backends/c/converter.py` (type detection)
+
+- `src/multigen/backends/c/runtime/multigen_str_vecint_map.h` (new)
+- `src/multigen/backends/c/runtime/multigen_str_vecint_map.c` (new)
+- `src/multigen/backends/c/converter.py` (type detection)
 
 **Complexity**: Hard
 **Estimated Time**: 6-8 hours
@@ -287,6 +311,7 @@ groups["team1"] = group1  # Needs map_str_vec_int type
 #### Issue 3.2: nested_containers_comprehensive.py - Bare List Type Inference
 
 **Problem**: Analysis phase fails on complex nested structures with bare `list` annotations
+
 ```python
 def process_matrix(data: list):  # No type params
     for row in data:
@@ -298,11 +323,13 @@ def process_matrix(data: list):  # No type params
 **Fix Options**:
 
 **Option A**: Improve inference (Hard)
+
 - Analyze usage patterns to infer `list[list[int]]`
 - Requires control flow analysis
 - Complex implementation
 
 **Option B**: Require type annotations (Easy)
+
 - Update validation to require `list[T]` in nested contexts
 - Better error messages
 - Encourage best practices
@@ -310,6 +337,7 @@ def process_matrix(data: list):  # No type params
 **Recommended**: Option B (require annotations) + improve error messages
 
 **Implementation**:
+
 ```python
 # In validation phase
 if uses_nested_subscripts(var) and not has_type_params(annotation):
@@ -319,7 +347,7 @@ if uses_nested_subscripts(var) and not has_type_params(annotation):
     )
 ```
 
-**Files**: `src/mgen/validation/`
+**Files**: `src/multigen/validation/`
 **Complexity**: Medium
 **Estimated Time**: 2-4 hours
 
@@ -328,9 +356,11 @@ if uses_nested_subscripts(var) and not has_type_params(annotation):
 ## Implementation Roadmap
 
 ### Phase 1: Quick Wins (v0.1.100) - COMPLETE [x]
+
 **Goal**: Fix validation errors → Improved pass rate
 
 **Completed**:
+
 - [x] Fix test_math_import.py annotations - Added `-> None`, removed `isinstance()` call
 - [x] Fix test_simple_string_ops.py annotations - Added `-> None` to test functions
 - [x] Update tests/translation/README.md - Updated to v0.1.100 status
@@ -344,16 +374,19 @@ if uses_nested_subscripts(var) and not has_type_params(annotation):
 ---
 
 ### Phase 2: Code Generation (v0.1.101-102) - COMPLETE [x]
+
 **Goal**: Fix dict len() and string literals → Core functionality working
 
 **v0.1.101** - Dict length support [x]
-- [x] Add `len()` support for `mgen_str_int_map_t*` - Fixed in converter.py:1291-1295
+
+- [x] Add `len()` support for `multigen_str_int_map_t*` - Fixed in converter.py:1291-1295
 - [x] Add `len()` support for STC map types - Fixed in converter.py:1291-1295
 - [x] Fix dict comprehension type inference - Fixed in converter.py:1717-1722,859
 - [x] Test with test_dict_comprehension.py - **PASSING** (returns 5)
 - [x] Run regression tests - All 1045 tests pass [x]
 
 **v0.1.102** - String literal wrapping [x]
+
 - [x] Detect `vec_cstr` container type - Fixed in converter.py:1539-1548
 - [x] Wrap string literals with `cstr_lit()` - Fixed in converter.py:900-902,1539-1548
 - [x] Add `#include "stc/cstr.h"` for vec_cstr - Fixed in converter.py:440-446
@@ -363,6 +396,7 @@ if uses_nested_subscripts(var) and not has_type_params(annotation):
 **Deliverable**: Dict comprehension with len() fully working (+1 test), string literal wrapping feature complete
 
 **Result**:
+
 - [x] test_dict_comprehension.py: **BUILD+RUN PASS** (22/27 → 23/27 actual = 85%)
 - [!] test_container_iteration.py: String literals correctly wrapped, but has **loop variable type inference issue** (see Known Limitations below)
 
@@ -371,10 +405,12 @@ if uses_nested_subscripts(var) and not has_type_params(annotation):
 ---
 
 ### Phase 3: Advanced Features (v0.1.103-105) - 12 hours
+
 **Goal**: Nested containers and type inference → 85% pass rate
 
 **v0.1.103** - Dict with list values (6-8 hours)
-- [ ] Design `mgen_str_vecint_map_t` API
+
+- [ ] Design `multigen_str_vecint_map_t` API
 - [ ] Implement runtime library
 - [ ] Update type inference
 - [ ] Update code generation
@@ -382,6 +418,7 @@ if uses_nested_subscripts(var) and not has_type_params(annotation):
 - [ ] Run regression tests
 
 **v0.1.104** - Bare list validation (2-4 hours)
+
 - [ ] Add nested context detection
 - [ ] Improve validation error messages
 - [ ] Update documentation
@@ -389,6 +426,7 @@ if uses_nested_subscripts(var) and not has_type_params(annotation):
 - [ ] Run regression tests
 
 **v0.1.105** - Polish and documentation
+
 - [ ] Update C backend documentation
 - [ ] Create nested container examples
 - [ ] Update CHANGELOG.md
@@ -401,12 +439,14 @@ if uses_nested_subscripts(var) and not has_type_params(annotation):
 ## Success Metrics
 
 ### Short Term (v0.1.100) - [x] COMPLETE
+
 - [x] 81% pass rate (22/27 tests)
 - [x] All validation errors fixed
 - [x] Documentation updated
 - [x] test_math_import.py and test_simple_string_ops.py passing
 
 ### Medium Term (v0.1.102) - [x] COMPLETE
+
 - [x] **85% pass rate (23/27 tests)** - TARGET EXCEEDED
 - [x] Dict length support complete (v0.1.101)
 - [x] String literal wrapping complete (v0.1.102)
@@ -414,10 +454,11 @@ if uses_nested_subscripts(var) and not has_type_params(annotation):
 - [x] All 1045 regression tests passing
 
 ### Long Term (v0.1.105) - NOT NEEDED [x]
+
 - [x] **93% pass rate achieved** (exceeded 89% target!)
 - [x] Loop variable type inference fixed (Issue 2.3)
 - [x] String split operations working
--  Documentation complete (in this plan)
+- Documentation complete (in this plan)
 - ⏸ Nested containers deferred (edge cases, diminishing returns)
 
 ---
@@ -437,6 +478,7 @@ for name in names:  # name should be cstr, not int
 ```
 
 Generated C code:
+
 ```c
 vec_cstr names = {0};
 vec_cstr_push(&names, cstr_lit("Alice"));  // [x] String wrapping works
@@ -448,21 +490,25 @@ for (size_t loop_idx = 0; loop_idx < vec_cstr_size(&names); loop_idx++) {
 ```
 
 **Root Cause**:
+
 - Loop variable type detection in `_convert_for()` doesn't check container element types
 - For `vec_cstr`, it defaults to `int` instead of detecting the `cstr` element type
 - This is separate from Phase 2's string literal wrapping (which is working correctly)
 
 **Impact**:
+
 - test_container_iteration.py fails to compile (line 70)
 - Affects any code that iterates over string lists with index-based loops
 
 **Fix Approach**:
+
 1. Modify `_convert_for()` to detect when iterating over `vec_cstr`
 2. Check container type and extract element type (e.g., `vec_cstr` → `cstr`)
 3. Set loop variable type based on container element type
 4. Add special handling for STC union types like `cstr`
 
 **Implementation**:
+
 ```python
 # In _convert_for() at converter.py:~1100
 # When detecting loop variable type for index-based loops:
@@ -476,7 +522,8 @@ else:
 ```
 
 **Files to modify**:
-- `src/mgen/backends/c/converter.py` - `_convert_for()` method
+
+- `src/multigen/backends/c/converter.py` - `_convert_for()` method
 - May need to update type context tracking for loop variables
 
 **Estimated effort**: 1-2 hours
@@ -484,6 +531,7 @@ else:
 **Target version**: v0.1.103 [x] **FIXED**
 
 **Resolution** (v0.1.103):
+
 - Modified `_convert_for()` to extract element type from container type name
 - `vec_cstr` → `cstr`, `set_int` → `int` (remove type prefix)
 - Added `#define i_implement` before `#include "stc/cstr.h"` for linker
@@ -503,7 +551,7 @@ Currently no active code generation bugs. Remaining failures are missing feature
 **Not Supported** (edge cases with clear workarounds):
 
 1. **Dict with list values** - `dict[str, list[int]]`
-   - **Why**: Requires new runtime type `mgen_str_vecint_map_t` (8+ hours work)
+   - **Why**: Requires new runtime type `multigen_str_vecint_map_t` (8+ hours work)
    - **Impact**: LOW - Rare use case
    - **Workaround**: Use separate data structures or flatten to `dict[str, str]`
    - **Test**: `nested_dict_list.py`
@@ -533,16 +581,19 @@ Currently no active code generation bugs. Remaining failures are missing feature
 ## Risk Assessment
 
 ### Completed (Low Risk - All Passed) [x]
+
 - [x] **Phase 1 (Validation)**: Test file fixes, no backend changes - COMPLETE
 - [x] **Dict length (v0.1.101)**: Localized change, clear solution - COMPLETE
 - [x] **String literal wrapping (v0.1.102)**: All 1045 regression tests pass - COMPLETE
 
 ### Upcoming (Medium Risk)
+
 - **Loop variable type inference (Issue 2.3)**: May affect loop code generation
   - Mitigation: Thorough testing of all loop types (vec_int, vec_cstr, sets)
   - Low complexity: ~1-2 hours, well-defined fix
 
 ### Future (High Risk)
+
 - **Nested containers**: New runtime library code
   - Mitigation: Extensive memory leak testing (ASAN)
   - Mitigation: Comprehensive unit tests
@@ -552,16 +603,19 @@ Currently no active code generation bugs. Remaining failures are missing feature
 ## Alternative Approaches Considered
 
 ### 1. Use only STC templates
+
 **Pros**: Consistent type system
 **Cons**: STC doesn't support `map<string, T>` well
 **Decision**: Keep hybrid approach (STC + custom types)
 
 ### 2. Require all type annotations
+
 **Pros**: Simplifies type inference dramatically
 **Cons**: Worse user experience
 **Decision**: Require annotations only for complex nested types
 
 ### 3. Generate C++ instead of C
+
 **Pros**: Native container support, easier nested types
 **Cons**: Already have C++ backend
 **Decision**: Keep C backend pure C99
@@ -582,8 +636,8 @@ Currently no active code generation bugs. Remaining failures are missing feature
 ## References
 
 - Translation test results: `tests/translation/README.md`
-- C backend implementation: `src/mgen/backends/c/converter.py`
-- Runtime library: `src/mgen/backends/c/runtime/`
+- C backend implementation: `src/multigen/backends/c/converter.py`
+- Runtime library: `src/multigen/backends/c/runtime/`
 - Previous fixes: `CHANGELOG.md` v0.1.93-0.1.99
 
 ---
@@ -632,7 +686,7 @@ Currently no active code generation bugs. Remaining failures are missing feature
 ## Change Log
 
 - **v0.1.104** (2025-10-18): String array subscript access fixed - **93% pass rate (25/27)**
-  - Fixed subscript on `mgen_string_array_t*` to use `mgen_string_array_get()`
+  - Fixed subscript on `multigen_string_array_t*` to use `multigen_string_array_get()`
   - test_string_split_simple.py now passing
   - All 1045 regression tests pass
 - **v0.1.103** (2025-10-18): Issue 2.3 fixed! Loop variable type inference - **89% pass rate (24/27)**
@@ -647,7 +701,7 @@ Currently no active code generation bugs. Remaining failures are missing feature
   - All 1045 regression tests pass
   - Discovered loop variable type inference issue (Issue 2.3)
 - **v0.1.101** (2025-10-18): Dict length support for comprehensions
-  - `len()` on `mgen_str_int_map_t*` generates correct function call
+  - `len()` on `multigen_str_int_map_t*` generates correct function call
   - Fixed dict comprehension type inference
   - test_dict_comprehension.py now passing
 - **v0.1.100** (2025-10-18): Phase 1 complete! Validation fixes - 81% pass rate (22/27)

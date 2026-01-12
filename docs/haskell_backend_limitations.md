@@ -1,7 +1,7 @@
 # Haskell Backend Limitations and Workarounds
 
 **Last Updated**: December 27, 2025
-**MGen Version**: v0.1.85+
+**MultiGen Version**: v0.1.85+
 
 ---
 
@@ -39,9 +39,9 @@ def quicksort(arr: list, low: int, high: int) -> int:
         # ...
 ```
 
-When MGen encounters array subscript assignment (e.g., `arr[i] = value`), it raises:
+When MultiGen encounters array subscript assignment (e.g., `arr[i] = value`), it raises:
 
-```
+```text
 UnsupportedFeatureError: Function 'quicksort' mutates array parameter 'arr'.
 Haskell does not support in-place array mutations. Consider using a functional
 approach with list comprehensions or recursive decomposition.

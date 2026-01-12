@@ -7,6 +7,7 @@
 ## Problem
 
 The Haskell backend had build system issues preventing compilation:
+
 - `compile_direct()` method was failing due to path issues
 - Runtime module not being found during compilation
 - Working directory issues in subprocess calls
@@ -14,11 +15,12 @@ The Haskell backend had build system issues preventing compilation:
 
 ## Solution
 
-Fixed `src/mgen/backends/haskell/builder.py`:
+Fixed `src/multigen/backends/haskell/builder.py`:
 
 ### Changes Made
 
 **1. Fixed Path Resolution**
+
 ```python
 # Before: Relative paths that broke
 source_path = Path(source_file)
@@ -30,16 +32,18 @@ out_dir = Path(output_dir).absolute()
 ```
 
 **2. Fixed Runtime Module Location**
+
 ```python
 # Before: Copied to output directory
-runtime_dst = out_dir / "MGenRuntime.hs"
+runtime_dst = out_dir / "MultiGenRuntime.hs"
 
 # After: Copy to source directory where GHC expects it
 source_dir = source_path.parent
-runtime_dst = source_dir / "MGenRuntime.hs"
+runtime_dst = source_dir / "MultiGenRuntime.hs"
 ```
 
 **3. Removed Working Directory Change**
+
 ```python
 # Before: Changed cwd, breaking relative paths
 result = subprocess.run(cmd, capture_output=True, text=True, cwd=output_dir)
@@ -49,6 +53,7 @@ result = subprocess.run(cmd, capture_output=True, text=True)
 ```
 
 **4. Added Error Reporting**
+
 ```python
 # Added debugging output to see compilation errors
 if result.returncode != 0:
@@ -58,12 +63,13 @@ if result.returncode != 0:
 ```
 
 **5. Fixed Runtime Module Path in Command**
+
 ```python
 # Before: Used runtime from output_dir
-runtime_path = out_dir / "MGenRuntime.hs"
+runtime_path = out_dir / "MultiGenRuntime.hs"
 
 # After: Use runtime from source_dir
-runtime_path = source_dir / "MGenRuntime.hs"
+runtime_path = source_dir / "MultiGenRuntime.hs"
 ```
 
 ## Test Results
@@ -101,6 +107,7 @@ runtime_path = source_dir / "MGenRuntime.hs"
 | test_struct_field_access | [X] BUILD_FAIL | - | Feature not implemented |
 
 **Summary**:
+
 - [x] **3 tests PASS** (11.1%)
 - [X] **24 tests FAIL** (88.9%)
   - 1 due to untyped container annotations
@@ -109,11 +116,13 @@ runtime_path = source_dir / "MGenRuntime.hs"
 ## Impact
 
 ### Before Fix
+
 - [X] 0/27 tests passing (0%)
 - Build system completely broken
 - All tests failed with module resolution errors
 
 ### After Fix
+
 - [x] 3/27 tests passing (11.1%)
 - Build system working correctly
 - Compilation errors now visible for debugging
@@ -123,23 +132,29 @@ runtime_path = source_dir / "MGenRuntime.hs"
 ## Haskell-Specific Details
 
 ### Module System
+
 Haskell uses a module import system where:
+
 ```haskell
-import MGenRuntime
+import MultiGenRuntime
 ```
-requires `MGenRuntime.hs` to be in the same directory or in a directory specified by GHC's search path.
+
+requires `MultiGenRuntime.hs` to be in the same directory or in a directory specified by GHC's search path.
 
 The fix ensures the runtime module is copied to the source directory where the generated `.hs` files are located.
 
 ### GHC Compilation
+
 GHC (Glasgow Haskell Compiler) is invoked via:
+
 ```bash
-ghc source.hs -o executable MGenRuntime.hs -XOverloadedStrings -XFlexibleInstances -XTypeSynonymInstances
+ghc source.hs -o executable MultiGenRuntime.hs -XOverloadedStrings -XFlexibleInstances -XTypeSynonymInstances
 ```
 
 Both the source file and runtime module must be specified in the command.
 
 ### Exit Codes
+
 Haskell programs using `IO ()` main functions exit with code 0 on success, or may return computed values depending on the generated code structure.
 
 ## Remaining Issues
@@ -180,7 +195,7 @@ The Haskell backend is now **functional** but has the most code generation issue
 
 ## Files Modified
 
-- `src/mgen/backends/haskell/builder.py` - Fixed compile_direct() method
+- `src/multigen/backends/haskell/builder.py` - Fixed compile_direct() method
 
 **Total Changes**: ~20 lines in 1 file
 
@@ -188,14 +203,14 @@ The Haskell backend is now **functional** but has the most code generation issue
 
 ```bash
 # Test single file
-uv run mgen build -t haskell tests/translation/nested_2d_simple.py
+uv run multigen build -t haskell tests/translation/nested_2d_simple.py
 ./build/nested_2d_simple  # Exit code: 0
 
 # Test all files
 for test in tests/translation/*.py; do
   testname=$(basename "$test" .py)
   echo -n "$testname: "
-  if uv run mgen build -t haskell "$test" > /dev/null 2>&1; then
+  if uv run multigen build -t haskell "$test" > /dev/null 2>&1; then
     if timeout 5 build/"$testname" > /dev/null 2>&1; then
       echo "PASS"
     else

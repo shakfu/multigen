@@ -1,7 +1,7 @@
 Backend Guide
 =============
 
-MGen supports 6 production-ready backends, each with different characteristics and use cases.
+MultiGen supports 6 production-ready backends, each with different characteristics and use cases.
 
 Backend Overview
 ----------------
@@ -36,7 +36,7 @@ Features:
 
 Example::
 
-   mgen convert -t c example.py
+   multigen convert -t c example.py
 
 Runtime: ~2,500 lines across 16 files, using STC containers with custom fallback.
 
@@ -55,7 +55,7 @@ Features:
 
 Example::
 
-   mgen convert -t cpp example.py
+   multigen convert -t cpp example.py
 
 Smallest runtime (357 LOC), fastest compilation (422ms), smallest binary (36KB).
 
@@ -74,7 +74,7 @@ Features:
 
 Example::
 
-   mgen convert -t rust example.py
+   multigen convert -t rust example.py
 
 Advanced type inference detects function call reassignments for accurate HashMap usage.
 
@@ -92,7 +92,7 @@ Features:
 
 Example::
 
-   mgen convert -t go example.py
+   multigen convert -t go example.py
 
 Fastest compilation, good for rapid iteration.
 
@@ -110,7 +110,7 @@ Features:
 
 Example::
 
-   mgen convert -t haskell example.py
+   multigen convert -t haskell example.py
 
 Functional paradigm may limit some imperative Python patterns (86% benchmark pass).
 
@@ -129,7 +129,7 @@ Features:
 
 Example::
 
-   mgen convert -t ocaml example.py
+   multigen convert -t ocaml example.py
 
 Fast compilation (209ms), sophisticated mutation detection.
 

@@ -21,10 +21,10 @@ try:
     Z3_AVAILABLE = True
 except ImportError:
     Z3_AVAILABLE = False
-    print("ERROR: Z3 not installed. Install with: pip install mgen[z3]")
+    print("ERROR: Z3 not installed. Install with: pip install multigen[z3]")
     sys.exit(1)
 
-from mgen.pipeline import MGenPipeline, PipelineConfig
+from multigen.pipeline import MultiGenPipeline, PipelineConfig
 
 
 def demo_safe_code():
@@ -56,7 +56,7 @@ def safe_array_sum(arr: list[int], n: int) -> int:
         config = PipelineConfig(
             target_language="c", enable_formal_verification=True, strict_verification=True
         )
-        pipeline = MGenPipeline(config=config)
+        pipeline = MultiGenPipeline(config=config)
         result = pipeline.convert(temp_path)
 
         if result.success:
@@ -102,7 +102,7 @@ def unsafe_array_access(arr: list[int], n: int) -> int:
         config = PipelineConfig(
             target_language="c", enable_formal_verification=True, strict_verification=True
         )
-        pipeline = MGenPipeline(config=config)
+        pipeline = MultiGenPipeline(config=config)
         result = pipeline.convert(temp_path)
 
         if result.success:
@@ -155,7 +155,7 @@ def maybe_unsafe(arr: list[int], n: int) -> int:
             enable_formal_verification=True,
             strict_verification=False,  # Warning mode
         )
-        pipeline = MGenPipeline(config=config)
+        pipeline = MultiGenPipeline(config=config)
         result = pipeline.convert(temp_path)
 
         print(f"Success: {result.success}")

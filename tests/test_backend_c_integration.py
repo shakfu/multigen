@@ -5,11 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from mgen.backends.c.builder import CBuilder
-from mgen.backends.c.containers import CContainerSystem
-from mgen.backends.c.converter import MGenPythonToCConverter
-from mgen.backends.c.emitter import CEmitter
-from mgen.backends.c.factory import CFactory
+from multigen.backends.c.builder import CBuilder
+from multigen.backends.c.containers import CContainerSystem
+from multigen.backends.c.converter import MultiGenPythonToCConverter
+from multigen.backends.c.emitter import CEmitter
+from multigen.backends.c.factory import CFactory
 
 
 class TestEnhancedCEmitter:
@@ -28,7 +28,7 @@ def add(x: int, y: int) -> int:
         c_code = self.emitter.emit_module(python_code)
 
         assert "int add(int x, int y)" in c_code
-        assert '#include "mgen_error_handling.h"' in c_code
+        assert '#include "multigen_error_handling.h"' in c_code
 
     def test_emit_module_fallback(self):
         """Test fallback to basic emission on py2c failure."""
@@ -55,7 +55,7 @@ def complex_unsupported():
     def test_py2c_converter_initialization(self):
         """Test that py2c converter is properly initialized."""
         assert self.emitter.py2c_converter is not None
-        assert isinstance(self.emitter.py2c_converter, MGenPythonToCConverter)
+        assert isinstance(self.emitter.py2c_converter, MultiGenPythonToCConverter)
 
 
 class TestCContainerSystemEnhanced:
@@ -100,8 +100,8 @@ class TestCContainerSystemEnhanced:
         """Test required imports for STC."""
         imports = self.container_system.get_required_imports()
 
-        assert '#include "mgen_stc_bridge.h"' in imports
-        assert '#include "mgen_error_handling.h"' in imports
+        assert '#include "multigen_stc_bridge.h"' in imports
+        assert '#include "multigen_error_handling.h"' in imports
 
     def test_type_name_sanitization(self):
         """Test type name sanitization for STC."""
@@ -129,9 +129,9 @@ class TestCBuilderEnhanced:
         makefile = self.builder.generate_build_file(source_files, "test_app")
 
         if self.builder.use_runtime:
-            assert "mgen_error_handling.c" in makefile
-            assert "mgen_python_ops.c" in makefile
-            assert "mgen_memory_ops.c" in makefile
+            assert "multigen_error_handling.c" in makefile
+            assert "multigen_python_ops.c" in makefile
+            assert "multigen_memory_ops.c" in makefile
             assert "-I" in makefile  # Include path for runtime
 
     def test_compile_flags_with_runtime(self):
@@ -154,7 +154,7 @@ class TestCBuilderEnhanced:
         if self.builder.use_runtime:
             assert len(sources) > 0
             source_names = [Path(src).name for src in sources]
-            assert "mgen_error_handling.c" in source_names
+            assert "multigen_error_handling.c" in source_names
 
     def test_runtime_headers_detection(self):
         """Test runtime headers detection."""
@@ -162,7 +162,7 @@ class TestCBuilderEnhanced:
 
         if self.builder.use_runtime:
             assert len(headers) > 0
-            assert "mgen_error_handling.h" in headers
+            assert "multigen_error_handling.h" in headers
 
 
 class TestCFactoryEnhanced:
@@ -245,7 +245,7 @@ def use_builtin(x: int) -> int:
         c_code = emitter.emit_module(python_code)
 
         # Should use runtime function
-        assert "mgen_abs_int" in c_code or "abs" in c_code
+        assert "multigen_abs_int" in c_code or "abs" in c_code
 
     def test_build_system_integration(self):
         """Test build system integration."""
