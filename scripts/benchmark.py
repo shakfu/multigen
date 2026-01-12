@@ -291,6 +291,7 @@ class BenchmarkRunner:
                 runtime_files = [f for f in runtime_files if f != source_file]
                 cmd = [
                     "ghc", "-O2",
+                    "-package", "containers",
                     str(source_file.absolute()),
                     *[str(f.absolute()) for f in runtime_files],
                     "-o", str((output_dir / executable_name).absolute())
