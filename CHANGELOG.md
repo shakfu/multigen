@@ -17,6 +17,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [0.1.x]
 
+## [0.1.105]
+
+**Project Rename: mgen -> multigen**
+
+Renamed the project from `mgen` to `multigen` to avoid naming conflicts with other projects.
+
+### Changed
+
+- **Package renamed from `mgen` to `multigen`**
+  - All source files moved from `src/mgen/` to `src/multigen/`
+  - All internal references updated to use `multigen` naming
+  - Runtime files renamed: `mgen_*` -> `multigen_*`
+  - Haskell runtime: `MGenRuntime.hs` -> `MultiGenRuntime.hs`
+  - OCaml runtime: `mgen_runtime.ml` -> `multigen_runtime.ml`
+
+### Fixed
+
+- **Haskell backend compilation**
+  - Added `-package containers` flag to GHC command in `compile_direct()` method
+  - Fixes "Could not load module 'Data.Map'" and 'Data.Set' errors
+  - File: `src/multigen/backends/haskell/builder.py:80-81`
+
+- **OCaml backend compilation**
+  - Updated module reference from `Mgen_runtime` to `Multigen_runtime`
+  - OCaml module names are derived from filenames, so `multigen_runtime.ml` becomes `Multigen_runtime`
+  - File: `src/multigen/backends/ocaml/converter.py:59`
+
+- **LLVM backend cleanup**
+  - Removed 26 unused runtime files that were originally symlinks to C backend
+  - These files were never actually used by the LLVM backend
+  - LLVM backend only uses its own minimal runtime: `*_minimal.c` and `multigen_llvm_string.*`
+  - Fixes wheel build errors caused by symlinks
+
+---
+
 ## [0.1.104] - 2025-10-18
 
 ### Fixed

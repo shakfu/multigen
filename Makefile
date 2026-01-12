@@ -5,7 +5,8 @@ BENCHMARK_RESULTS_DIR := build/benchmark_results
 .PHONY: help install test test-unit test-integration test-translation \
 		test-py2c test-benchmark test-build test-memory-llvm clean lint format type-check \
 		build docs docs-clean docs-serve benchmark benchmark-algorithms \
-		benchmark-data-structures benchmark-report benchmark-clean check snap
+		benchmark-data-structures benchmark-report benchmark-clean check snap \
+		check-wheel publish-test publish
 
 # Default target
 help:
@@ -42,9 +43,12 @@ help:
 	@echo "  type-check    Run mypy type checking"
 	@echo "  pre-commit    Install and run pre-commit hooks"
 	@echo ""
-	@echo "Build:"
+	@echo "Build & Publish:"
 	@echo "  build         Build package for distribution"
 	@echo "  clean         Clean build artifacts"
+	@echo "  check-wheel   Verify wheel with twine check"
+	@echo "  publish-test  Publish to TestPyPI"
+	@echo "  publish       Publish to PyPI"
 	@echo ""
 	@echo "Documentation:"
 	@echo "  docs          Build Sphinx documentation"
@@ -133,6 +137,25 @@ clean:
 	rm -rf htmlcov/
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
+
+# PyPI publishing
+check-wheel: build
+	@echo "Checking wheel with twine..."
+	uv run twine check dist/*
+
+publish-test: check-wheel
+	@echo "Publishing to TestPyPI..."
+	uv run twine upload --repository testpypi dist/*
+	@echo ""
+	@echo "Package published to TestPyPI"
+	@echo "Install with: pip install --index-url https://test.pypi.org/simple/ multigen"
+
+publish: check-wheel
+	@echo "Publishing to PyPI..."
+	uv run twine upload dist/*
+	@echo ""
+	@echo "Package published to PyPI"
+	@echo "Install with: pip install multigen"
 
 # Documentation
 docs:

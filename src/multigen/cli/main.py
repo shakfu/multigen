@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 from typing import Optional, Union
 
+from .. import __version__
 from ..backends.preferences import BackendPreferences, PreferencesRegistry
 from ..backends.registry import registry
 from ..common import log
@@ -51,67 +52,19 @@ class MultiGenCLI:
             formatter_class=argparse.RawDescriptionHelpFormatter,
             epilog=f"""
 Examples:
-  # Basic conversion
-  multigen convert -t rust app.py              # Convert single file to Rust
-  multigen convert -t c app1.py app2.py        # Convert multiple files to C
-  multigen convert --to go *.py                # Convert all Python files to Go
+  multigen convert -t rust app.py       Convert to Rust
+  multigen convert -t cpp app.py -O3    Convert to C++ with aggressive optimization
+  multigen build -t go app.py           Build Go executable
+  multigen batch -t c -s src/           Batch convert directory
+  multigen backends                     List available backends
 
-  # With optimization levels (standard -O0/-O1/-O2/-O3 flags supported)
-  multigen convert -t cpp app.py -O0           # No optimization (fastest compile, debug)
-  multigen convert -t cpp app.py -O1           # Basic optimization
-  multigen convert -t cpp app.py -O2           # Moderate optimization (default)
-  multigen convert -t cpp app.py -O3           # Aggressive optimization (max performance)
-
-  # With backend preferences
-  multigen convert -t haskell app.py --prefer use_native_comprehensions=true
-
-  # With progress and verbose output
-  multigen convert -t rust app.py --progress   # Show progress bar during conversion
-  multigen convert -t rust app.py -v           # Verbose output (detailed logging)
-  multigen convert -t rust app.py --dry-run    # Preview what would be generated
-
-  # Building executables
-  multigen build -t rust app.py                # Build Rust executable (direct compilation)
-  multigen build -t cpp app.py -m              # Generate C++ code and Makefile
-  multigen build -t go app.py --progress       # Show build progress
-  multigen build -t llvm app.py -O3            # LLVM backend with O3 optimization
-
-  # Batch operations
-  multigen batch -t c -s src/                  # Batch convert directory to C
-  multigen batch -t rust -s src/ -b            # Batch convert and build all files
-  multigen batch -t go -s src/ --progress      # Batch convert with progress indicators
-
-  # Utility commands
-  multigen backends                            # List available language backends
-  multigen clean                               # Clean build directory
-
-Available backends: {backends_str}
-
-Optimization Levels (all backends):
-  -O0 / -O none       No optimization - fastest compilation, best for debugging
-  -O1 / -O basic      Basic optimization - moderate compile time, good performance
-  -O2 / -O moderate   Moderate optimization - default, balanced (RECOMMENDED)
-  -O3 / -O aggressive Aggressive optimization - slower compilation, maximum performance
-
-LLVM Backend Notes:
-  The LLVM backend supports advanced optimization passes:
-  - O0: No optimization, debug-friendly
-  - O1: Basic optimizations (dead code elimination, simple inlining)
-  - O2: Default optimizations (loop unrolling, vectorization) - RECOMMENDED
-  - O3: Aggressive optimizations (maximum inlining, tail call elimination)
-
-  Performance example (fibonacci benchmark):
-  - O0: 86ms | O1: 64ms | O2: 57ms | O3: 54ms (36.5% faster than O0)
-
-Build Directory Structure:
-  build/
-  ├── src/                 # Generated source files
-  ├── build_file           # Generated build system (if -m flag used)
-  └── executable           # Compiled binary (if compilation enabled)
-
-For more information, visit: https://github.com/your-org/multigen
+Backends: {backends_str}
+Optimization: -O0 (none), -O1 (basic), -O2 (moderate, default), -O3 (aggressive)
             """,
         )
+
+        # Version
+        parser.add_argument("--version", "-V", action="version", version=f"%(prog)s {__version__}")
 
         # Global options (kept minimal - most moved to subcommands)
         parser.add_argument("--build-dir", "-d", type=str, default="build", help="Build directory (default: build)")

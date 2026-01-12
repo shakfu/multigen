@@ -1,14 +1,14 @@
 # MultiGen: Multi-Language Code Generator
 
-MultiGen is a sophisticated Python-to-multiple-languages code generator that translates Python code to C, C++, Rust, Go, Haskell, and OCaml while preserving semantics and performance characteristics.
+MultiGen is a Python-to-multiple-languages code generator that translates Python code to C, C++, Rust, Go, Haskell, and OCaml while preserving semantics and performance characteristics.
 
 ## Overview
 
-MultiGen extends the CGen (Python-to-C) project into a comprehensive multi-language translation system with enhanced runtime libraries, sophisticated code generation, and a clean backend architecture.
+MultiGen extends the CGen (Python-to-C) project into a multi-language translation system with enhanced runtime libraries, code generation, and a clean backend architecture.
 
 ## Key Features
 
-- **Multi-Language Support**: Generate code for C, C++, Rust, Go, Haskell, and OCaml with comprehensive language features
+- **Multi-Language Support**: Generate code for C, C++, Rust, Go, Haskell, and OCaml with language features
 - **Universal Preference System**: Customize code generation for each backend with language-specific preferences
 - **Advanced Python Support**: Object-oriented programming, comprehensions, string methods, augmented assignment
 - **Modern Libraries**: C++ STL, Rust standard library, Go standard library, Haskell containers, OCaml standard library
@@ -100,7 +100,7 @@ multigen --target haskell build my_script.py \
 
 ## Preference System
 
-MultiGen features a comprehensive preference system that allows you to choose between **cross-language consistency** (default) and **language-specific idiomatic optimizations**.
+MultiGen features a preference system that allows you to choose between **cross-language consistency** (default) and **language-specific idiomatic optimizations**.
 
 ### Design Philosophy
 
@@ -583,7 +583,7 @@ make type-check     # Run type checking with mypy
 
 ### Test Organization
 
-MultiGen maintains a comprehensive test suite organized into focused modules:
+MultiGen maintains a test suite organized into focused modules:
 
 - `test_backend_c_*.py`: C backend tests (191 tests total)
   - Core functionality, OOP, comprehensions, string methods, runtime libraries
@@ -611,7 +611,7 @@ To add support for a new target language:
    - `MyLangContainerSystem(AbstractContainerSystem)`: Container handling
    - `MyLangPreferences(BasePreferences)`: Language-specific preferences
 3. Register backend in `src/multigen/backends/registry.py`
-4. Add comprehensive tests in `tests/test_backend_mylang_*.py`
+4. Add tests in `tests/test_backend_mylang_*.py`
 5. Update documentation
 
 See existing backends (C, C++, Rust, Go, Haskell, OCaml) for implementation examples.
@@ -621,7 +621,7 @@ See existing backends (C, C++, Rust, Go, Haskell, OCaml) for implementation exam
 MultiGen extends the [CGen](https://github.com/shakfu/cgen) project by:
 
 - Expanding Python-to-C capabilities into a multi-language translation system
-- Integrating CGen's sophisticated C runtime libraries (50KB+ of error handling, memory management, Python operations)
+- Integrating CGen's C runtime libraries (50KB+ of error handling, memory management, Python operations)
 - Incorporating the STC (Smart Template Container) library for high-performance C containers
 - Adding support for C++, Rust, Go, Haskell, and OCaml target languages
 - Implementing a clean 7-phase translation pipeline with abstract backend interfaces
@@ -643,7 +643,7 @@ MIT License - see LICENSE file for details.
 
 ### Supported Python Features
 
-All backends support core Python features with varying levels of sophistication:
+All backends support core Python features:
 
 - **Object-Oriented Programming**: Classes, methods, constructors, instance variables, method calls
 - **Augmented Assignment**: All operators (`+=`, `-=`, `*=`, `/=`, `//=`, `%=`, `|=`, `^=`, `&=`, `<<=`, `>>=`)
@@ -664,7 +664,7 @@ All backends support core Python features with varying levels of sophistication:
 
 ### Test Coverage
 
-MultiGen maintains comprehensive test coverage ensuring translation accuracy:
+MultiGen maintains test coverage ensuring translation accuracy:
 
 - **821 total tests** across all components and backends
 - Comprehensive backend coverage testing all major Python features

@@ -1,6 +1,6 @@
 """MultiGen - Python-to-Many code translation library."""
 
-__version__ = "0.0.1"
+__version__ = "0.1.105"
 __author__ = "MultiGen Contributors"
 __email__ = "noreply@example.com"
 

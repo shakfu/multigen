@@ -9,4 +9,6 @@ Provides streamlined command-line tools for:
 
 from .main import main
 
+__version__ = "0.1.105"
+
 __all__ = ["main"]
