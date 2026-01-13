@@ -2,11 +2,21 @@
 
 import pytest
 from pathlib import Path
-from multigen.backends.llvm.wasm_compiler import (
-    WebAssemblyCompiler,
-    compile_to_webassembly,
-    LLVMLITE_AVAILABLE,
-)
+
+# Check if llvmlite is available before importing LLVM backend
+try:
+    import llvmlite  # noqa: F401
+    LLVMLITE_AVAILABLE = True
+except ImportError:
+    LLVMLITE_AVAILABLE = False
+
+pytestmark = pytest.mark.skipif(not LLVMLITE_AVAILABLE, reason="llvmlite not installed")
+
+if LLVMLITE_AVAILABLE:
+    from multigen.backends.llvm.wasm_compiler import (
+        WebAssemblyCompiler,
+        compile_to_webassembly,
+    )
 
 
 @pytest.mark.skipif(not LLVMLITE_AVAILABLE, reason="llvmlite not installed")

@@ -47,6 +47,21 @@ cd multigen
 pip install -e .
 ```
 
+### Optional Dependencies
+
+MultiGen has zero required dependencies for core functionality (C, C++, Rust, Go, Haskell, OCaml backends). Optional features can be installed as needed:
+
+```bash
+# LLVM backend support (native compilation, WebAssembly)
+pip install multigen[llvm]
+
+# Z3 theorem prover (formal verification)
+pip install multigen[z3]
+
+# All optional dependencies
+pip install multigen[all]
+```
+
 ### Basic Usage
 
 ```bash

@@ -728,16 +728,19 @@ wheels = [
 
 [[package]]
 name = "multigen"
-version = "0.1.105"
+version = "0.1.106"
 source = { editable = "." }
-dependencies = [
-    { name = "llvmlite", version = "0.43.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
-    { name = "llvmlite", version = "0.45.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
-    { name = "typing-extensions" },
-    { name = "z3-solver" },
-]
 
 [package.optional-dependencies]
+all = [
+    { name = "llvmlite", version = "0.43.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "llvmlite", version = "0.45.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "z3-solver" },
+]
+llvm = [
+    { name = "llvmlite", version = "0.43.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "llvmlite", version = "0.45.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+]
 verification = [
     { name = "z3-solver" },
 ]
@@ -771,13 +774,13 @@ llvm = [
 
 [package.metadata]
 requires-dist = [
-    { name = "llvmlite", specifier = ">=0.43.0" },
-    { name = "typing-extensions", specifier = ">=4.0.0" },
-    { name = "z3-solver", specifier = ">=4.13.0" },
+    { name = "llvmlite", marker = "extra == 'all'", specifier = ">=0.43.0" },
+    { name = "llvmlite", marker = "extra == 'llvm'", specifier = ">=0.43.0" },
+    { name = "z3-solver", marker = "extra == 'all'", specifier = ">=4.13.0" },
     { name = "z3-solver", marker = "extra == 'verification'", specifier = ">=4.13.0" },
     { name = "z3-solver", marker = "extra == 'z3'", specifier = ">=4.13.0" },
 ]
-provides-extras = ["z3", "verification"]
+provides-extras = ["llvm", "z3", "verification", "all"]
 
 [package.metadata.requires-dev]
 dev = [

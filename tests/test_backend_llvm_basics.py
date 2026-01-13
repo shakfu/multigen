@@ -7,8 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from multigen.backends.llvm import IRToLLVMConverter
-from multigen.frontend.static_ir import IRBuilder
+# Check if llvmlite is available before importing LLVM backend
+try:
+    import llvmlite  # noqa: F401
+    LLVMLITE_AVAILABLE = True
+except ImportError:
+    LLVMLITE_AVAILABLE = False
 
 # Check if LLVM tools are available
 LLVM_LLC_PATH = shutil.which("llc")
@@ -24,7 +28,14 @@ if not all([LLVM_LLC_PATH, LLVM_LLI_PATH, LLVM_CLANG_PATH]):
         LLVM_CLANG_PATH = str(homebrew_llvm / "clang") if (homebrew_llvm / "clang").exists() else None
 
 LLVM_TOOLS_AVAILABLE = all([LLVM_LLC_PATH, LLVM_LLI_PATH])
-pytestmark = pytest.mark.skipif(not LLVM_TOOLS_AVAILABLE, reason="LLVM tools not available")
+pytestmark = pytest.mark.skipif(
+    not LLVMLITE_AVAILABLE or not LLVM_TOOLS_AVAILABLE,
+    reason="llvmlite not installed or LLVM tools not available"
+)
+
+if LLVMLITE_AVAILABLE:
+    from multigen.backends.llvm import IRToLLVMConverter
+    from multigen.frontend.static_ir import IRBuilder
 
 
 class TestLLVMBasicConversion:

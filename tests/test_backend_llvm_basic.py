@@ -6,8 +6,18 @@ from pathlib import Path
 
 import pytest
 
-from multigen.backends.llvm import IRToLLVMConverter, LLVMBackend
-from multigen.frontend.static_ir import build_ir_from_code
+# Check if llvmlite is available before importing LLVM backend
+try:
+    import llvmlite  # noqa: F401
+    LLVMLITE_AVAILABLE = True
+except ImportError:
+    LLVMLITE_AVAILABLE = False
+
+pytestmark = pytest.mark.skipif(not LLVMLITE_AVAILABLE, reason="llvmlite not installed")
+
+if LLVMLITE_AVAILABLE:
+    from multigen.backends.llvm import IRToLLVMConverter, LLVMBackend
+    from multigen.frontend.static_ir import build_ir_from_code
 
 # Check if LLVM tools are available
 LLVM_TOOLS_AVAILABLE = shutil.which("llc") is not None and shutil.which("clang") is not None

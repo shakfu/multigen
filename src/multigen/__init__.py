@@ -1,8 +1,8 @@
 """MultiGen - Python-to-Many code translation library."""
 
-__version__ = "0.1.105"
-__author__ = "MultiGen Contributors"
-__email__ = "noreply@example.com"
+__version__ = "0.1.106"
+__author__ = "Shakeeb Alireza"
+__email__ = "shakfu@users.noreply.github.com"
 
 from typing import Optional
 

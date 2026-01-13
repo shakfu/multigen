@@ -17,6 +17,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [0.1.x]
 
+## [0.1.106]
+
+**Zero Required Dependencies**
+
+### Changed
+
+- **Dependencies made optional**: MultiGen now has zero required runtime dependencies
+  - Removed `typing-extensions` (unused)
+  - Moved `llvmlite` to optional `[llvm]` extra
+  - Moved `z3-solver` to optional `[z3]` extra (was duplicated in both required and optional)
+  - LLVM backend gracefully degrades when llvmlite not installed
+  - Z3 verification gracefully degrades when z3-solver not installed
+
+### Added
+
+- **New optional dependency groups**:
+  - `pip install multigen[llvm]` - LLVM backend support
+  - `pip install multigen[z3]` - Z3 formal verification
+  - `pip install multigen[all]` - All optional dependencies
+
+### Fixed
+
+- **LLVM test files skip gracefully when llvmlite not installed**:
+  - `test_backend_llvm_basic.py` - Added llvmlite check before imports
+  - `test_backend_llvm_basics.py` - Added llvmlite check before imports
+  - `test_llvm_optimization.py` - Added llvmlite check before imports
+  - `test_wasm_compiler.py` - Added llvmlite check before imports
+  - Tests now skip cleanly (139 skipped) instead of failing during collection
+
+---
+
 ## [0.1.105]
 
 **Project Rename: mgen -> multigen**

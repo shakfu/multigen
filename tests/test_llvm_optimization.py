@@ -2,7 +2,17 @@
 
 import pytest
 
-from multigen.backends.llvm.optimizer import LLVMOptimizer
+# Check if llvmlite is available before importing LLVM backend
+try:
+    import llvmlite  # noqa: F401
+    LLVMLITE_AVAILABLE = True
+except ImportError:
+    LLVMLITE_AVAILABLE = False
+
+pytestmark = pytest.mark.skipif(not LLVMLITE_AVAILABLE, reason="llvmlite not installed")
+
+if LLVMLITE_AVAILABLE:
+    from multigen.backends.llvm.optimizer import LLVMOptimizer
 
 
 class TestLLVMOptimizer:

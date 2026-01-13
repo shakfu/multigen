@@ -1,6 +1,6 @@
 [project]
 name = "multigen"
-version = "0.1.105"
+version = "0.1.106"
 authors = [
     { name = "Shakeeb Alireza", email = "shakfu@users.noreply.github.com" }
 ]
@@ -24,15 +24,13 @@ classifiers = [
     "Topic :: Software Development :: Compilers",
 ]
 keywords = ["code-generation", "compiler", "metaprogramming"]
-dependencies = [
-    "typing-extensions>=4.0.0",
-    "llvmlite>=0.43.0",
-    "z3-solver>=4.13.0",
-]
+dependencies = []
 
 [project.optional-dependencies]
+llvm = ["llvmlite>=0.43.0"]
 z3 = ["z3-solver>=4.13.0"]
 verification = ["z3-solver>=4.13.0"]  # Alias for backward compatibility
+all = ["llvmlite>=0.43.0", "z3-solver>=4.13.0"]
 
 [build-system]
 requires = ["uv_build>=0.8.19,<0.9.0"]
