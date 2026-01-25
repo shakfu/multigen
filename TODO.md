@@ -6,21 +6,25 @@ Tasks extracted from PROJECT_REVIEW.md (2025-12-27).
 
 ## High Priority
 
-### Fix Type Annotation Syntax
-- [ ] **Location**: `src/multigen/backends/c/converter.py:1542`
-- [ ] **Issue**: Uses `list[...] | None` (Python 3.10+) but project targets Python 3.9+
-- [ ] **Impact**: mypy type-check fails
-- [ ] **Solution**: Replace with `Optional[list[...]]` from typing module
+### ~~Fix Type Annotation Syntax~~ (NOT AN ISSUE)
+- [x] **Location**: `src/multigen/backends/c/converter.py:1515`
+- [x] **Status**: Not a problem - `from __future__ import annotations` makes `| None` syntax work on Python 3.9+
+- [x] **Verification**: All 944 tests pass, mypy only fails on missing llvmlite/z3 stubs (optional deps)
 
-### Strengthen Phase 4 (Mapping)
-- [ ] **Issue**: Currently a pass-through with empty type/container mappings
-- [ ] **Impact**: Semantic transformation logic scattered across backends
-- [ ] **Solution**: Implement proper Python-to-target semantic mappings as explicit transformations
+### ~~Strengthen Phase 4 (Mapping)~~ COMPLETE
+- [x] **Status**: Phase 4 implemented (`pipeline.py:674-735`) with SemanticMapping dataclass
+- [x] **Computed**: type_mappings, container_mappings, function_return_types, variable_types, required_imports
+- [x] **Integration**: `emit_module` now accepts optional `semantic_mapping` parameter (all 7 backends updated)
+- [x] **Tests**: 7 new tests in `tests/test_pipeline.py::TestPipelinePhase4Mapping`
+- [x] **Future**: Backends can now use pre-computed mappings instead of re-computing (opt-in)
 
-### Haskell Quicksort Benchmark
-- [ ] **Issue**: Imperative quicksort algorithm incompatible with pure functional paradigm
-- [ ] **Impact**: 6/7 benchmarks (86%) vs 7/7 for other backends
-- [ ] **Solution**: Document limitation and provide functional sort alternative in examples
+### ~~Haskell Quicksort Benchmark~~ DOCUMENTED
+- [x] **Issue**: Imperative quicksort uses in-place array mutations, incompatible with Haskell's purity
+- [x] **Impact**: 6/7 benchmarks (86%) - this is a fundamental paradigm limitation, not a bug
+- [x] **Documentation**: Comprehensive guide at `docs/haskell_backend_limitations.md`
+- [x] **Example**: Functional quicksort at `tests/examples/algorithms/functional_quicksort.py`
+- [x] **Tests**: 3 tests in `tests/test_backend_haskell_functional_quicksort.py`
+- **Note**: Getting 7/7 would require changing the benchmark itself or using IORef/ST monad (future)
 
 ---
 
@@ -89,6 +93,8 @@ Tasks extracted from PROJECT_REVIEW.md (2025-12-27).
 |----------|----------|-------|-------|
 | TODOs | Low | 15 | Non-critical, well-documented |
 | Large Files | Medium | 4 | Converters 2,000+ LOC |
-| Type Errors | High | 1 | Python 3.10 syntax in 3.9 project |
+| ~~Type Errors~~ | ~~High~~ | ~~0~~ | Resolved - `__future__.annotations` handles it |
 | Missing Tests | Medium | 2 | OCaml, LLVM under-tested |
-| Hollow Phases | Medium | 2 | Phase 4, Phase 5 minimal |
+| ~~Hollow Phases~~ | ~~Medium~~ | ~~1~~ | Phase 4 now integrated, Phase 5 still minimal |
+
+**Updated**: 2026-01-25 - High priority items addressed

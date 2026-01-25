@@ -31,8 +31,11 @@ class OCamlEmitter(AbstractEmitter):
         """Generate complete function in OCaml."""
         return "\n".join(self.converter._convert_function_def(func_node))
 
-    def emit_module(self, source_code: str, analysis_result: Optional[Any] = None) -> str:
+    def emit_module(
+        self, source_code: str, analysis_result: Optional[Any] = None, semantic_mapping: Any = None
+    ) -> str:
         """Generate complete module/file in OCaml."""
+        # Note: semantic_mapping from Phase 4 available for future optimization
         return self.converter.convert_code(source_code)
 
     def map_python_type(self, python_type: str) -> str:

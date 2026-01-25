@@ -24,8 +24,9 @@ class GoEmitter(AbstractEmitter):
         """Generate Go function code using the advanced converter."""
         return self.converter._convert_function(func_node)
 
-    def emit_module(self, source_code: str, analysis_result: Any) -> str:
+    def emit_module(self, source_code: str, analysis_result: Any = None, semantic_mapping: Any = None) -> str:
         """Generate complete Go module using the advanced converter."""
+        # Note: semantic_mapping from Phase 4 available for future optimization
         return self.converter.convert_code(source_code)
 
     def can_use_simple_emission(self, func_node: ast.FunctionDef, type_context: dict[str, str]) -> bool:

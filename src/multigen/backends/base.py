@@ -71,8 +71,18 @@ class AbstractEmitter(ABC):
         """Generate complete function in target language."""
 
     @abstractmethod
-    def emit_module(self, source_code: str, analysis_result: Any) -> str:
-        """Generate complete module/file in target language."""
+    def emit_module(
+        self, source_code: str, analysis_result: Any, semantic_mapping: Any = None
+    ) -> str:
+        """Generate complete module/file in target language.
+
+        Args:
+            source_code: Original Python source code
+            analysis_result: Analysis phase result with AST info
+            semantic_mapping: Optional SemanticMapping from Phase 4 with pre-computed
+                             type mappings, container mappings, and function return types.
+                             If provided, emitters can use these instead of re-computing.
+        """
 
     @abstractmethod
     def map_python_type(self, python_type: str) -> str:

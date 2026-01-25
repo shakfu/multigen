@@ -40,8 +40,11 @@ class CppEmitter(AbstractEmitter):
         # Use preferences for indent size if available
         self.indent_size = preferences.get("indent_size", 4) if preferences else 4
 
-    def emit_module(self, source_code: str, analysis_result: Optional[Any] = None) -> str:
+    def emit_module(
+        self, source_code: str, analysis_result: Optional[Any] = None, semantic_mapping: Any = None
+    ) -> str:
         """Emit a complete C++ module from Python source."""
+        # Note: semantic_mapping from Phase 4 available for future optimization
         return self.converter.convert_code(source_code)
 
     def emit_statement(self, node: ast.stmt) -> str:

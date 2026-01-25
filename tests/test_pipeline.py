@@ -201,3 +201,108 @@ class TestPipelineIntegration:
 
             finally:
                 Path(temp_python_file).unlink()
+
+
+class TestPipelinePhase4Mapping:
+    """Tests for Phase 4 (Mapping) semantic transformation."""
+
+    def test_semantic_mapping_created(self):
+        """Test that SemanticMapping is created during conversion."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+            f.write("""def add(x: int, y: int) -> int:
+    return x + y
+""")
+            temp_python_file = f.name
+
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                pipeline = MultiGenPipeline(target_language="c")
+                result = pipeline.convert(temp_python_file, temp_dir)
+
+                assert result.success, f"Conversion failed: {result.errors}"
+                # Check semantic_mapping was created
+                assert result.semantic_mapping is not None
+                assert result.semantic_mapping.target_language == "c"
+
+        finally:
+            Path(temp_python_file).unlink()
+
+    def test_type_mappings_populated(self):
+        """Test that basic type mappings are populated."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+            f.write("""def test(x: int, y: float, flag: bool) -> str:
+    return "hello"
+""")
+            temp_python_file = f.name
+
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                pipeline = MultiGenPipeline(target_language="c")
+                result = pipeline.convert(temp_python_file, temp_dir)
+
+                assert result.success
+                mapping = result.semantic_mapping
+                assert mapping is not None
+
+                # Check basic types are mapped
+                assert "int" in mapping.type_mappings
+                assert "float" in mapping.type_mappings
+                assert "bool" in mapping.type_mappings
+                assert "str" in mapping.type_mappings
+
+        finally:
+            Path(temp_python_file).unlink()
+
+    def test_phase_results_contain_mapping_info(self):
+        """Test that phase_results contains mapping phase information."""
+        from multigen.pipeline import PipelinePhase
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+            f.write("""def compute(x: int) -> int:
+    return x * 2
+""")
+            temp_python_file = f.name
+
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                pipeline = MultiGenPipeline(target_language="c")
+                result = pipeline.convert(temp_python_file, temp_dir)
+
+                assert result.success
+                # Check mapping phase is in results
+                assert PipelinePhase.MAPPING in result.phase_results
+                mapping_result = result.phase_results[PipelinePhase.MAPPING]
+
+                assert "target_language" in mapping_result
+                assert mapping_result["target_language"] == "c"
+                assert "type_mappings" in mapping_result
+
+        finally:
+            Path(temp_python_file).unlink()
+
+    @pytest.mark.parametrize("target", ["c", "cpp", "rust", "go"])
+    def test_semantic_mapping_per_backend(self, target):
+        """Test semantic mapping is created for each backend."""
+        if not registry.has_backend(target):
+            pytest.skip(f"Backend {target} not available")
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+            f.write("""def square(n: int) -> int:
+    return n * n
+""")
+            temp_python_file = f.name
+
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                pipeline = MultiGenPipeline(target_language=target)
+                result = pipeline.convert(temp_python_file, temp_dir)
+
+                assert result.success, f"Conversion failed for {target}: {result.errors}"
+                assert result.semantic_mapping is not None
+                assert result.semantic_mapping.target_language == target
+                # Each backend should have semantic notes
+                assert "backend" in result.semantic_mapping.semantic_notes
+                assert "extension" in result.semantic_mapping.semantic_notes
+
+        finally:
+            Path(temp_python_file).unlink()

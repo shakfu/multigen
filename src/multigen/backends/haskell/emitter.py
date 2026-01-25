@@ -31,8 +31,9 @@ class HaskellEmitter(AbstractEmitter):
         """Generate complete function in Haskell."""
         return self.converter._convert_function(func_node)
 
-    def emit_module(self, source_code: str, analysis_result: Any) -> str:
+    def emit_module(self, source_code: str, analysis_result: Any = None, semantic_mapping: Any = None) -> str:
         """Generate complete module/file in Haskell."""
+        # Note: semantic_mapping from Phase 4 available for future optimization
         return self.converter.convert_code(source_code)
 
     def map_python_type(self, python_type: str) -> str:

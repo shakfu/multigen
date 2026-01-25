@@ -839,8 +839,10 @@ class MultiGenPipeline:
     ) -> bool:
         """Phase 6: Target language code generation."""
         try:
-            # Generate code using selected backend
-            generated_code = self.emitter.emit_module(source_code, analysis_result)
+            # Generate code using selected backend, passing semantic mapping from Phase 4
+            generated_code = self.emitter.emit_module(
+                source_code, analysis_result, semantic_mapping=result.semantic_mapping
+            )
 
             # Write source file with correct extension
             file_extension = self.backend.get_file_extension()

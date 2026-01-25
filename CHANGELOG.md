@@ -17,6 +17,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [0.1.x]
 
+## [0.1.107] - 2026-01-25
+
+**Phase 4 Integration & High Priority TODO Cleanup**
+
+### Added
+
+- **Phase 4 (Mapping) integration with emitters**
+  - `AbstractEmitter.emit_module()` now accepts optional `semantic_mapping` parameter
+  - Pipeline passes pre-computed `SemanticMapping` to all backends
+  - All 7 backend emitters updated (C, C++, Rust, Go, Haskell, OCaml, LLVM)
+  - Backends can now use pre-computed type/container mappings instead of re-computing
+  - File: `src/multigen/backends/base.py:74-84`
+
+- **7 new Phase 4 mapping tests** in `tests/test_pipeline.py::TestPipelinePhase4Mapping`
+  - `test_semantic_mapping_created` - Verifies SemanticMapping is created
+  - `test_type_mappings_populated` - Verifies basic types are mapped
+  - `test_phase_results_contain_mapping_info` - Verifies phase results structure
+  - `test_semantic_mapping_per_backend` - Verifies mapping works for all backends
+
+- **Functional quicksort example** for Haskell backend
+  - New example: `tests/examples/algorithms/functional_quicksort.py`
+  - Demonstrates list comprehension approach compatible with pure functional languages
+  - Works with all backends including Haskell
+
+### Changed
+
+- **TODO.md updated** - All 3 high priority items addressed:
+  - Type annotation syntax: Confirmed not an issue (`__future__.annotations` handles it)
+  - Phase 4 Mapping: Now fully integrated with emitter interface
+  - Haskell Quicksort: Documented as paradigm limitation, example provided
+
+### Fixed
+
+- **Technical debt summary updated** - Reflects actual status of type errors and Phase 4
+
+---
+
 ## [0.1.106]
 
 **Zero Required Dependencies**

@@ -17,12 +17,13 @@ class LLVMEmitter(AbstractEmitter):
         super().__init__(preferences)
         self.converter = IRToLLVMConverter()
 
-    def emit_module(self, source_code: str, analysis_result: Any = None) -> str:
+    def emit_module(self, source_code: str, analysis_result: Any = None, semantic_mapping: Any = None) -> str:
         """Generate LLVM IR from Python source code.
 
         Args:
             source_code: Python source code to convert
             analysis_result: Optional analysis result (unused for now)
+            semantic_mapping: Optional SemanticMapping from Phase 4 (for future optimization)
 
         Returns:
             LLVM IR as text string
