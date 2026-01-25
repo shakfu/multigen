@@ -88,6 +88,10 @@ class MultiGenPythonToCConverter:
         # String method converter (extracted for maintainability)
         self._string_converter = CStringMethodConverter()
 
+        # Counter-based temp variable naming (replaces timestamp-based naming)
+        # Maps prefix -> counter for generating sequential names like i0, i1, result0, etc.
+        self._temp_var_counters: dict[str, int] = {}
+
     def convert_code(self, source_code: str) -> str:
         """Convert Python source code to C code."""
         try:
@@ -585,6 +589,9 @@ class MultiGenPythonToCConverter:
         """Convert Python function to C function."""
         self.current_function = node.name
         self.current_function_ast = node
+
+        # Reset temp variable counters for each function (allows reuse of simple names)
+        self._temp_var_counters = {}
 
         # Build parameter list
         params = []
@@ -2743,12 +2750,13 @@ class MultiGenPythonToCConverter:
         # Handle iteration over container variables (e.g., for x in numbers)
         elif isinstance(generator.iter, ast.Name):
             container_name = generator.iter.id
+            # Generate a clean index variable name
+            index_var = self._generate_temp_var_name("idx")
             # Use vec_int as default type for now (TODO: proper type inference)
             container_size_call = f"vec_int_size(&{container_name})"
-            container_at_call = f"vec_int_at(&{container_name}, __idx_{temp_var})"
+            container_at_call = f"vec_int_at(&{container_name}, {index_var})"
 
             # Generate index-based iteration
-            index_var = f"__idx_{temp_var}"
             loop_code = f"for (size_t {index_var} = 0; {index_var} < {container_size_call}; {index_var}++)"
             loop_var_decl = f"int {loop_var} = *{container_at_call};\n        "
 
@@ -3101,7 +3109,29 @@ class MultiGenPythonToCConverter:
             return "{0}"
 
     def _generate_temp_var_name(self, prefix: str) -> str:
-        """Generate a unique temporary variable name."""
-        import time
+        """Generate a unique temporary variable name using sequential counters.
 
-        return f"{prefix}_{int(time.time() * 1000000) % 1000000}"
+        Uses short, human-readable names instead of timestamp-based names.
+        Examples: i0, i1, j0, result0, filtered0
+        """
+        # Map verbose prefixes to shorter, more natural names
+        prefix_map = {
+            "loop_idx": "i",
+            "iter": "it",
+            "set_iter": "sit",
+            "comp_result": "result",
+            "dict_comp_result": "dict_result",
+            "set_comp_result": "set_result",
+            "idx": "j",
+        }
+        short_prefix = prefix_map.get(prefix, prefix)
+
+        # Get and increment counter for this prefix
+        count = self._temp_var_counters.get(short_prefix, 0)
+        self._temp_var_counters[short_prefix] = count + 1
+
+        # For the first occurrence, try to use just the prefix without number
+        # This gives cleaner names like 'i' instead of 'i0' for single loops
+        if count == 0:
+            return short_prefix
+        return f"{short_prefix}{count}"
