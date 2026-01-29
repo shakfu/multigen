@@ -140,14 +140,14 @@ check:
 	@echo "Checking wheel with twine..."
 	@uv run twine check dist/*
 
-publish-test: check-wheel
+publish-test: check
 	@echo "Publishing to TestPyPI..."
 	@uv run twine upload --repository testpypi dist/*
 	@echo ""
 	@echo "Package published to TestPyPI"
 	@echo "Install with: pip install --index-url https://test.pypi.org/simple/ multigen"
 
-publish: check-wheel
+publish: check
 	@echo "Publishing to PyPI..."
 	@uv run twine upload dist/*
 	@echo ""
