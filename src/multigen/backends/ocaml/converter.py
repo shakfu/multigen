@@ -204,7 +204,9 @@ class MultiGenPythonToOCamlConverter:
                                 mutable.add(target.id)
         return mutable
 
-    def _convert_regular_function(self, node: ast.FunctionDef, params: list[tuple[str, str]], return_type: str) -> list[str]:
+    def _convert_regular_function(
+        self, node: ast.FunctionDef, params: list[tuple[str, str]], return_type: str
+    ) -> list[str]:
         """Convert a regular function definition."""
         func_name = self._to_ocaml_var_name(node.name)
 

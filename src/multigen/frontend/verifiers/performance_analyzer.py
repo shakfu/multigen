@@ -490,7 +490,7 @@ class PerformanceAnalyzer:
             if context.analysis_result.functions:
                 return list(context.analysis_result.functions.keys())[0]
         elif hasattr(context.ast_node, "name"):
-            name: str = getattr(context.ast_node, "name")
+            name: str = context.ast_node.name
             return name
         return "unknown_function"
 
