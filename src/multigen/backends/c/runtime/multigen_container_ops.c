@@ -2,6 +2,8 @@
  * MultiGen Runtime Library - STC Container Helper Operations Implementation
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include "multigen_container_ops.h"
 #include "multigen_string_ops.h"
 

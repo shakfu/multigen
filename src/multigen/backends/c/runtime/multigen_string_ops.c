@@ -2,6 +2,8 @@
  * MultiGen Runtime Library - String Operations Implementation
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include "multigen_string_ops.h"
 #include <stdarg.h>
 #include <stdbool.h>

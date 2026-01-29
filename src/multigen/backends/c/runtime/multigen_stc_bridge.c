@@ -2,6 +2,8 @@
  * CGen Runtime Library - STC Bridge Implementation
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include "multigen_stc_bridge.h"
 #include <ctype.h>
 

@@ -2,6 +2,8 @@
  * MultiGen Runtime Library - File I/O Operations Implementation
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include "multigen_file_ops.h"
 #include "multigen_string_ops.h"
 #include <unistd.h>

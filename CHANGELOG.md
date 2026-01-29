@@ -17,6 +17,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [0.1.x]
 
+## [0.1.109] - 2026-01-29
+
+**C Runtime POSIX Compliance & OCaml Builder Robustness**
+
+### Fixed
+
+- **C runtime library POSIX compliance** - Fixed compilation errors on strict C11 systems
+  - Added `#include <stdint.h>` to `multigen_memory_ops.h` for `SIZE_MAX` definition
+  - Added `#define _POSIX_C_SOURCE 200809L` to runtime source files for POSIX functions:
+    - `multigen_string_ops.c` - for `strtok_r()`
+    - `multigen_stc_bridge.c` - for `strdup()`
+    - `multigen_container_ops.c` - for `strdup()`
+    - `multigen_file_ops.c` - for POSIX file operations
+
+- **OCaml builder robustness** - Now works without opam initialization
+  - Added `_has_opam_initialized()` check to detect if opam is configured
+  - Falls back to direct `ocamlc` compilation when opam is not initialized
+  - Allows OCaml backend to work on systems with ocamlc but without opam setup
+  - File: `src/multigen/backends/ocaml/builder.py`
+
+---
+
 ## [0.1.108] - 2026-01-25
 
 **Human-Readable Variable Naming in C Backend**
