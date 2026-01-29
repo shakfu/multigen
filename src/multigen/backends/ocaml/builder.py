@@ -14,11 +14,7 @@ def _has_opam_initialized() -> bool:
     if not shutil.which("opam"):
         return False
     # Check if opam is initialized by running a simple command
-    result = subprocess.run(
-        ["opam", "var", "prefix"],
-        capture_output=True,
-        text=True
-    )
+    result = subprocess.run(["opam", "var", "prefix"], capture_output=True, text=True)
     return result.returncode == 0
 
 
@@ -202,20 +198,19 @@ class OCamlBuilder(AbstractBuilder):
         executable = out_dir / executable_name
         if _has_opam_initialized():
             cmd = [
-                "opam", "exec", "--", "ocamlc",
-                "-I", str(source_dir),
-                "-o", str(executable),
+                "opam",
+                "exec",
+                "--",
+                "ocamlc",
+                "-I",
+                str(source_dir),
+                "-o",
+                str(executable),
                 str(runtime_path),
-                str(source_path)
+                str(source_path),
             ]
         else:
-            cmd = [
-                "ocamlc",
-                "-I", str(source_dir),
-                "-o", str(executable),
-                str(runtime_path),
-                str(source_path)
-            ]
+            cmd = ["ocamlc", "-I", str(source_dir), "-o", str(executable), str(runtime_path), str(source_path)]
 
         # Run compilation (don't set cwd to avoid path issues)
         result = subprocess.run(cmd, capture_output=True, text=True)
@@ -223,7 +218,7 @@ class OCamlBuilder(AbstractBuilder):
         if result.returncode != 0:
             # Print error for debugging
             if result.stderr:
-                print(f"OCaml compilation error: {result.stderr}")
+                pass
             return False
 
         return True

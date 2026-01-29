@@ -1,9 +1,6 @@
 """Tests for Haskell backend object-oriented programming support."""
 
-import pytest
-
 from multigen.backends.haskell.converter import MultiGenPythonToHaskellConverter
-from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestHaskellOOPBasic:

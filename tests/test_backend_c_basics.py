@@ -1,6 +1,5 @@
 """Tests specifically for Python-to-C converter functionality."""
 
-
 import pytest
 
 from multigen.backends.c.converter import MultiGenPythonToCConverter
@@ -111,8 +110,6 @@ def void_func(x: int):
         c_code = self.converter.convert_code(python_code)
 
         assert "void void_func(int x)" in c_code
-
-
 
 
 class TestPy2CBuiltinFunctions:
@@ -310,19 +307,22 @@ def func2(y: int) -> int:
         assert "return (y * 2);" in c_code
 
 
-@pytest.mark.parametrize("python_op,c_op", [
-    ("+", "+"),
-    ("-", "-"),
-    ("*", "*"),
-    ("/", "/"),
-    ("%", "%"),
-    ("==", "=="),
-    ("!=", "!="),
-    ("<", "<"),
-    ("<=", "<="),
-    (">", ">"),
-    (">=", ">="),
-])
+@pytest.mark.parametrize(
+    "python_op,c_op",
+    [
+        ("+", "+"),
+        ("-", "-"),
+        ("*", "*"),
+        ("/", "/"),
+        ("%", "%"),
+        ("==", "=="),
+        ("!=", "!="),
+        ("<", "<"),
+        ("<=", "<="),
+        (">", ">"),
+        (">=", ">="),
+    ],
+)
 def test_operator_conversion(python_op, c_op):
     """Test that Python operators are correctly converted to C operators."""
     converter = MultiGenPythonToCConverter()
@@ -336,13 +336,16 @@ def test_op(a: int, b: int) -> int:
     assert f"a {c_op} b" in c_code
 
 
-@pytest.mark.parametrize("python_type,c_type", [
-    ("int", "int"),
-    ("float", "double"),
-    ("bool", "bool"),
-    ("str", "char*"),
-    ("None", "void"),
-])
+@pytest.mark.parametrize(
+    "python_type,c_type",
+    [
+        ("int", "int"),
+        ("float", "double"),
+        ("bool", "bool"),
+        ("str", "char*"),
+        ("None", "void"),
+    ],
+)
 def test_type_conversion_parametrized(python_type, c_type):
     """Test parametrized type conversion."""
     converter = MultiGenPythonToCConverter()

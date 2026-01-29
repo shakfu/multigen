@@ -1,6 +1,5 @@
 """Tests for C backend fallback container system."""
 
-import pytest
 from multigen.backends.c.containers import CContainerSystem
 
 

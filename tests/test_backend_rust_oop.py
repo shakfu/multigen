@@ -1,9 +1,6 @@
 """Tests for Rust backend object-oriented programming support."""
 
-import pytest
-
 from multigen.backends.rust.converter import MultiGenPythonToRustConverter
-from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestRustOOPBasic:
@@ -174,7 +171,7 @@ class Book:
         assert "title: String," in rust_code
         assert "author: String," in rust_code
         assert "fn new(title: String, author: String)" in rust_code
-        assert "((self.title + \" by \".to_string()) + self.author)" in rust_code
+        assert '((self.title + " by ".to_string()) + self.author)' in rust_code
 
     def test_class_with_mixed_types(self):
         """Test class with mixed attribute types."""

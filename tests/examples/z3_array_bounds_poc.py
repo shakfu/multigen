@@ -24,7 +24,6 @@ except ImportError:
 
 def prove_array_bounds_safe():
     """Prove that array access is safe given preconditions."""
-
     print("=" * 70)
     print("Z3 PROOF-OF-CONCEPT: Array Bounds Safety")
     print("=" * 70)
@@ -51,12 +50,12 @@ def prove_array_bounds_safe():
     safety_property = ForAll([i], Implies(And(i >= 0, i < n), And(i >= 0, i < arr_len)))
 
     print("Preconditions:")
-    print(f"  - arr_len >= n  (array is large enough)")
-    print(f"  - n >= 0  (n is non-negative)")
+    print("  - arr_len >= n  (array is large enough)")
+    print("  - n >= 0  (n is non-negative)")
     print()
 
     print("Safety property to prove:")
-    print(f"  - ∀i. (0 <= i < n) => (0 <= i < arr_len)")
+    print("  - ∀i. (0 <= i < n) => (0 <= i < arr_len)")
     print()
 
     # Check if preconditions imply safety property
@@ -87,7 +86,6 @@ def prove_array_bounds_safe():
 
 def prove_unsafe_access_detected():
     """Demonstrate Z3 detecting an unsafe array access."""
-
     print("=" * 70)
     print("Z3 PROOF-OF-CONCEPT: Detecting Unsafe Access")
     print("=" * 70)
@@ -110,12 +108,12 @@ def prove_unsafe_access_detected():
     safety_property = ForAll([i], Implies(And(i >= 0, i < n + 1), And(i >= 0, i < arr_len)))
 
     print("Preconditions:")
-    print(f"  - arr_len == n  (array has exactly n elements)")
-    print(f"  - n >= 0")
+    print("  - arr_len == n  (array has exactly n elements)")
+    print("  - n >= 0")
     print()
 
     print("Trying to prove:")
-    print(f"  - ∀i. (0 <= i < n+1) => (0 <= i < arr_len)")
+    print("  - ∀i. (0 <= i < n+1) => (0 <= i < arr_len)")
     print()
 
     solver = Solver()
@@ -143,7 +141,6 @@ def prove_unsafe_access_detected():
 
 def prove_off_by_one():
     """Demonstrate Z3 detecting off-by-one errors."""
-
     print("=" * 70)
     print("Z3 PROOF-OF-CONCEPT: Off-by-One Error Detection")
     print("=" * 70)

@@ -1,5 +1,6 @@
 """Demonstration of OOP features in MultiGen C backend."""
 
+
 class Rectangle:
     def __init__(self, width: int, height: int):
         self.width: int = width
@@ -18,6 +19,7 @@ class Rectangle:
     def is_square(self) -> bool:
         return self.width == self.height
 
+
 class Circle:
     def __init__(self, radius: int):
         self.radius: int = radius
@@ -28,6 +30,7 @@ class Circle:
 
     def diameter(self) -> int:
         return 2 * self.radius
+
 
 def test_shapes() -> int:
     # Create a rectangle

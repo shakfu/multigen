@@ -359,12 +359,15 @@ class Calculator:
         assert "return (self->base + result);" in c_code
 
 
-@pytest.mark.parametrize("python_type,c_type", [
-    ("int", "int"),
-    ("float", "double"),
-    ("bool", "bool"),
-    ("str", "char*"),
-])
+@pytest.mark.parametrize(
+    "python_type,c_type",
+    [
+        ("int", "int"),
+        ("float", "double"),
+        ("bool", "bool"),
+        ("str", "char*"),
+    ],
+)
 def test_instance_variable_type_mapping(python_type, c_type):
     """Test parametrized type mapping for instance variables."""
     converter = MultiGenPythonToCConverter()

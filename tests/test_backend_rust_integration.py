@@ -2,8 +2,8 @@
 
 import pytest
 
-from multigen.backends.rust.converter import MultiGenPythonToRustConverter
 from multigen.backends.errors import UnsupportedFeatureError
+from multigen.backends.rust.converter import MultiGenPythonToRustConverter
 
 
 class TestRustIntegrationComplete:
@@ -259,7 +259,6 @@ def complex_processing(data: list, threshold: float) -> dict:
 
     def test_error_handling_for_unsupported_features(self):
         """Test that unsupported features raise appropriate errors."""
-
         # Test generator expression (should be unsupported)
         python_code_generator = """
 def test_generator():

@@ -2,8 +2,8 @@
 
 import pytest
 
-from multigen.backends.haskell.converter import MultiGenPythonToHaskellConverter
 from multigen.backends.errors import UnsupportedFeatureError
+from multigen.backends.haskell.converter import MultiGenPythonToHaskellConverter
 
 
 class TestHaskellBasics:

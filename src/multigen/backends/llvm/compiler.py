@@ -9,7 +9,7 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 
-from llvmlite import binding as llvm  # type: ignore[import-untyped]
+from llvmlite import binding as llvm  # type: ignore[import-not-found,import-untyped]
 
 
 class LLVMCompiler:
@@ -71,7 +71,7 @@ class LLVMCompiler:
         # Create temporary object file
         with tempfile.NamedTemporaryFile(suffix=".o", delete=False) as obj_file:
             obj_path = obj_file.name
-            obj_bytes = self.compile_ir_to_object(llvm_ir, obj_path)
+            self.compile_ir_to_object(llvm_ir, obj_path)
 
         try:
             # Link to executable

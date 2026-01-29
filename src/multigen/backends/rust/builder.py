@@ -49,13 +49,12 @@ edition = "2021"
             if result.returncode != 0:
                 # Print error for debugging
                 if result.stderr:
-                    print(f"Rust compilation error: {result.stderr}")
+                    pass
                 return False
 
             return True
 
-        except Exception as e:
-            print(f"Rust compilation exception: {e}")
+        except Exception:
             return False
 
     def get_compile_flags(self) -> list[str]:

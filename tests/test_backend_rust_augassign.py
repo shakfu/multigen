@@ -1,9 +1,6 @@
 """Tests for Rust backend augmented assignment support."""
 
-import pytest
-
 from multigen.backends.rust.converter import MultiGenPythonToRustConverter
-from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestRustAugAssignBasic:

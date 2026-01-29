@@ -16,12 +16,11 @@ Current Status (v0.1.85-dev):
 - Phase 4: Emscripten integration (planned)
 """
 
-import re
 from pathlib import Path
 from typing import Optional
 
 try:
-    from llvmlite import binding as llvm  # type: ignore[import-untyped]
+    from llvmlite import binding as llvm  # type: ignore[import-not-found,import-untyped]
 
     LLVMLITE_AVAILABLE = True
 except ImportError:

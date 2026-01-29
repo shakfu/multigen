@@ -72,7 +72,9 @@ def convert_function_with_visitor(converter: "MultiGenPythonToHaskellConverter",
     return _convert_pure_function(converter, node, func_name)
 
 
-def _mutates_array_parameter(converter: "MultiGenPythonToHaskellConverter", node: ast.FunctionDef) -> tuple[bool, set[str]]:
+def _mutates_array_parameter(
+    converter: "MultiGenPythonToHaskellConverter", node: ast.FunctionDef
+) -> tuple[bool, set[str]]:
     """Check if function mutates array parameters.
 
     Args:
@@ -319,7 +321,9 @@ def _convert_pure_function(converter: "MultiGenPythonToHaskellConverter", node: 
     return f"{signature}\n{func_name}{param_pattern} = {body}"
 
 
-def _param_used_as_2d_list(converter: "MultiGenPythonToHaskellConverter", node: ast.FunctionDef, param_name: str) -> bool:
+def _param_used_as_2d_list(
+    converter: "MultiGenPythonToHaskellConverter", node: ast.FunctionDef, param_name: str
+) -> bool:
     """Check if parameter is used as 2D list."""
     return converter._param_used_as_2d_list(node, param_name)
 

@@ -71,9 +71,7 @@ class AbstractEmitter(ABC):
         """Generate complete function in target language."""
 
     @abstractmethod
-    def emit_module(
-        self, source_code: str, analysis_result: Any, semantic_mapping: Any = None
-    ) -> str:
+    def emit_module(self, source_code: str, analysis_result: Any, semantic_mapping: Any = None) -> str:
         """Generate complete module/file in target language.
 
         Args:

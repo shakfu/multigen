@@ -1,9 +1,7 @@
 """Tests for basic C++ backend functionality."""
 
-import pytest
-
 from multigen.backends.cpp.converter import MultiGenPythonToCppConverter
-from multigen.backends.errors import UnsupportedFeatureError
+
 
 class TestCppBasicsConversion:
     """Test basic conversion functionality."""

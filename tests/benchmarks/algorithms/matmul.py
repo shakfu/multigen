@@ -1,4 +1,5 @@
 """Matrix multiplication benchmark - Numeric computation performance."""
+
 from __future__ import annotations
 
 

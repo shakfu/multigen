@@ -10,6 +10,7 @@ import pytest
 # Check if llvmlite is available before importing LLVM backend
 try:
     import llvmlite  # noqa: F401
+
     LLVMLITE_AVAILABLE = True
 except ImportError:
     LLVMLITE_AVAILABLE = False
@@ -29,8 +30,7 @@ if not all([LLVM_LLC_PATH, LLVM_LLI_PATH, LLVM_CLANG_PATH]):
 
 LLVM_TOOLS_AVAILABLE = all([LLVM_LLC_PATH, LLVM_LLI_PATH])
 pytestmark = pytest.mark.skipif(
-    not LLVMLITE_AVAILABLE or not LLVM_TOOLS_AVAILABLE,
-    reason="llvmlite not installed or LLVM tools not available"
+    not LLVMLITE_AVAILABLE or not LLVM_TOOLS_AVAILABLE, reason="llvmlite not installed or LLVM tools not available"
 )
 
 if LLVMLITE_AVAILABLE:
@@ -49,6 +49,7 @@ class TestLLVMBasicConversion:
     def _convert_to_llvm(self, python_code: str) -> str:
         """Convert Python code to LLVM IR."""
         import ast
+
         tree = ast.parse(python_code)
         ir_module = self.ir_builder.build_from_ast(tree)
         llvm_module = self.llvm_converter.visit_module(ir_module)
@@ -98,6 +99,7 @@ class TestLLVMControlFlow:
     def _convert_to_llvm(self, python_code: str) -> str:
         """Convert Python code to LLVM IR."""
         import ast
+
         tree = ast.parse(python_code)
         ir_module = self.ir_builder.build_from_ast(tree)
         llvm_module = self.llvm_converter.visit_module(ir_module)
@@ -113,7 +115,6 @@ def max_val(a: int, b: int) -> int:
         return b
 """
         llvm_ir = self._convert_to_llvm(python_code)
-        
 
         # Check for comparison instruction
         assert "icmp sgt" in llvm_ir
@@ -133,7 +134,6 @@ def count_down(n: int) -> int:
     return i
 """
         llvm_ir = self._convert_to_llvm(python_code)
-        
 
         # Check for loop structure
         assert "while.cond:" in llvm_ir
@@ -154,7 +154,6 @@ def sum_range(n: int) -> int:
     return total
 """
         llvm_ir = self._convert_to_llvm(python_code)
-        
 
         # Check for loop structure
         assert "for.cond:" in llvm_ir
@@ -174,6 +173,7 @@ class TestLLVMBooleanOperations:
     def _convert_to_llvm(self, python_code: str) -> str:
         """Convert Python code to LLVM IR."""
         import ast
+
         tree = ast.parse(python_code)
         ir_module = self.ir_builder.build_from_ast(tree)
         llvm_module = self.llvm_converter.visit_module(ir_module)
@@ -224,7 +224,6 @@ def test_not(a: int) -> int:
     return 0
 """
         llvm_ir = self._convert_to_llvm(python_code)
-        
 
         # Check for comparison (not is implemented as comparison with false/0)
         assert "icmp" in llvm_ir
@@ -243,6 +242,7 @@ class TestLLVMExecution:
     def _convert_to_llvm(self, python_code: str) -> str:
         """Convert Python code to LLVM IR."""
         import ast
+
         tree = ast.parse(python_code)
         ir_module = self.ir_builder.build_from_ast(tree)
         llvm_module = self.llvm_converter.visit_module(ir_module)
@@ -259,11 +259,7 @@ class TestLLVMExecution:
         ll_file = Path(self.temp_dir) / "test.ll"
         ll_file.write_text(llvm_ir)
 
-        result = subprocess.run(
-            [LLVM_LLI_PATH, str(ll_file)],
-            capture_output=True,
-            text=True
-        )
+        result = subprocess.run([LLVM_LLI_PATH, str(ll_file)], capture_output=True, text=True)
         return result.returncode
 
     def test_simple_return(self):
@@ -1256,10 +1252,12 @@ def main() -> int:
         assert "call" in llvm_ir
         # Execute and verify it runs without error
         import subprocess
-        with open('/tmp/test_print.ll', 'w') as f:
+
+        with open("/tmp/test_print.ll", "w") as f:
             f.write(llvm_ir)
-        result = subprocess.run(['/opt/homebrew/opt/llvm/bin/lli', '/tmp/test_print.ll'],
-                              capture_output=True, text=True)
+        result = subprocess.run(
+            ["/opt/homebrew/opt/llvm/bin/lli", "/tmp/test_print.ll"], capture_output=True, text=True
+        )
         # Should print "42" and return 0
         assert result.returncode == 0
         assert "42" in result.stdout
@@ -1275,10 +1273,12 @@ def main() -> int:
         llvm_ir = self._convert_to_llvm(python_code)
         # Execute and verify output
         import subprocess
-        with open('/tmp/test_string_print.ll', 'w') as f:
+
+        with open("/tmp/test_string_print.ll", "w") as f:
             f.write(llvm_ir)
-        result = subprocess.run(['/opt/homebrew/opt/llvm/bin/lli', '/tmp/test_string_print.ll'],
-                              capture_output=True, text=True)
+        result = subprocess.run(
+            ["/opt/homebrew/opt/llvm/bin/lli", "/tmp/test_string_print.ll"], capture_output=True, text=True
+        )
         assert result.returncode == 0
         assert "Hello, World!" in result.stdout
 
@@ -1295,10 +1295,12 @@ def main() -> int:
         llvm_ir = self._convert_to_llvm(python_code)
         # Execute and verify output
         import subprocess
-        with open('/tmp/test_string_concat.ll', 'w') as f:
+
+        with open("/tmp/test_string_concat.ll", "w") as f:
             f.write(llvm_ir)
-        result = subprocess.run(['/opt/homebrew/opt/llvm/bin/lli', '/tmp/test_string_concat.ll'],
-                              capture_output=True, text=True)
+        result = subprocess.run(
+            ["/opt/homebrew/opt/llvm/bin/lli", "/tmp/test_string_concat.ll"], capture_output=True, text=True
+        )
         assert result.returncode == 0
         assert "Hello World" in result.stdout
 
@@ -1326,6 +1328,7 @@ def main() -> int:
 
         # Use llvmlite compiler
         from multigen.backends.llvm import LLVMCompiler
+
         compiler = LLVMCompiler()
 
         # Compile and run
@@ -1342,8 +1345,10 @@ def main() -> int:
         llvm_ir = self._convert_to_llvm(python_code)
 
         # Use llvmlite compiler
-        from multigen.backends.llvm import LLVMCompiler
         import tempfile
+
+        from multigen.backends.llvm import LLVMCompiler
+
         compiler = LLVMCompiler()
 
         # Compile to executable
@@ -1356,10 +1361,12 @@ def main() -> int:
 
             # Verify executable exists
             from pathlib import Path
+
             assert Path(exe_path).exists()
 
             # Execute directly
             import subprocess
+
             result = subprocess.run([exe_path], capture_output=True, text=True)
             assert result.returncode == 0
             assert "42" in result.stdout

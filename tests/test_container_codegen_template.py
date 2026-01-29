@@ -1,6 +1,5 @@
 """Tests for template-based container code generation."""
 
-import pytest
 from multigen.backends.c.container_codegen import ContainerCodeGenerator
 
 

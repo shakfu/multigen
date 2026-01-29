@@ -1118,7 +1118,7 @@ class IRBuilder:
         comparisons = []
         left_expr = self._build_expression(node.left)
 
-        for i, (op, comparator) in enumerate(zip(node.ops, node.comparators)):
+        for _i, (op, comparator) in enumerate(zip(node.ops, node.comparators)):
             right_expr = self._build_expression(comparator)
             operator = self._get_comparison_operator_string(op)
             result_type = IRType(IRDataType.BOOL)

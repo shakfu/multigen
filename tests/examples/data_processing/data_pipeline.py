@@ -2,7 +2,7 @@
 
 This example demonstrates:
 - Multi-stage data processing
-- Function composition  
+- Function composition
 - List comprehensions
 - Dictionary aggregations
 - Practical ETL (Extract, Transform, Load) pattern
@@ -11,10 +11,10 @@ This example demonstrates:
 
 def extract_numbers(text: str) -> list:
     """Extract numeric values from text (simplified).
-    
+
     Args:
         text: Input text
-        
+
     Returns:
         List of integers found in text
     """
@@ -30,31 +30,31 @@ def extract_numbers(text: str) -> list:
 
 def transform_data(numbers: list, threshold: int) -> list:
     """Filter and transform numbers above threshold.
-    
+
     Args:
         numbers: Input list of numbers
         threshold: Minimum value to keep
-        
+
     Returns:
         Transformed list
     """
     result: list = []
-    
+
     for num in numbers:
         if num >= threshold:
             # Transform: double the value
             transformed: int = num * 2
             result.append(transformed)
-    
+
     return result
 
 
 def aggregate_stats(numbers: list) -> dict:
     """Calculate aggregated statistics.
-    
+
     Args:
         numbers: List of numbers
-        
+
     Returns:
         Dictionary with statistics
     """
@@ -64,38 +64,38 @@ def aggregate_stats(numbers: list) -> dict:
         empty["count"] = 0
         empty["average"] = 0
         return empty
-    
+
     total: int = 0
     for num in numbers:
         total += num
-    
+
     stats: dict = {}
     stats["total"] = total
     stats["count"] = len(numbers)
     stats["average"] = total // len(numbers)  # Integer division
-    
+
     return stats
 
 
 def run_pipeline(text: str, threshold: int) -> dict:
     """Run complete data processing pipeline.
-    
+
     Args:
         text: Input text data
         threshold: Filter threshold
-        
+
     Returns:
         Final statistics
     """
     # Stage 1: Extract
     raw_data: list = extract_numbers(text)
-    
+
     # Stage 2: Transform
     processed_data: list = transform_data(raw_data, threshold)
-    
+
     # Stage 3: Aggregate
     final_stats: dict = aggregate_stats(processed_data)
-    
+
     return final_stats
 
 
@@ -104,13 +104,13 @@ def main() -> int:
     # Sample input
     input_text: str = "sample data"
     filter_threshold: int = 20
-    
+
     # Run pipeline
     results: dict = run_pipeline(input_text, filter_threshold)
-    
+
     # Print results
     print(results["total"])
     print(results["count"])
     print(results["average"])
-    
+
     return 0

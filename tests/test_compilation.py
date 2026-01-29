@@ -14,8 +14,8 @@ from typing import Optional
 
 import pytest
 
-from multigen.pipeline import MultiGenPipeline, PipelineConfig, BuildMode
 from multigen.backends.registry import registry
+from multigen.pipeline import BuildMode, MultiGenPipeline, PipelineConfig
 
 
 class CompilationTestHelper:
@@ -28,13 +28,9 @@ class CompilationTestHelper:
 
     @staticmethod
     def compile_and_run(
-        source_file: Path,
-        backend: str,
-        expected_output: str,
-        timeout: int = 10
+        source_file: Path, backend: str, expected_output: str, timeout: int = 10
     ) -> tuple[bool, str, str]:
-        """
-        Generate, compile, and run code for a backend.
+        """Generate, compile, and run code for a backend.
 
         Returns:
             (success, stdout, stderr)
@@ -48,11 +44,7 @@ class CompilationTestHelper:
             # Generate code
             try:
                 pipeline = MultiGenPipeline(
-                    target_language=backend,
-                    config=PipelineConfig(
-                        target_language=backend,
-                        build_mode=BuildMode.DIRECT
-                    )
+                    target_language=backend, config=PipelineConfig(target_language=backend, build_mode=BuildMode.DIRECT)
                 )
                 result = pipeline.convert(source_file, output_path=output_dir)
 
@@ -71,16 +63,16 @@ class CompilationTestHelper:
                 executable = CompilationTestHelper._find_executable(output_dir, source_file.stem, backend)
 
             if not executable or not executable.exists():
-                return False, "", f"No executable found. Result executable_path: {result.executable_path}, searched in: {output_dir}"
+                return (
+                    False,
+                    "",
+                    f"No executable found. Result executable_path: {result.executable_path}, searched in: {output_dir}",
+                )
 
             # Run the executable
             try:
                 process = subprocess.run(
-                    [str(executable)],
-                    capture_output=True,
-                    text=True,
-                    timeout=timeout,
-                    cwd=output_dir
+                    [str(executable)], capture_output=True, text=True, timeout=timeout, cwd=output_dir
                 )
 
                 stdout = process.stdout.strip()
@@ -102,7 +94,7 @@ class CompilationTestHelper:
         """Find the generated executable."""
         # Common patterns for executables
         candidates = [
-            output_dir / base_name,           # Unix executable
+            output_dir / base_name,  # Unix executable
             output_dir / f"{base_name}.exe",  # Windows executable
             output_dir / "target" / "debug" / base_name,  # Rust
             output_dir / "target" / "release" / base_name,  # Rust release
@@ -123,9 +115,7 @@ class TestCBackendCompilation:
     def test_simple_math_compiles(self):
         """Test that simple math operations compile and run."""
         source = CompilationTestHelper.get_fixture_path("simple_math.py")
-        success, stdout, stderr = CompilationTestHelper.compile_and_run(
-            source, "c", "16"
-        )
+        success, stdout, stderr = CompilationTestHelper.compile_and_run(source, "c", "16")
 
         assert success, f"Compilation/execution failed: {stderr}"
         assert stdout == "16", f"Expected output '16', got '{stdout}'"
@@ -133,9 +123,7 @@ class TestCBackendCompilation:
     def test_string_ops_compiles(self):
         """Test that string operations compile and run."""
         source = CompilationTestHelper.get_fixture_path("string_ops.py")
-        success, stdout, stderr = CompilationTestHelper.compile_and_run(
-            source, "c", "HELLO"
-        )
+        success, stdout, stderr = CompilationTestHelper.compile_and_run(source, "c", "HELLO")
 
         assert success, f"Compilation/execution failed: {stderr}"
         assert stdout == "HELLO", f"Expected output 'HELLO', got '{stdout}'"
@@ -147,9 +135,7 @@ class TestCppBackendCompilation:
     def test_simple_math_compiles(self):
         """Test that simple math operations compile and run."""
         source = CompilationTestHelper.get_fixture_path("simple_math.py")
-        success, stdout, stderr = CompilationTestHelper.compile_and_run(
-            source, "cpp", "16"
-        )
+        success, stdout, stderr = CompilationTestHelper.compile_and_run(source, "cpp", "16")
 
         assert success, f"Compilation/execution failed: {stderr}"
         assert stdout == "16", f"Expected output '16', got '{stdout}'"
@@ -157,9 +143,7 @@ class TestCppBackendCompilation:
     def test_string_ops_compiles(self):
         """Test that string operations compile and run."""
         source = CompilationTestHelper.get_fixture_path("string_ops.py")
-        success, stdout, stderr = CompilationTestHelper.compile_and_run(
-            source, "cpp", "HELLO"
-        )
+        success, stdout, stderr = CompilationTestHelper.compile_and_run(source, "cpp", "HELLO")
 
         assert success, f"Compilation/execution failed: {stderr}"
         assert stdout == "HELLO", f"Expected output 'HELLO', got '{stdout}'"
@@ -171,9 +155,7 @@ class TestRustBackendCompilation:
     def test_simple_math_compiles(self):
         """Test that simple math operations compile and run."""
         source = CompilationTestHelper.get_fixture_path("simple_math.py")
-        success, stdout, stderr = CompilationTestHelper.compile_and_run(
-            source, "rust", "16"
-        )
+        success, stdout, stderr = CompilationTestHelper.compile_and_run(source, "rust", "16")
 
         assert success, f"Compilation/execution failed: {stderr}"
         assert stdout == "16", f"Expected output '16', got '{stdout}'"
@@ -181,9 +163,7 @@ class TestRustBackendCompilation:
     def test_string_ops_compiles(self):
         """Test that string operations compile and run."""
         source = CompilationTestHelper.get_fixture_path("string_ops.py")
-        success, stdout, stderr = CompilationTestHelper.compile_and_run(
-            source, "rust", "HELLO"
-        )
+        success, stdout, stderr = CompilationTestHelper.compile_and_run(source, "rust", "HELLO")
 
         assert success, f"Compilation/execution failed: {stderr}"
         assert stdout == "HELLO", f"Expected output 'HELLO', got '{stdout}'"
@@ -195,9 +175,7 @@ class TestGoBackendCompilation:
     def test_simple_math_compiles(self):
         """Test that simple math operations compile and run."""
         source = CompilationTestHelper.get_fixture_path("simple_math.py")
-        success, stdout, stderr = CompilationTestHelper.compile_and_run(
-            source, "go", "16"
-        )
+        success, stdout, stderr = CompilationTestHelper.compile_and_run(source, "go", "16")
 
         assert success, f"Compilation/execution failed: {stderr}"
         assert stdout == "16", f"Expected output '16', got '{stdout}'"
@@ -205,9 +183,7 @@ class TestGoBackendCompilation:
     def test_string_ops_compiles(self):
         """Test that string operations compile and run."""
         source = CompilationTestHelper.get_fixture_path("string_ops.py")
-        success, stdout, stderr = CompilationTestHelper.compile_and_run(
-            source, "go", "HELLO"
-        )
+        success, stdout, stderr = CompilationTestHelper.compile_and_run(source, "go", "HELLO")
 
         assert success, f"Compilation/execution failed: {stderr}"
         assert stdout == "HELLO", f"Expected output 'HELLO', got '{stdout}'"
@@ -219,9 +195,7 @@ class TestHaskellBackendCompilation:
     def test_simple_math_compiles(self):
         """Test that simple math operations compile and run."""
         source = CompilationTestHelper.get_fixture_path("simple_math.py")
-        success, stdout, stderr = CompilationTestHelper.compile_and_run(
-            source, "haskell", "16"
-        )
+        success, stdout, stderr = CompilationTestHelper.compile_and_run(source, "haskell", "16")
 
         assert success, f"Compilation/execution failed: {stderr}"
         assert stdout == "16", f"Expected output '16', got '{stdout}'"
@@ -229,9 +203,7 @@ class TestHaskellBackendCompilation:
     def test_string_ops_compiles(self):
         """Test that string operations compile and run."""
         source = CompilationTestHelper.get_fixture_path("string_ops.py")
-        success, stdout, stderr = CompilationTestHelper.compile_and_run(
-            source, "haskell", "HELLO"
-        )
+        success, stdout, stderr = CompilationTestHelper.compile_and_run(source, "haskell", "HELLO")
 
         assert success, f"Compilation/execution failed: {stderr}"
         assert stdout == "HELLO", f"Expected output 'HELLO', got '{stdout}'"
@@ -243,9 +215,7 @@ class TestOCamlBackendCompilation:
     def test_simple_math_compiles(self):
         """Test that simple math operations compile and run."""
         source = CompilationTestHelper.get_fixture_path("simple_math.py")
-        success, stdout, stderr = CompilationTestHelper.compile_and_run(
-            source, "ocaml", "16"
-        )
+        success, stdout, stderr = CompilationTestHelper.compile_and_run(source, "ocaml", "16")
 
         assert success, f"Compilation/execution failed: {stderr}"
         assert stdout == "16", f"Expected output '16', got '{stdout}'"
@@ -253,9 +223,7 @@ class TestOCamlBackendCompilation:
     def test_string_ops_compiles(self):
         """Test that string operations compile and run."""
         source = CompilationTestHelper.get_fixture_path("string_ops.py")
-        success, stdout, stderr = CompilationTestHelper.compile_and_run(
-            source, "ocaml", "HELLO"
-        )
+        success, stdout, stderr = CompilationTestHelper.compile_and_run(source, "ocaml", "HELLO")
 
         assert success, f"Compilation/execution failed: {stderr}"
         assert stdout == "HELLO", f"Expected output 'HELLO', got '{stdout}'"
@@ -271,9 +239,7 @@ class TestCrossBackendConsistency:
             pytest.skip(f"Backend {backend} not available")
 
         source = CompilationTestHelper.get_fixture_path("simple_math.py")
-        success, stdout, stderr = CompilationTestHelper.compile_and_run(
-            source, backend, "16"
-        )
+        success, stdout, stderr = CompilationTestHelper.compile_and_run(source, backend, "16")
 
         assert success, f"Backend {backend} failed: {stderr}"
         assert stdout == "16", f"Backend {backend} output mismatch: got '{stdout}'"
@@ -285,9 +251,7 @@ class TestCrossBackendConsistency:
             pytest.skip(f"Backend {backend} not available")
 
         source = CompilationTestHelper.get_fixture_path("string_ops.py")
-        success, stdout, stderr = CompilationTestHelper.compile_and_run(
-            source, backend, "HELLO"
-        )
+        success, stdout, stderr = CompilationTestHelper.compile_and_run(source, backend, "HELLO")
 
         assert success, f"Backend {backend} failed: {stderr}"
         assert stdout == "HELLO", f"Backend {backend} output mismatch: got '{stdout}'"

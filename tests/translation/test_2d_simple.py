@@ -1,4 +1,5 @@
 """Simple 2D list test"""
+
 from __future__ import annotations
 
 

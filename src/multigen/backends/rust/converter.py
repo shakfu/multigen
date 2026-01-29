@@ -1215,7 +1215,6 @@ class MultiGenPythonToRustConverter:
         # For complex expressions or unknown types, assume Vec (safer default)
         return f"{value}[{slice_expr} as usize]"
 
-
     def _convert_f_string(self, expr: ast.JoinedStr) -> str:
         """Convert f-string to Rust format! macro.
 

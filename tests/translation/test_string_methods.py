@@ -18,12 +18,14 @@ def test_string_methods() -> int:
 
     return length
 
+
 def test_string_concatenation() -> str:
     """Test string concatenation"""
     first: str = "Hello"
     second: str = "World"
     result: str = first + " " + second
     return result
+
 
 def test_string_comparison() -> bool:
     """Test string comparison"""
@@ -35,6 +37,7 @@ def test_string_comparison() -> bool:
     different: bool = text1 != text3
 
     return same and different
+
 
 def main() -> int:
     # Test string methods with assertions

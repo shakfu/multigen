@@ -7,6 +7,7 @@ def test_string_split_assignment() -> None:
     assert words[0] == "hello"
     assert words[1] == "world"
 
+
 def main() -> int:
     test_string_split_assignment()
     return 0

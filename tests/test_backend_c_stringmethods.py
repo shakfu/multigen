@@ -309,7 +309,7 @@ def test_conditional(text: str) -> str:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "if ((multigen_str_find(text, \"hello\") >= 0))" in c_code
+        assert 'if ((multigen_str_find(text, "hello") >= 0))' in c_code
         assert "return multigen_str_upper(text);" in c_code
         assert "return multigen_str_lower(text);" in c_code
 
@@ -349,11 +349,14 @@ def test_oop() -> str:
         assert "multigen_str_strip(self->text)" in c_code
 
 
-@pytest.mark.parametrize("method,expected_func", [
-    ("upper", "multigen_str_upper"),
-    ("lower", "multigen_str_lower"),
-    ("strip", "multigen_str_strip"),
-])
+@pytest.mark.parametrize(
+    "method,expected_func",
+    [
+        ("upper", "multigen_str_upper"),
+        ("lower", "multigen_str_lower"),
+        ("strip", "multigen_str_strip"),
+    ],
+)
 def test_string_methods_parametrized(method, expected_func):
     """Test parametrized string methods."""
     converter = MultiGenPythonToCConverter()

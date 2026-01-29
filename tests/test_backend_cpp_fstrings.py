@@ -1,7 +1,5 @@
 """Tests for C++ backend f-string support."""
 
-import pytest
-
 from multigen.backends.cpp.converter import MultiGenPythonToCppConverter
 
 

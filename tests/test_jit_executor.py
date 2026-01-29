@@ -66,9 +66,15 @@ def test_jit_fibonacci():
         # Run multigen to generate LLVM IR (outputs to <build-dir>/src/)
         result = subprocess.run(
             [
-                "uv", "run", "multigen",
-                "--build-dir", str(output_dir),
-                "convert", "-t", "llvm", str(benchmark_file),
+                "uv",
+                "run",
+                "multigen",
+                "--build-dir",
+                str(output_dir),
+                "convert",
+                "-t",
+                "llvm",
+                str(benchmark_file),
             ],
             capture_output=True,
             text=True,

@@ -33,13 +33,7 @@ def compile_and_run_c_test(c_code: str) -> str:
 
         # Compile
         output_file = temp_path / "test"
-        compile_cmd = [
-            "clang",
-            "-I", str(runtime_path),
-            str(c_file),
-            str(string_c),
-            "-o", str(output_file)
-        ]
+        compile_cmd = ["clang", "-I", str(runtime_path), str(c_file), str(string_c), "-o", str(output_file)]
 
         result = subprocess.run(compile_cmd, capture_output=True, text=True)
         if result.returncode != 0:
@@ -58,7 +52,7 @@ class TestStringJoin:
 
     def test_join_basic(self):
         """Test basic string join with comma separator."""
-        c_code = '''
+        c_code = """
 #include "multigen_llvm_string.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -76,13 +70,13 @@ int main() {
     multigen_string_array_free(arr);
     return 0;
 }
-'''
+"""
         output = compile_and_run_c_test(c_code)
         assert output == "apple, banana, cherry"
 
     def test_join_empty_separator(self):
         """Test join with empty separator."""
-        c_code = '''
+        c_code = """
 #include "multigen_llvm_string.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -99,13 +93,13 @@ int main() {
     multigen_string_array_free(arr);
     return 0;
 }
-'''
+"""
         output = compile_and_run_c_test(c_code)
         assert output == "helloworld"
 
     def test_join_single_element(self):
         """Test join with single element."""
-        c_code = '''
+        c_code = """
 #include "multigen_llvm_string.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -121,13 +115,13 @@ int main() {
     multigen_string_array_free(arr);
     return 0;
 }
-'''
+"""
         output = compile_and_run_c_test(c_code)
         assert output == "only"
 
     def test_join_empty_array(self):
         """Test join with empty array."""
-        c_code = '''
+        c_code = """
 #include "multigen_llvm_string.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -142,7 +136,7 @@ int main() {
     multigen_string_array_free(arr);
     return 0;
 }
-'''
+"""
         output = compile_and_run_c_test(c_code)
         assert output == ""
 
@@ -152,7 +146,7 @@ class TestStringReplace:
 
     def test_replace_basic(self):
         """Test basic string replacement."""
-        c_code = '''
+        c_code = """
 #include "multigen_llvm_string.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -163,13 +157,13 @@ int main() {
     free(result);
     return 0;
 }
-'''
+"""
         output = compile_and_run_c_test(c_code)
         assert output == "hello python"
 
     def test_replace_multiple_occurrences(self):
         """Test replacing multiple occurrences."""
-        c_code = '''
+        c_code = """
 #include "multigen_llvm_string.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -180,13 +174,13 @@ int main() {
     free(result);
     return 0;
 }
-'''
+"""
         output = compile_and_run_c_test(c_code)
         assert output == "test bar test baz test"
 
     def test_replace_no_match(self):
         """Test replace when substring not found."""
-        c_code = '''
+        c_code = """
 #include "multigen_llvm_string.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -197,13 +191,13 @@ int main() {
     free(result);
     return 0;
 }
-'''
+"""
         output = compile_and_run_c_test(c_code)
         assert output == "hello world"
 
     def test_replace_with_longer_string(self):
         """Test replacing with longer string."""
-        c_code = '''
+        c_code = """
 #include "multigen_llvm_string.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -214,13 +208,13 @@ int main() {
     free(result);
     return 0;
 }
-'''
+"""
         output = compile_and_run_c_test(c_code)
         assert output == "hello there"
 
     def test_replace_with_empty_string(self):
         """Test replacing with empty string (deletion)."""
-        c_code = '''
+        c_code = """
 #include "multigen_llvm_string.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -231,7 +225,7 @@ int main() {
     free(result);
     return 0;
 }
-'''
+"""
         output = compile_and_run_c_test(c_code)
         assert output == "hello"
 
@@ -241,7 +235,7 @@ class TestStringUpper:
 
     def test_upper_basic(self):
         """Test basic uppercase conversion."""
-        c_code = '''
+        c_code = """
 #include "multigen_llvm_string.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -252,13 +246,13 @@ int main() {
     free(result);
     return 0;
 }
-'''
+"""
         output = compile_and_run_c_test(c_code)
         assert output == "HELLO WORLD"
 
     def test_upper_mixed_case(self):
         """Test uppercase with mixed case."""
-        c_code = '''
+        c_code = """
 #include "multigen_llvm_string.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -269,13 +263,13 @@ int main() {
     free(result);
     return 0;
 }
-'''
+"""
         output = compile_and_run_c_test(c_code)
         assert output == "HELLO WORLD"
 
     def test_upper_with_numbers(self):
         """Test uppercase with numbers and special chars."""
-        c_code = '''
+        c_code = """
 #include "multigen_llvm_string.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -286,7 +280,7 @@ int main() {
     free(result);
     return 0;
 }
-'''
+"""
         output = compile_and_run_c_test(c_code)
         assert output == "TEST123!@#"
 
@@ -296,7 +290,7 @@ class TestStringStartsWith:
 
     def test_startswith_true(self):
         """Test startswith when prefix matches."""
-        c_code = '''
+        c_code = """
 #include "multigen_llvm_string.h"
 #include <stdio.h>
 
@@ -305,13 +299,13 @@ int main() {
     printf("%d", result);
     return 0;
 }
-'''
+"""
         output = compile_and_run_c_test(c_code)
         assert output == "1"
 
     def test_startswith_false(self):
         """Test startswith when prefix doesn't match."""
-        c_code = '''
+        c_code = """
 #include "multigen_llvm_string.h"
 #include <stdio.h>
 
@@ -320,13 +314,13 @@ int main() {
     printf("%d", result);
     return 0;
 }
-'''
+"""
         output = compile_and_run_c_test(c_code)
         assert output == "0"
 
     def test_startswith_empty_prefix(self):
         """Test startswith with empty prefix."""
-        c_code = '''
+        c_code = """
 #include "multigen_llvm_string.h"
 #include <stdio.h>
 
@@ -335,7 +329,7 @@ int main() {
     printf("%d", result);
     return 0;
 }
-'''
+"""
         output = compile_and_run_c_test(c_code)
         assert output == "1"
 
@@ -345,7 +339,7 @@ class TestStringEndsWith:
 
     def test_endswith_true(self):
         """Test endswith when suffix matches."""
-        c_code = '''
+        c_code = """
 #include "multigen_llvm_string.h"
 #include <stdio.h>
 
@@ -354,13 +348,13 @@ int main() {
     printf("%d", result);
     return 0;
 }
-'''
+"""
         output = compile_and_run_c_test(c_code)
         assert output == "1"
 
     def test_endswith_false(self):
         """Test endswith when suffix doesn't match."""
-        c_code = '''
+        c_code = """
 #include "multigen_llvm_string.h"
 #include <stdio.h>
 
@@ -369,13 +363,13 @@ int main() {
     printf("%d", result);
     return 0;
 }
-'''
+"""
         output = compile_and_run_c_test(c_code)
         assert output == "0"
 
     def test_endswith_full_string(self):
         """Test endswith with full string as suffix."""
-        c_code = '''
+        c_code = """
 #include "multigen_llvm_string.h"
 #include <stdio.h>
 
@@ -384,7 +378,7 @@ int main() {
     printf("%d", result);
     return 0;
 }
-'''
+"""
         output = compile_and_run_c_test(c_code)
         assert output == "1"
 
@@ -394,7 +388,7 @@ class TestStringIntegration:
 
     def test_split_and_join(self):
         """Test splitting then joining strings."""
-        c_code = '''
+        c_code = """
 #include "multigen_llvm_string.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -411,13 +405,13 @@ int main() {
     multigen_string_array_free(parts);
     return 0;
 }
-'''
+"""
         output = compile_and_run_c_test(c_code)
         assert output == "one - two - three"
 
     def test_upper_and_replace(self):
         """Test combining upper and replace."""
-        c_code = '''
+        c_code = """
 #include "multigen_llvm_string.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -431,6 +425,6 @@ int main() {
     free(result);
     return 0;
 }
-'''
+"""
         output = compile_and_run_c_test(c_code)
         assert output == "HELLO PYTHON"

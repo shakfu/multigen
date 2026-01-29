@@ -1,7 +1,5 @@
 """Tests for Haskell backend string method support."""
 
-import pytest
-
 from multigen.backends.haskell.converter import MultiGenPythonToHaskellConverter
 
 

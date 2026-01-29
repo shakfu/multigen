@@ -140,7 +140,6 @@ run: $(TARGET)
 
             result = subprocess.run(llc_cmd, capture_output=True, text=True)
             if result.returncode != 0:
-                print(f"LLC compilation failed: {result.stderr}")
                 return False
 
             # Step 2: Compile runtime libraries
@@ -178,7 +177,6 @@ run: $(TARGET)
 
                     result = subprocess.run(clang_compile_runtime_cmd, capture_output=True, text=True)
                     if result.returncode != 0:
-                        print(f"Runtime compilation failed for {runtime_source}: {result.stderr}")
                         return False
 
                     runtime_objects.append(str(runtime_o))
@@ -199,16 +197,13 @@ run: $(TARGET)
 
             result = subprocess.run(clang_cmd, capture_output=True, text=True)
             if result.returncode != 0:
-                print(f"Linking failed: {result.stderr}")
                 return False
 
             return True
 
-        except FileNotFoundError as e:
-            print(f"Tool not found: {e}. Make sure LLVM tools (llc, clang) are installed.")
+        except FileNotFoundError:
             return False
-        except Exception as e:
-            print(f"Compilation error: {e}")
+        except Exception:
             return False
 
     def get_compile_flags(self) -> list[str]:
@@ -345,7 +340,6 @@ int main_wrapper(int argc, char** argv) {{
 
             result = subprocess.run(llc_cmd, capture_output=True, text=True)
             if result.returncode != 0:
-                print(f"LLC compilation failed: {result.stderr}")
                 return False
 
             # Step 2: Compile wrapper if needed
@@ -365,7 +359,6 @@ int main_wrapper(int argc, char** argv) {{
 
                 result = subprocess.run(clang_compile_cmd, capture_output=True, text=True)
                 if result.returncode != 0:
-                    print(f"Wrapper compilation failed: {result.stderr}")
                     return False
 
                 object_files.append(str(wrapper_obj))
@@ -388,14 +381,11 @@ int main_wrapper(int argc, char** argv) {{
 
             result = subprocess.run(clang_cmd, capture_output=True, text=True)
             if result.returncode != 0:
-                print(f"Linking failed: {result.stderr}")
                 return False
 
             return True
 
-        except FileNotFoundError as e:
-            print(f"Tool not found: {e}. Make sure LLVM tools are installed.")
+        except FileNotFoundError:
             return False
-        except Exception as e:
-            print(f"Compilation error: {e}")
+        except Exception:
             return False

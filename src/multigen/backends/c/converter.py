@@ -20,9 +20,8 @@ Supported Features:
 from __future__ import annotations
 
 import ast
-from typing import Any, Optional
+from typing import Any
 
-from .string_methods import CStringMethodConverter, CFStringConverter, is_string_method
 from ..converter_utils import (
     get_augmented_assignment_operator,
     get_standard_binary_operator,
@@ -35,12 +34,13 @@ from .container_codegen import ContainerCodeGenerator
 from .containers import CContainerSystem
 from .enhanced_type_inference import EnhancedTypeInferenceEngine, InferredType, TypeConfidence
 from .ext.stc.nested_containers import NestedContainerManager
+from .string_methods import CStringMethodConverter
 
 
 class MultiGenPythonToCConverter:
     """Enhanced Python to C converter with MultiGen runtime integration."""
 
-    def __init__(self, preferences: Optional[BackendPreferences] = None) -> None:
+    def __init__(self, preferences: BackendPreferences | None = None) -> None:
         """Initialize converter with MultiGen runtime support.
 
         Args:
@@ -65,8 +65,8 @@ class MultiGenPythonToCConverter:
             "set": "set_int",  # Default, will be specialized
         }
         self.container_system = CContainerSystem()
-        self.current_function: Optional[str] = None
-        self.current_function_ast: Optional[ast.FunctionDef] = None
+        self.current_function: str | None = None
+        self.current_function_ast: ast.FunctionDef | None = None
         self.container_variables: dict[str, dict[str, Any]] = {}
         self.variable_context: dict[str, str] = {}  # var_name -> c_type
         self.defined_structs: dict[str, dict[str, Any]] = {}
@@ -347,7 +347,7 @@ class MultiGenPythonToCConverter:
         ]
 
         # Add assert.h if asserts are used
-        if hasattr(self, 'uses_asserts') and self.uses_asserts:
+        if hasattr(self, "uses_asserts") and self.uses_asserts:
             includes.append("#include <assert.h>")
 
         if self.use_runtime:
@@ -931,7 +931,11 @@ class MultiGenPythonToCConverter:
                     for element in stmt.value.elts:
                         element_code = self._convert_expression(element)
                         # For vec_cstr, wrap string literals with cstr_lit()
-                        if c_type == "vec_cstr" and isinstance(element, ast.Constant) and isinstance(element.value, str):
+                        if (
+                            c_type == "vec_cstr"
+                            and isinstance(element, ast.Constant)
+                            and isinstance(element.value, str)
+                        ):
                             element_code = f"cstr_lit({element_code})"
                         statements.append(f"{c_type}_push(&{var_name}, {element_code});")
                     return "\n".join(statements)
@@ -1519,7 +1523,9 @@ class MultiGenPythonToCConverter:
 
         return False
 
-    def _convert_list_method(self, obj: str, method_name: str, args: list[str], obj_expr: ast.expr, ast_args: list[ast.expr] | None = None) -> str:
+    def _convert_list_method(
+        self, obj: str, method_name: str, args: list[str], obj_expr: ast.expr, ast_args: list[ast.expr] | None = None
+    ) -> str:
         """Convert list method calls to STC vector operations."""
         # Get the variable name to determine the vec type
         vec_type = "vec_int"  # Default
@@ -1650,7 +1656,7 @@ class MultiGenPythonToCConverter:
         else:
             return "int"  # Default fallback
 
-    def _infer_dict_type_from_usage(self, var_name: str) -> Optional[str]:
+    def _infer_dict_type_from_usage(self, var_name: str) -> str | None:
         """Infer dict type by scanning forward for subscript assignments.
 
         For example: data[i] = i * 3 -> infer map_int_int
@@ -1791,7 +1797,18 @@ class MultiGenPythonToCConverter:
                         return True
                 # Check for method calls: numbers.append(), items.extend()
                 elif isinstance(child.func, ast.Attribute):
-                    if child.func.attr in ["append", "extend", "add", "remove", "pop", "clear", "update", "keys", "values", "items"]:
+                    if child.func.attr in [
+                        "append",
+                        "extend",
+                        "add",
+                        "remove",
+                        "pop",
+                        "clear",
+                        "update",
+                        "keys",
+                        "values",
+                        "items",
+                    ]:
                         return True
         return False
 
@@ -2238,7 +2255,7 @@ class MultiGenPythonToCConverter:
 
         # Generate C code for slicing using a compound statement
         # This creates a new vector and copies elements in the range
-        element_type = c_type[4:]  # Remove "vec_" prefix to get element type
+        c_type[4:]  # Remove "vec_" prefix to get element type
 
         slice_code = f"""({{
         {c_type} {slice_var} = {{0}};
@@ -2308,7 +2325,7 @@ class MultiGenPythonToCConverter:
         # For other types, we need a temp buffer approach
         # This is a simplified version - in practice would need type inference
         # For now, assume integers and use multigen_int_to_string
-        return f'multigen_int_to_string({expr_code})'
+        return f"multigen_int_to_string({expr_code})"
 
     def _convert_class(self, node: ast.ClassDef) -> str:
         """Convert Python class to C struct with associated methods."""

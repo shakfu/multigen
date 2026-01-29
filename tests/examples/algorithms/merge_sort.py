@@ -10,18 +10,18 @@ This example demonstrates:
 
 def merge(left: list, right: list) -> list:
     """Merge two sorted lists into one sorted list.
-    
+
     Args:
         left: First sorted list
         right: Second sorted list
-        
+
     Returns:
         Merged sorted list
     """
     result: list = []
     i: int = 0
     j: int = 0
-    
+
     # Merge while both lists have elements
     while i < len(left) and j < len(right):
         if left[i] <= right[j]:
@@ -30,50 +30,50 @@ def merge(left: list, right: list) -> list:
         else:
             result.append(right[j])
             j += 1
-    
+
     # Append remaining elements from left
     while i < len(left):
         result.append(left[i])
         i += 1
-    
+
     # Append remaining elements from right
     while j < len(right):
         result.append(right[j])
         j += 1
-    
+
     return result
 
 
 def merge_sort(arr: list) -> list:
     """Sort a list using merge sort algorithm.
-    
+
     Args:
         arr: List to sort
-        
+
     Returns:
         Sorted list
     """
     # Base case: lists with 0 or 1 element are already sorted
     if len(arr) <= 1:
         return arr
-    
+
     # Divide: split list in half
     mid: int = len(arr) // 2
     left: list = []
     right: list = []
-    
+
     # Copy elements to left half
     for i in range(mid):
         left.append(arr[i])
-    
+
     # Copy elements to right half
     for i in range(mid, len(arr)):
         right.append(arr[i])
-    
+
     # Conquer: recursively sort both halves
     left = merge_sort(left)
     right = merge_sort(right)
-    
+
     # Combine: merge the sorted halves
     return merge(left, right)
 
@@ -89,14 +89,14 @@ def main() -> int:
     numbers.append(22)
     numbers.append(11)
     numbers.append(90)
-    
+
     print(64)  # First element before sort
-    
+
     # Sort the list
     sorted_numbers: list = merge_sort(numbers)
-    
+
     # Print sorted results
     for num in sorted_numbers:
         print(num)
-    
+
     return 0

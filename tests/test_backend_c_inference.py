@@ -1,6 +1,5 @@
 """Tests specifically for Python-to-C inference."""
 
-
 from multigen.backends.c.emitter import MultiGenPythonToCConverter
 
 

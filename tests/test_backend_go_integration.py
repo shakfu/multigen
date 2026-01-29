@@ -1,9 +1,6 @@
 """Integration tests for Go backend - end-to-end functionality."""
 
-import pytest
-
 from multigen.backends.go.converter import MultiGenPythonToGoConverter
-from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestGoIntegrationBasic:
@@ -305,8 +302,7 @@ def complex_calc(a: int, b: int, c: int) -> int:
         go_code = self.converter.convert_code(python_code)
 
         # Should handle complex expression parsing
-        assert "((a + b) * (c - a)) + (b * c)" in go_code or \
-               "((a + b) * (c - a))" in go_code and "(b * c)" in go_code
+        assert "((a + b) * (c - a)) + (b * c)" in go_code or "((a + b) * (c - a))" in go_code and "(b * c)" in go_code
 
     def test_comprehensive_example(self):
         """Test a comprehensive example combining multiple features."""

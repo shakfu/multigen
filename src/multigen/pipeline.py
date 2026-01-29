@@ -47,7 +47,6 @@ try:
         FunctionSpecializer,
         ImmutabilityAnalyzer,
         LoopAnalyzer,
-        MutabilityClass,
         StaticAnalyzer,
         StaticPythonSubsetValidator,
         SymbolicExecutor,
@@ -900,9 +899,7 @@ class MultiGenPipeline:
 
                 sig = inspect.signature(self.builder.compile_direct)
                 if "opt_level" in sig.parameters:
-                    success = self.builder.compile_direct(
-                        str(source_file_path), str(output_dir), opt_level=opt_level
-                    )
+                    success = self.builder.compile_direct(str(source_file_path), str(output_dir), opt_level=opt_level)
                 else:
                     success = self.builder.compile_direct(str(source_file_path), str(output_dir))
 

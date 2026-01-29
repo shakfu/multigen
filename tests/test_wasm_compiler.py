@@ -1,11 +1,11 @@
 """Tests for WebAssembly compilation functionality."""
 
 import pytest
-from pathlib import Path
 
 # Check if llvmlite is available before importing LLVM backend
 try:
     import llvmlite  # noqa: F401
+
     LLVMLITE_AVAILABLE = True
 except ImportError:
     LLVMLITE_AVAILABLE = False
@@ -127,9 +127,7 @@ entry:
         compiler = WebAssemblyCompiler()
         output_path = tmp_path / "multiply.wat"
 
-        success = compiler.compile_to_wasm(
-            simple_ir, output_path, opt_level=2, text_format=True
-        )
+        success = compiler.compile_to_wasm(simple_ir, output_path, opt_level=2, text_format=True)
 
         assert success is True
         assert output_path.exists()
@@ -302,9 +300,7 @@ entry:
         output_dir = tmp_path / "output"
         output_dir.mkdir()
 
-        success, error = compile_to_webassembly(
-            ir_path=ir_path, output_dir=output_dir
-        )
+        success, error = compile_to_webassembly(ir_path=ir_path, output_dir=output_dir)
 
         assert success is False
         assert error is not None

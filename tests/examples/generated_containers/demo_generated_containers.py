@@ -1,5 +1,4 @@
-"""
-Demonstration: Generated Container Code (Prototype)
+"""Demonstration: Generated Container Code (Prototype)
 
 This example shows how container implementations can be generated inline,
 eliminating external dependencies and producing self-contained C programs.
@@ -22,7 +21,6 @@ from multigen.backends.c.container_codegen import ContainerCodeGenerator
 
 def generate_wordcount_program() -> str:
     """Generate a complete wordcount program with inline container implementation."""
-
     generator = ContainerCodeGenerator()
 
     # Generate the complete program
@@ -50,7 +48,7 @@ def generate_wordcount_program() -> str:
         "    // Create word frequency map",
         "    multigen_str_int_map_t* word_counts = multigen_str_int_map_new();",
         "    if (!word_counts) {",
-        "        fprintf(stderr, \"Failed to create map\\n\");",
+        '        fprintf(stderr, "Failed to create map\\n");',
         "        return 1;",
         "    }",
         "",
@@ -77,7 +75,7 @@ def generate_wordcount_program() -> str:
         "",
         "    // Print results",
         '    printf("Word frequencies:\\n");',
-        "    const char* test_words[] = {\"the\", \"quick\", \"fox\", \"dog\", \"lazy\"};",
+        '    const char* test_words[] = {"the", "quick", "fox", "dog", "lazy"};',
         "    for (size_t i = 0; i < 5; i++) {",
         "        const char* word = test_words[i];",
         "        int* count = multigen_str_int_map_get(word_counts, word);",
@@ -87,7 +85,7 @@ def generate_wordcount_program() -> str:
         "    }",
         "",
         "    // Verify 'the' appears 3 times",
-        "    int* the_count = multigen_str_int_map_get(word_counts, \"the\");",
+        '    int* the_count = multigen_str_int_map_get(word_counts, "the");',
         "    int result = (the_count && *the_count == 3) ? 0 : 1;",
         "",
         "    // Cleanup",
@@ -102,7 +100,6 @@ def generate_wordcount_program() -> str:
 
 def main():
     """Generate, compile, and run the demonstration program."""
-
     print("=" * 80)
     print("Generated Container Code - Prototype Demonstration")
     print("=" * 80)
@@ -156,9 +153,7 @@ def main():
 
     # Run
     print("🚀 Running...")
-    run_result = subprocess.run(
-        [str(binary)], capture_output=True, text=True
-    )
+    run_result = subprocess.run([str(binary)], capture_output=True, text=True)
 
     print("Output:")
     print(run_result.stdout)
@@ -170,7 +165,7 @@ def main():
         print()
         print("Key achievements:")
         print("  ✅ Generated complete, self-contained C program")
-        print("  ✅ No external dependencies (no #include \"multigen_*.h\")")
+        print('  ✅ No external dependencies (no #include "multigen_*.h")')
         print("  ✅ Compiles with standard gcc")
         print("  ✅ Executes correctly")
         print("  ✅ Single file output")

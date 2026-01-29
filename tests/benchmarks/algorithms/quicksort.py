@@ -33,14 +33,12 @@ def quicksort(arr: list, low: int, high: int) -> int:
 def main() -> int:
     """Run quicksort benchmark."""
     # Create array with numbers in reverse order
-    arr: list = [100, 95, 90, 85, 80, 75, 70, 65, 60, 55,
-                 50, 45, 40, 35, 30, 25, 20, 15, 10, 5]
+    arr: list = [100, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25, 20, 15, 10, 5]
 
     # Sort the array multiple times for benchmarking
     for iteration in range(100):
         # Reset array
-        test_arr: list = [100, 95, 90, 85, 80, 75, 70, 65, 60, 55,
-                          50, 45, 40, 35, 30, 25, 20, 15, 10, 5]
+        test_arr: list = [100, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25, 20, 15, 10, 5]
         quicksort(test_arr, 0, 19)
 
     # Final sort and print first element

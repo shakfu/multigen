@@ -1,9 +1,6 @@
 """Tests for Rust backend comprehensions support."""
 
-import pytest
-
 from multigen.backends.rust.converter import MultiGenPythonToRustConverter
-from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestRustListComprehensions:

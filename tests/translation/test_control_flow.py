@@ -5,6 +5,7 @@ This module tests how different Python control flow constructs
 are translated to equivalent C code structures.
 """
 
+
 def test_simple_if_statement() -> int:
     """Test simple if statement translation."""
     x: int = 10
@@ -14,6 +15,7 @@ def test_simple_if_statement() -> int:
         result = 1
 
     return result
+
 
 def test_if_else_statement() -> int:
     """Test if-else statement translation."""
@@ -26,6 +28,7 @@ def test_if_else_statement() -> int:
         result = 2
 
     return result
+
 
 def test_if_elif_else_chain() -> int:
     """Test if-elif-else chain translation."""
@@ -40,6 +43,7 @@ def test_if_elif_else_chain() -> int:
         result = 3
 
     return result
+
 
 def test_nested_if_statements() -> int:
     """Test nested if statements."""
@@ -57,6 +61,7 @@ def test_nested_if_statements() -> int:
 
     return result
 
+
 def test_simple_while_loop() -> int:
     """Test simple while loop translation."""
     i: int = 0
@@ -67,6 +72,7 @@ def test_simple_while_loop() -> int:
         i += 1
 
     return sum_val
+
 
 def test_while_with_condition() -> int:
     """Test while loop with conditional logic."""
@@ -79,6 +85,7 @@ def test_while_with_condition() -> int:
 
     return result
 
+
 def test_for_range_loop() -> int:
     """Test for loop with range translation."""
     sum_val: int = 0
@@ -87,6 +94,7 @@ def test_for_range_loop() -> int:
         sum_val += i
 
     return sum_val
+
 
 def test_for_range_with_start_stop() -> int:
     """Test for loop with range(start, stop)."""
@@ -97,6 +105,7 @@ def test_for_range_with_start_stop() -> int:
 
     return sum_val
 
+
 def test_for_range_with_step() -> int:
     """Test for loop with range(start, stop, step)."""
     sum_val: int = 0
@@ -105,6 +114,7 @@ def test_for_range_with_step() -> int:
         sum_val += i
 
     return sum_val
+
 
 def test_for_with_condition() -> int:
     """Test for loop with conditional logic."""
@@ -116,6 +126,7 @@ def test_for_with_condition() -> int:
 
     return sum_val
 
+
 def test_nested_for_loops() -> int:
     """Test nested for loops translation."""
     sum_val: int = 0
@@ -125,6 +136,7 @@ def test_nested_for_loops() -> int:
             sum_val += i + j
 
     return sum_val
+
 
 def test_boolean_and_operation() -> int:
     """Test boolean AND operation in control flow."""
@@ -137,6 +149,7 @@ def test_boolean_and_operation() -> int:
 
     return result
 
+
 def test_boolean_or_operation() -> int:
     """Test boolean OR operation in control flow."""
     x: int = 5
@@ -147,6 +160,7 @@ def test_boolean_or_operation() -> int:
         result = 1
 
     return result
+
 
 def test_comparison_operators() -> int:
     """Test various comparison operators in control flow."""
@@ -171,6 +185,7 @@ def test_comparison_operators() -> int:
 
     return result
 
+
 def test_early_return() -> int:
     """Test early return in control flow."""
     x: int = 7
@@ -182,6 +197,7 @@ def test_early_return() -> int:
         return 3
 
     return 2
+
 
 def test_control_flow_with_variables() -> int:
     """Test control flow with variable assignments."""
@@ -195,6 +211,7 @@ def test_control_flow_with_variables() -> int:
             y *= 2
 
     return x + y
+
 
 def main() -> int:
     # Test all control flow functions with assertions

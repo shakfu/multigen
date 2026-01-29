@@ -53,9 +53,7 @@ def safe_array_sum(arr: list[int], n: int) -> int:
 
     try:
         # Run with strict verification
-        config = PipelineConfig(
-            target_language="c", enable_formal_verification=True, strict_verification=True
-        )
+        config = PipelineConfig(target_language="c", enable_formal_verification=True, strict_verification=True)
         pipeline = MultiGenPipeline(config=config)
         result = pipeline.convert(temp_path)
 
@@ -99,9 +97,7 @@ def unsafe_array_access(arr: list[int], n: int) -> int:
 
     try:
         # Run with strict verification
-        config = PipelineConfig(
-            target_language="c", enable_formal_verification=True, strict_verification=True
-        )
+        config = PipelineConfig(target_language="c", enable_formal_verification=True, strict_verification=True)
         pipeline = MultiGenPipeline(config=config)
         result = pipeline.convert(temp_path)
 

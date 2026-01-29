@@ -55,9 +55,7 @@ def safe_access(arr: list[int], n: int) -> int:
 """)
 
         # Run pipeline with verification enabled
-        config = PipelineConfig(
-            target_language="c", enable_formal_verification=True, enable_advanced_analysis=True
-        )
+        config = PipelineConfig(target_language="c", enable_formal_verification=True, enable_advanced_analysis=True)
         pipeline = MultiGenPipeline(config=config)
 
         result = pipeline.convert(test_file)
@@ -78,9 +76,7 @@ def unsafe_access(arr: list[int], n: int) -> int:
 """)
 
         # Run pipeline with verification
-        config = PipelineConfig(
-            target_language="c", enable_formal_verification=True, enable_advanced_analysis=True
-        )
+        config = PipelineConfig(target_language="c", enable_formal_verification=True, enable_advanced_analysis=True)
         pipeline = MultiGenPipeline(config=config)
 
         result = pipeline.convert(test_file)

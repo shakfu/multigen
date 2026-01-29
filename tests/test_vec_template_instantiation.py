@@ -1,7 +1,7 @@
 """Test instantiation of generic vec_T template."""
 
-import pytest
 from pathlib import Path
+
 from multigen.backends.c.template_substitution import TemplateSubstitutionEngine
 
 
@@ -11,7 +11,9 @@ class TestVecTemplateInstantiation:
     def setup_method(self):
         """Set up test fixtures."""
         self.engine = TemplateSubstitutionEngine()
-        self.template_dir = Path(__file__).parent.parent / "src" / "multigen" / "backends" / "c" / "runtime" / "templates"
+        self.template_dir = (
+            Path(__file__).parent.parent / "src" / "multigen" / "backends" / "c" / "runtime" / "templates"
+        )
 
     def test_vec_T_h_template_exists(self):
         """Test that vec_T.h.tmpl template file exists."""

@@ -591,7 +591,7 @@ class StaticPythonSubsetValidator:
             return True  # Empty list is OK
 
         first_type = type(node.elts[0])
-        return all(type(elt) == first_type for elt in node.elts)
+        return all(type(elt) is first_type for elt in node.elts)
 
     def _validate_union_type(self, node: ast.Subscript) -> bool:
         """Validate union type constraints."""

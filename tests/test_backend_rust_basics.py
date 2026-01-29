@@ -1,9 +1,6 @@
 """Tests for Rust backend basic functionality."""
 
-import pytest
-
 from multigen.backends.rust.converter import MultiGenPythonToRustConverter
-from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestRustBasicConversion:
@@ -236,7 +233,7 @@ def test_for_range(start: int, stop: int) -> int:
 """
         rust_code = self.converter.convert_code(python_code)
 
-        assert f"for i in start..stop" in rust_code
+        assert "for i in start..stop" in rust_code
         assert "total += i;" in rust_code
 
 

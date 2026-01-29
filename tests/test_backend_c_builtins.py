@@ -1,6 +1,5 @@
 """Tests for Python builtins support in C backend."""
 
-
 from multigen.backends.c.converter import MultiGenPythonToCConverter
 
 

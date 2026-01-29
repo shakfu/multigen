@@ -79,7 +79,7 @@ class TestZ3FormulaGenerator:
     @pytest.mark.skipif(not Z3_AVAILABLE, reason="Z3 not available")
     def test_array_bounds_formula(self):
         """Test generating array bounds formula."""
-        from z3 import And, Solver, sat
+        from z3 import Solver, sat
 
         gen = Z3FormulaGenerator()
 
@@ -105,7 +105,7 @@ class TestZ3FormulaGenerator:
     @pytest.mark.skipif(not Z3_AVAILABLE, reason="Z3 not available")
     def test_array_bounds_formula_violation(self):
         """Test detecting array bounds violation."""
-        from z3 import And, Solver, unsat
+        from z3 import Solver, unsat
 
         gen = Z3FormulaGenerator()
 

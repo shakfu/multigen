@@ -139,9 +139,9 @@ def main():
 
     try:
         aot_compile, aot_exec, aot_code = aot_compile_and_run(benchmark_file)
-        print(f"   Compile time: {aot_compile*1000:.1f} ms")
-        print(f"   Execution time: {aot_exec*1000:.1f} ms")
-        print(f"   Total time: {(aot_compile + aot_exec)*1000:.1f} ms")
+        print(f"   Compile time: {aot_compile * 1000:.1f} ms")
+        print(f"   Execution time: {aot_exec * 1000:.1f} ms")
+        print(f"   Total time: {(aot_compile + aot_exec) * 1000:.1f} ms")
         print(f"   Exit code: {aot_code}")
         print("   Benefits: Standalone executable, optimal performance")
     except Exception as e:
@@ -157,9 +157,9 @@ def main():
 
     try:
         jit_compile, jit_exec, jit_code = jit_compile_and_execute(benchmark_file)
-        print(f"   Compile time: {jit_compile*1000:.1f} ms")
-        print(f"   Execution time: {jit_exec*1000:.1f} ms")
-        print(f"   Total time: {(jit_compile + jit_exec)*1000:.1f} ms")
+        print(f"   Compile time: {jit_compile * 1000:.1f} ms")
+        print(f"   Execution time: {jit_exec * 1000:.1f} ms")
+        print(f"   Total time: {(jit_compile + jit_exec) * 1000:.1f} ms")
         print(f"   Exit code: {jit_code}")
         print("   Benefits: Fast development cycle, no intermediate files")
     except Exception as e:

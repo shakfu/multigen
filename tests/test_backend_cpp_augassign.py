@@ -1,9 +1,7 @@
 """Tests for augmented assignment operators in C++ backend."""
 
-import pytest
-
 from multigen.backends.cpp.converter import MultiGenPythonToCppConverter
-from multigen.backends.errors import UnsupportedFeatureError
+
 
 class TestBasicAugmentedAssignment:
     """Test basic augmented assignment operators."""

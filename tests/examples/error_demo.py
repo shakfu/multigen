@@ -12,7 +12,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from multigen.error_formatter import format_error, print_error, set_color_mode
+from multigen.error_formatter import print_error, set_color_mode
 from multigen.errors import (
     ErrorCode,
     SourceLocation,

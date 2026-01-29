@@ -5,6 +5,7 @@ import pytest
 from multigen.backends.c.converter import MultiGenPythonToCConverter
 from multigen.backends.errors import UnsupportedFeatureError
 
+
 class TestListComprehensions:
     """Test list comprehension conversion functionality."""
 
@@ -334,11 +335,14 @@ def test_mixed() -> int:
         assert "set_int" in c_code
 
 
-@pytest.mark.parametrize("comp_type,syntax,expected_container", [
-    ("list", "[x for x in range(3)]", "vec_int"),
-    ("dict", "{x: x * 2 for x in range(3)}", "map_int_int"),
-    ("set", "{x for x in range(3)}", "set_int"),
-])
+@pytest.mark.parametrize(
+    "comp_type,syntax,expected_container",
+    [
+        ("list", "[x for x in range(3)]", "vec_int"),
+        ("dict", "{x: x * 2 for x in range(3)}", "map_int_int"),
+        ("set", "{x for x in range(3)}", "set_int"),
+    ],
+)
 def test_comprehension_types_parametrized(comp_type, syntax, expected_container):
     """Test parametrized comprehension type conversion."""
     converter = MultiGenPythonToCConverter()

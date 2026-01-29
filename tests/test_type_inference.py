@@ -2,7 +2,13 @@
 
 import ast
 
-from multigen.frontend.flow_sensitive_inference import FLOW_BOOL, FLOW_FLOAT, FLOW_INT, FlowSensitiveInferencer, TypeUnifier
+from multigen.frontend.flow_sensitive_inference import (
+    FLOW_BOOL,
+    FLOW_FLOAT,
+    FLOW_INT,
+    FlowSensitiveInferencer,
+    TypeUnifier,
+)
 from multigen.frontend.type_inference import TypeInferenceEngine
 
 
@@ -18,6 +24,7 @@ class TestTypeUnifier:
 
         # Unknown types unify to known type
         from multigen.frontend.flow_sensitive_inference import FLOW_UNKNOWN
+
         assert unifier.unify(FLOW_INT, FLOW_UNKNOWN) == FLOW_INT
 
         # Numeric coercion
@@ -313,6 +320,7 @@ class TestEndToEndInference:
         """Test the simple_infer_test.py example works end-to-end."""
         import tempfile
         from pathlib import Path
+
         from multigen.pipeline import MultiGenPipeline, PipelineConfig
 
         code = """
@@ -327,16 +335,13 @@ def main() -> int:
     return 0
 """
         # Write to temp file
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
             f.write(code)
             temp_path = Path(f.name)
 
         try:
             # Create pipeline
-            config = PipelineConfig(
-                target_language="cpp",
-                enable_advanced_analysis=True
-            )
+            config = PipelineConfig(target_language="cpp", enable_advanced_analysis=True)
             pipeline = MultiGenPipeline(config)
 
             # Should convert without errors

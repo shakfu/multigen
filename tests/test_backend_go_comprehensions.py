@@ -1,9 +1,6 @@
 """Tests for Go backend comprehensions support."""
 
-import pytest
-
 from multigen.backends.go.converter import MultiGenPythonToGoConverter
-from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestGoListComprehensions:
@@ -47,7 +44,9 @@ def test_list_comp_if() -> list:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "multigen.ListComprehension" in go_code  # Either ListComprehension or ListComprehensionFromRangeWithFilter
+        assert (
+            "multigen.ListComprehension" in go_code
+        )  # Either ListComprehension or ListComprehensionFromRangeWithFilter
         assert "multigen.NewRange(10)" in go_code
         # Should contain condition lambda
         assert "(x % 2) == 0" in go_code

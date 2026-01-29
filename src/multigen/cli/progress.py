@@ -55,7 +55,7 @@ class ProgressIndicator:
         # Calculate timing
         current_time = time.time()
         step_elapsed = current_time - (self._step_start_time or current_time)
-        total_elapsed = current_time - (self._start_time or current_time)
+        current_time - (self._start_time or current_time)
 
         # Format progress bar
         bar_width = 30

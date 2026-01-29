@@ -18,7 +18,7 @@ Example:
 
 from typing import Any
 
-from llvmlite import binding as llvm  # type: ignore[import-untyped]
+from llvmlite import binding as llvm  # type: ignore[import-not-found,import-untyped]
 
 
 class LLVMOptimizer:
@@ -134,10 +134,10 @@ class LLVMOptimizer:
             Inlining threshold (instruction cost limit)
         """
         thresholds = {
-            0: 0,     # No inlining
-            1: 75,    # Conservative inlining
-            2: 225,   # Default LLVM threshold
-            3: 275,   # Aggressive inlining
+            0: 0,  # No inlining
+            1: 75,  # Conservative inlining
+            2: 225,  # Default LLVM threshold
+            3: 275,  # Aggressive inlining
         }
         return thresholds.get(self.opt_level, 225)
 
@@ -175,18 +175,18 @@ class LLVMOptimizer:
             mpm: Module pass manager
         """
         # Dead code elimination
-        mpm.add_dead_arg_elimination_pass()      # Remove unused function args
-        mpm.add_dead_code_elimination_pass()     # Remove unreachable code
+        mpm.add_dead_arg_elimination_pass()  # Remove unused function args
+        mpm.add_dead_code_elimination_pass()  # Remove unreachable code
 
         # Global optimizations
-        mpm.add_global_opt_pass()                # Optimize global variables
+        mpm.add_global_opt_pass()  # Optimize global variables
 
         # Interprocedural optimizations
-        mpm.add_ipsccp_pass()                    # Interprocedural constant propagation
+        mpm.add_ipsccp_pass()  # Interprocedural constant propagation
 
         # Control flow and instruction optimizations
-        mpm.add_simplify_cfg_pass()              # Simplify control flow graph
-        mpm.add_instruction_combine_pass()       # Combine redundant instructions
+        mpm.add_simplify_cfg_pass()  # Simplify control flow graph
+        mpm.add_instruction_combine_pass()  # Combine redundant instructions
 
     def _add_standard_optimizations(self, mpm: llvm.ModulePassManager) -> None:
         """Add standard O2-level optimizations.
@@ -198,28 +198,28 @@ class LLVMOptimizer:
             mpm: Module pass manager
         """
         # Function inlining
-        mpm.add_always_inliner_pass()            # Inline functions marked "alwaysinline"
+        mpm.add_always_inliner_pass()  # Inline functions marked "alwaysinline"
 
         # Global optimizations
         mpm.add_global_dead_code_eliminate_pass()  # Global dead code elimination
 
         # Algebraic optimizations
-        mpm.add_reassociate_pass()               # Reassociate expressions for optimization
+        mpm.add_reassociate_pass()  # Reassociate expressions for optimization
 
         # Constant propagation
-        mpm.add_sccp_pass()                      # Sparse conditional constant propagation
+        mpm.add_sccp_pass()  # Sparse conditional constant propagation
 
         # Memory optimizations
-        mpm.add_sroa_pass()                      # Scalar replacement of aggregates
-        mpm.add_mem_copy_opt_pass()              # Optimize memcpy/memmove
-        mpm.add_dead_store_elimination_pass()    # Remove dead stores
+        mpm.add_sroa_pass()  # Scalar replacement of aggregates
+        mpm.add_mem_copy_opt_pass()  # Optimize memcpy/memmove
+        mpm.add_dead_store_elimination_pass()  # Remove dead stores
 
         # Control flow optimizations
-        mpm.add_tail_call_elimination_pass()     # Eliminate tail calls
+        mpm.add_tail_call_elimination_pass()  # Eliminate tail calls
 
         # Loop optimizations
-        mpm.add_loop_rotate_pass()               # Rotate loops into do-while form
-        mpm.add_loop_simplify_pass()             # Canonicalize loop structure
+        mpm.add_loop_rotate_pass()  # Rotate loops into do-while form
+        mpm.add_loop_simplify_pass()  # Canonicalize loop structure
 
     def _add_aggressive_optimizations(self, mpm: llvm.ModulePassManager) -> None:
         """Add aggressive O3-level optimizations.
@@ -231,21 +231,21 @@ class LLVMOptimizer:
             mpm: Module pass manager
         """
         # Aggressive dead code elimination
-        mpm.add_aggressive_dce_pass()            # More aggressive DCE
+        mpm.add_aggressive_dce_pass()  # More aggressive DCE
 
         # Aggressive instruction combining
-        mpm.add_aggressive_instcombine_pass()    # More aggressive instruction combining
+        mpm.add_aggressive_instcombine_pass()  # More aggressive instruction combining
 
         # Loop optimizations
-        mpm.add_loop_unroll_pass()               # Unroll loops
-        mpm.add_loop_unroll_and_jam_pass()       # Unroll and jam nested loops
-        mpm.add_loop_strength_reduce_pass()      # Loop strength reduction
+        mpm.add_loop_unroll_pass()  # Unroll loops
+        mpm.add_loop_unroll_and_jam_pass()  # Unroll and jam nested loops
+        mpm.add_loop_strength_reduce_pass()  # Loop strength reduction
 
         # Interprocedural optimizations
-        mpm.add_argument_promotion_pass()        # Promote pointer args to values
+        mpm.add_argument_promotion_pass()  # Promote pointer args to values
 
         # Function merging
-        mpm.add_merge_functions_pass()           # Merge identical functions
+        mpm.add_merge_functions_pass()  # Merge identical functions
 
     def get_optimization_info(self) -> dict[str, Any]:
         """Get information about the current optimization configuration.

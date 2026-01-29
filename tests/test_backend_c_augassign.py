@@ -3,7 +3,8 @@
 import pytest
 
 from multigen.backends.c.emitter import MultiGenPythonToCConverter
-from multigen.backends.errors import UnsupportedFeatureError, TypeMappingError
+from multigen.backends.errors import TypeMappingError, UnsupportedFeatureError
+
 
 class TestAugmentedAssignmentBasics:
     """Test basic augmented assignment functionality."""
@@ -109,7 +110,7 @@ def test_bitwise_or() -> int:
         c_code = self.converter.convert_code(python_code)
 
         assert "int flags = 1;" in c_code  # 0x01 becomes 1
-        assert "flags |= 4;" in c_code      # 0x04 becomes 4
+        assert "flags |= 4;" in c_code  # 0x04 becomes 4
 
     def test_bitwise_xor_assignment(self):
         """Test ^= operator."""
@@ -122,7 +123,7 @@ def test_bitwise_xor() -> int:
         c_code = self.converter.convert_code(python_code)
 
         assert "int data = 255;" in c_code  # 0xFF becomes 255
-        assert "data ^= 15;" in c_code      # 0x0F becomes 15
+        assert "data ^= 15;" in c_code  # 0x0F becomes 15
 
     def test_bitwise_and_assignment(self):
         """Test &= operator."""
@@ -134,8 +135,8 @@ def test_bitwise_and() -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "int mask = 63;" in c_code   # 0x3F becomes 63
-        assert "mask &= 31;" in c_code      # 0x1F becomes 31
+        assert "int mask = 63;" in c_code  # 0x3F becomes 63
+        assert "mask &= 31;" in c_code  # 0x1F becomes 31
 
     def test_left_shift_assignment(self):
         """Test <<= operator."""
@@ -370,19 +371,22 @@ def multiple_operations() -> int:
         assert "value %= 7;" in c_code
 
 
-@pytest.mark.parametrize("op_python,op_c", [
-    ("+=", "+="),
-    ("-=", "-="),
-    ("*=", "*="),
-    ("/=", "/="),
-    ("//=", "/="),  # Floor division maps to regular division
-    ("%=", "%="),
-    ("|=", "|="),
-    ("^=", "^="),
-    ("&=", "&="),
-    ("<<=", "<<="),
-    (">>=", ">>="),
-])
+@pytest.mark.parametrize(
+    "op_python,op_c",
+    [
+        ("+=", "+="),
+        ("-=", "-="),
+        ("*=", "*="),
+        ("/=", "/="),
+        ("//=", "/="),  # Floor division maps to regular division
+        ("%=", "%="),
+        ("|=", "|="),
+        ("^=", "^="),
+        ("&=", "&="),
+        ("<<=", "<<="),
+        (">>=", ">>="),
+    ],
+)
 def test_augassign_operators_parametrized(op_python, op_c):
     """Test parametrized augmented assignment operators."""
     converter = MultiGenPythonToCConverter()

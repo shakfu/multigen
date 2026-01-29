@@ -73,11 +73,10 @@ class CppBuilder(AbstractBuilder):
             else:
                 # Print error for debugging
                 if result.stderr:
-                    print(f"C++ compilation error: {result.stderr}")
+                    pass
                 return False
 
-        except Exception as e:
-            print(f"C++ compilation exception: {e}")
+        except Exception:
             return False
 
     def get_executable_name(self, source_file: str) -> str:

@@ -111,13 +111,13 @@ def complex_func(x: int) -> int:
 class TestTypeInference:
     """Test the type inference system."""
 
-
     def test_literal_type_inference(self):
         """Test type inference for literals."""
         engine = TypeInferenceEngine()
 
         # Test different literal types
         import ast
+
         int_literal = ast.Constant(value=42)
         float_literal = ast.Constant(value=3.14)
         bool_literal = ast.Constant(value=True)
@@ -143,6 +143,7 @@ class TestTypeInference:
 
         # Create a simple AST for: 5 + 3
         import ast
+
         left = ast.Constant(value=5)
         right = ast.Constant(value=3)
         binop = ast.BinOp(left=left, op=ast.Add(), right=right)
@@ -156,7 +157,6 @@ class TestTypeInference:
 
 class TestConstraintChecker:
     """Test the static constraint checker."""
-
 
     def test_safe_code_passes(self):
         """Test that safe code passes constraint checking."""
@@ -187,7 +187,6 @@ def unsafe_division(x: int) -> float:
 
 class TestSubsetValidator:
     """Test the Python subset validator."""
-
 
     def test_tier1_fundamental_features(self):
         """Test validation of Tier 1 fundamental features."""
@@ -241,7 +240,6 @@ def simple(x: int) -> int:
 
 class TestStaticIR:
     """Test the Static IR generation."""
-
 
     def test_simple_function_ir(self):
         """Test IR generation for a simple function."""
@@ -327,7 +325,6 @@ def loop_function(n: int) -> int:
 class TestFrontendIntegration:
     """Integration tests for frontend components."""
 
-
     def test_complete_analysis_pipeline(self):
         """Test the complete analysis pipeline."""
         code = """
@@ -410,7 +407,7 @@ def bad_function(x):  # Missing type annotation
 
         # Should complete in reasonable time
         assert ast_time < 1.0  # 1 second
-        assert ir_time < 1.0   # 1 second
+        assert ir_time < 1.0  # 1 second
 
         # Verify results are reasonable
         assert ast_result.convertible
@@ -440,13 +437,14 @@ def add(x: int, y: int) -> int:
 """
         analysis_result = analyze_python_code(code)
         import ast
+
         ast_root = ast.parse(code)
 
         context = AnalysisContext(
             source_code=code,
             ast_node=ast_root,
             analysis_result=analysis_result,
-            analysis_level=AnalysisLevel.INTERMEDIATE
+            analysis_level=AnalysisLevel.INTERMEDIATE,
         )
 
         static_analyzer = StaticAnalyzer()
@@ -468,13 +466,14 @@ def max_value(x: int, y: int) -> int:
 """
         analysis_result = analyze_python_code(code)
         import ast
+
         ast_root = ast.parse(code)
 
         context = AnalysisContext(
             source_code=code,
             ast_node=ast_root,
             analysis_result=analysis_result,
-            analysis_level=AnalysisLevel.INTERMEDIATE
+            analysis_level=AnalysisLevel.INTERMEDIATE,
         )
 
         symbolic_executor = SymbolicExecutor()
@@ -494,13 +493,14 @@ def array_access(arr: list[int], index: int) -> int:
 """
         analysis_result = analyze_python_code(code)
         import ast
+
         ast_root = ast.parse(code)
 
         context = AnalysisContext(
             source_code=code,
             ast_node=ast_root,
             analysis_result=analysis_result,
-            analysis_level=AnalysisLevel.INTERMEDIATE
+            analysis_level=AnalysisLevel.INTERMEDIATE,
         )
 
         bounds_checker = BoundsChecker()
@@ -522,13 +522,14 @@ def main(value: int) -> int:
 """
         analysis_result = analyze_python_code(code)
         import ast
+
         ast_root = ast.parse(code)
 
         context = AnalysisContext(
             source_code=code,
             ast_node=ast_root,
             analysis_result=analysis_result,
-            analysis_level=AnalysisLevel.INTERMEDIATE
+            analysis_level=AnalysisLevel.INTERMEDIATE,
         )
 
         call_graph_analyzer = CallGraphAnalyzer()
@@ -551,6 +552,7 @@ def sum_array(arr: list[int]) -> int:
 """
         analysis_result = analyze_python_code(code)
         import ast
+
         ast_root = ast.parse(code)
 
         context = AnalysisContext(
@@ -558,7 +560,7 @@ def sum_array(arr: list[int]) -> int:
             ast_node=ast_root,
             analysis_result=analysis_result,
             analysis_level=AnalysisLevel.INTERMEDIATE,
-            optimization_level=OptimizationLevel.MODERATE
+            optimization_level=OptimizationLevel.MODERATE,
         )
 
         vectorization_detector = VectorizationDetector()
@@ -579,6 +581,7 @@ def conditional_type(flag: bool) -> int:
     return x
 """
         import ast
+
         ast_root = ast.parse(code)
 
         type_engine = TypeInferenceEngine(enable_flow_sensitive=True)
@@ -612,6 +615,7 @@ def infer_from_usage(a, b):
     return c
 """
         import ast
+
         ast_root = ast.parse(code)
 
         func_node = None

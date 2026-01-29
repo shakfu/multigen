@@ -14,7 +14,7 @@ from typing import Any
 
 # Z3 integration - graceful fallback if not installed
 try:
-    import z3  # type: ignore[import-untyped]
+    import z3  # type: ignore[import-not-found,import-untyped]
 
     Z3_AVAILABLE = True
 except ImportError:

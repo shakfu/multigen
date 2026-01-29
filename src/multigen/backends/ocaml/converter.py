@@ -1511,11 +1511,11 @@ class MultiGenPythonToOCamlConverter:
             if isinstance(node.value, str):
                 return expr_code  # Already a string
             elif isinstance(node.value, bool):
-                return f'(string_of_bool {expr_code})'
+                return f"(string_of_bool {expr_code})"
             elif isinstance(node.value, int):
-                return f'(string_of_int {expr_code})'
+                return f"(string_of_int {expr_code})"
             elif isinstance(node.value, float):
-                return f'(string_of_float {expr_code})'
+                return f"(string_of_float {expr_code})"
 
         # Variable names - heuristic based on name
         if isinstance(node, ast.Name):
@@ -1524,7 +1524,7 @@ class MultiGenPythonToOCamlConverter:
             if any(substr in var_name for substr in ["name", "text", "str", "msg", "message", "path", "file"]):
                 return expr_code  # Assume it's a string
             # Otherwise, assume int (common default)
-            return f'(string_of_int {expr_code})'
+            return f"(string_of_int {expr_code})"
 
         # String method calls return strings
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
@@ -1533,4 +1533,4 @@ class MultiGenPythonToOCamlConverter:
                 return expr_code  # Already returns string
 
         # Default to string_of_int (most common case)
-        return f'(string_of_int {expr_code})'
+        return f"(string_of_int {expr_code})"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MultiGen Makefile Generator
+"""MultiGen Makefile Generator.
 
 Makefile generator and direct compilation tool for MultiGen projects,
 adapted from makefilegen by shakfu: https://github.com/shakfu/makefilegen
@@ -13,7 +13,7 @@ import platform
 import subprocess
 import sys
 from pathlib import Path
-from typing import Callable, List, Optional, Union
+from typing import Callable, Optional, Union
 
 from ..common import log
 
@@ -48,13 +48,13 @@ class Builder:
         self,
         name: str = "main",
         source_dir: str = ".",
-        include_dirs: Optional[List[str]] = None,
-        library_dirs: Optional[List[str]] = None,
-        libraries: Optional[List[str]] = None,
-        flags: Optional[List[str]] = None,
-        cppflags: Optional[List[str]] = None,
-        cxxflags: Optional[List[str]] = None,
-        ldflags: Optional[List[str]] = None,
+        include_dirs: Optional[list[str]] = None,
+        library_dirs: Optional[list[str]] = None,
+        libraries: Optional[list[str]] = None,
+        flags: Optional[list[str]] = None,
+        cppflags: Optional[list[str]] = None,
+        cxxflags: Optional[list[str]] = None,
+        ldflags: Optional[list[str]] = None,
         compiler: str = "gcc",
         std: str = "c99",
         use_stc: bool = True,
@@ -140,14 +140,14 @@ class Builder:
             if flag not in self.flags:
                 self.flags.append(flag)
 
-    def get_source_files(self) -> List[Path]:
+    def get_source_files(self) -> list[Path]:
         """Get all C source files in the source directory."""
-        source_files: List[Path] = []
+        source_files: list[Path] = []
         for ext in ["*.c", "*.cc", "*.cpp", "*.cxx"]:
             source_files.extend(self.source_dir.glob(ext))
         return source_files
 
-    def build_command(self) -> List[str]:
+    def build_command(self) -> list[str]:
         """Generate the compilation command."""
         cmd = [self.compiler]
 
@@ -194,10 +194,8 @@ class Builder:
         self.log.debug(f"Build command: {' '.join(cmd)}")
 
         if verbose:
-            print(f"Building with STC support: {self.use_stc}")
             if self.use_stc and self.stc_include_path:
-                print(f"STC include path: {self.stc_include_path}")
-            print(f"Build command: {' '.join(cmd)}")
+                pass
 
         try:
             result = subprocess.run(cmd, check=True, capture_output=True, text=True)
@@ -205,9 +203,8 @@ class Builder:
             if result.stdout:
                 self.log.debug(f"stdout: {result.stdout}")
             if verbose:
-                print(f" Build successful: {self.name}")
                 if result.stdout:
-                    print(f"stdout: {result.stdout}")
+                    pass
             return True
         except subprocess.CalledProcessError as e:
             self.log.error(f"Build failed: {e}")
@@ -215,15 +212,13 @@ class Builder:
                 self.log.debug(f"stdout: {e.stdout}")
             if e.stderr:
                 self.log.debug(f"stderr: {e.stderr}")
-            print(f" Build failed: {e}")
             if e.stdout:
-                print(f"stdout: {e.stdout}")
+                pass
             if e.stderr:
-                print(f"stderr: {e.stderr}")
+                pass
             return False
         except FileNotFoundError:
             self.log.error(f"Compiler not found: {self.compiler}")
-            print(f" Compiler not found: {self.compiler}")
             return False
 
 
@@ -235,19 +230,19 @@ class MakefileGenerator:
         name: str = "main",
         source_dir: str = ".",
         build_dir: str = "build",
-        include_dirs: Optional[List[str]] = None,
-        library_dirs: Optional[List[str]] = None,
-        libraries: Optional[List[str]] = None,
-        flags: Optional[List[str]] = None,
-        cppflags: Optional[List[str]] = None,
-        cxxflags: Optional[List[str]] = None,
-        ldflags: Optional[List[str]] = None,
+        include_dirs: Optional[list[str]] = None,
+        library_dirs: Optional[list[str]] = None,
+        libraries: Optional[list[str]] = None,
+        flags: Optional[list[str]] = None,
+        cppflags: Optional[list[str]] = None,
+        cxxflags: Optional[list[str]] = None,
+        ldflags: Optional[list[str]] = None,
         compiler: str = "gcc",
         std: str = "c99",
         use_stc: bool = True,
         stc_include_path: Optional[str] = None,
         project_type: str = "MultiGen",
-        additional_sources: Optional[List[str]] = None,
+        additional_sources: Optional[list[str]] = None,
     ):
         self.log = log.config(self.__class__.__name__)
         self.name = name
@@ -275,7 +270,7 @@ class MakefileGenerator:
         if self.use_stc and self.stc_include_path:
             self._configure_stc()
 
-        self.content: List[str] = []
+        self.content: list[str] = []
 
     def _detect_stc_path(self) -> Optional[str]:
         """Auto-detect STC include path."""
@@ -353,8 +348,8 @@ class MakefileGenerator:
     def target(
         self,
         name: str,
-        dependencies: Optional[List[str]] = None,
-        commands: Optional[List[str]] = None,
+        dependencies: Optional[list[str]] = None,
+        commands: Optional[list[str]] = None,
         phony: bool = False,
     ) -> "MakefileGenerator":
         """Add a target to the Makefile."""
@@ -371,7 +366,7 @@ class MakefileGenerator:
         self.blank_line()
         return self
 
-    def pattern_rule(self, target: str, source: str, commands: List[str]) -> "MakefileGenerator":
+    def pattern_rule(self, target: str, source: str, commands: list[str]) -> "MakefileGenerator":
         """Add a pattern rule to the Makefile."""
         self.content.append(f"{target}: {source}")
         for cmd in commands:
@@ -536,13 +531,11 @@ class MakefileGenerator:
             self.log.info(f"Generated Makefile: {filename}")
             if self.use_stc and self.stc_include_path:
                 self.log.info(f"STC support enabled: {self.stc_include_path}")
-            print(f" Generated Makefile: {filename}")
             if self.use_stc and self.stc_include_path:
-                print(f" STC support enabled: {self.stc_include_path}")
+                pass
             return True
         except Exception as e:
             self.log.error(f"Failed to write Makefile: {e}")
-            print(f" Failed to write Makefile: {e}")
             return False
 
 
@@ -559,8 +552,8 @@ class MultiGenMakefileGenerator:
         c_file: str,
         output_name: Optional[str] = None,
         use_stc: bool = True,
-        additional_flags: Optional[List[str]] = None,
-        additional_includes: Optional[List[str]] = None,
+        additional_flags: Optional[list[str]] = None,
+        additional_includes: Optional[list[str]] = None,
         makefile_dir: Optional[str] = None,
     ) -> MakefileGenerator:
         """Create a Makefile for generated C code."""
@@ -606,8 +599,8 @@ class MultiGenMakefileGenerator:
         c_file: str,
         output_name: Optional[str] = None,
         use_stc: bool = True,
-        additional_flags: Optional[List[str]] = None,
-        additional_includes: Optional[List[str]] = None,
+        additional_flags: Optional[list[str]] = None,
+        additional_includes: Optional[list[str]] = None,
     ) -> Builder:
         """Create a Builder for direct compilation of generated C code."""
         c_path = Path(c_file)
@@ -641,7 +634,8 @@ class MultiGenMakefileGenerator:
 def main() -> int:
     """Command-line interface for MultiGen Makefile generator."""
     parser = argparse.ArgumentParser(
-        description="MultiGen Makefile Generator with STC support", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        description="MultiGen Makefile Generator with STC support",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")

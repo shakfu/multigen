@@ -1642,7 +1642,9 @@ class MultiGenPythonToGoConverter:
                 condition_lambda = f"func({target_name} {element_type}) bool {{ return {condition_expr} }}"
                 return f"multigen.ListComprehensionWithFilter[{element_type}, {result_type}]({container_expr}, {transform_lambda}, {condition_lambda})"
             else:
-                return f"multigen.ListComprehension[{element_type}, {result_type}]({container_expr}, {transform_lambda})"
+                return (
+                    f"multigen.ListComprehension[{element_type}, {result_type}]({container_expr}, {transform_lambda})"
+                )
 
     def _convert_dict_comprehension(self, expr: ast.DictComp) -> str:
         """Convert dictionary comprehensions using Go 1.18+ generics."""

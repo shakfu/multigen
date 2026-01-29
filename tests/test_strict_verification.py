@@ -57,7 +57,10 @@ def add(x: int, y: int) -> int:
         assert result.success
 
         # Check for warning in logs
-        assert any("strict verification mode enabled but formal verification is disabled" in msg.lower() for msg in caplog.messages)
+        assert any(
+            "strict verification mode enabled but formal verification is disabled" in msg.lower()
+            for msg in caplog.messages
+        )
 
     @pytest.mark.skipif(not Z3_AVAILABLE, reason="Z3 not available")
     def test_strict_mode_passes_safe_code(self, tmp_path):
@@ -70,9 +73,7 @@ def add(x: int, y: int) -> int:
 """
         )
 
-        config = PipelineConfig(
-            target_language="c", enable_formal_verification=True, strict_verification=True
-        )
+        config = PipelineConfig(target_language="c", enable_formal_verification=True, strict_verification=True)
         pipeline = MultiGenPipeline(config=config)
 
         result = pipeline.convert(test_file)

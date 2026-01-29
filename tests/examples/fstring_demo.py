@@ -1,32 +1,38 @@
-"""
-F-String Demo - MultiGen v0.1.86+
+"""F-String Demo - MultiGen v0.1.86+
 
 Demonstrates MultiGen's f-string support across all backends.
 """
+
 
 def greet(name: str) -> str:
     """Simple f-string with string interpolation."""
     return f"Hello, {name}!"
 
+
 def format_numbers(x: int, y: float) -> str:
     """F-string with multiple types."""
     return f"Integer: {x}, Float: {y}"
+
 
 def calculate_and_format(a: int, b: int) -> str:
     """F-string with expressions."""
     return f"Sum of {a} and {b} is {a + b}"
 
+
 def format_list_info(items: list[int]) -> str:
     """F-string with function calls."""
     return f"List has {len(items)} items"
+
 
 def format_boolean(flag: bool) -> str:
     """F-string with boolean values."""
     return f"Flag is {flag}"
 
+
 def complex_example(name: str, age: int, score: float, active: bool) -> str:
     """Complex f-string with multiple parts."""
     return f"User {name} (age {age}) has score {score} - Active: {active}"
+
 
 def main() -> None:
     """Demonstrate all f-string features."""
@@ -54,6 +60,7 @@ def main() -> None:
     # Complex example
     user_info: str = complex_example("Alice", 30, 95.5, True)
     print(user_info)
+
 
 # Run the demo
 main()

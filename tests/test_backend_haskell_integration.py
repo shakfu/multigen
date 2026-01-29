@@ -2,8 +2,8 @@
 
 import pytest
 
-from multigen.backends.haskell.converter import MultiGenPythonToHaskellConverter 
 from multigen.backends.errors import UnsupportedFeatureError
+from multigen.backends.haskell.converter import MultiGenPythonToHaskellConverter
 
 
 class TestHaskellIntegrationComplete:
@@ -57,7 +57,9 @@ class DataProcessor:
 
         # Verify basic structure (methods are simplified in current implementation)
         assert "processNumbers :: DataProcessor -> [a] -> [a]" in haskell_code
-        assert "getStats :: DataProcessor -> Dict String a" in haskell_code or "getStats :: DataProcessor" in haskell_code
+        assert (
+            "getStats :: DataProcessor -> Dict String a" in haskell_code or "getStats :: DataProcessor" in haskell_code
+        )
 
     def test_multiple_classes_interaction(self):
         """Test multiple classes working together."""
@@ -135,7 +137,10 @@ def test_processing() -> dict:
 
         # Verify basic method structure
         assert "cleanWord :: StringProcessor -> String -> String" in haskell_code
-        assert "processWords :: StringProcessor -> [a] -> Dict String a" in haskell_code or "processWords :: StringProcessor" in haskell_code
+        assert (
+            "processWords :: StringProcessor -> [a] -> Dict String a" in haskell_code
+            or "processWords :: StringProcessor" in haskell_code
+        )
 
     def test_nested_control_flow_with_features(self):
         """Test nested control structures with advanced features."""
@@ -171,7 +176,10 @@ class Calculator:
         haskell_code = self.converter.convert_code(python_code)
 
         # Verify basic structure
-        assert "calculateBatch :: Calculator -> [a] -> [a]" in haskell_code or "calculateBatch :: Calculator" in haskell_code
+        assert (
+            "calculateBatch :: Calculator -> [a] -> [a]" in haskell_code
+            or "calculateBatch :: Calculator" in haskell_code
+        )
 
     def test_complex_expressions_integration(self):
         """Test complex expressions with all features combined."""
@@ -225,7 +233,6 @@ def complex_processing(data: list, threshold: float) -> dict:
 
     def test_error_handling_for_unsupported_features(self):
         """Test that unsupported features raise appropriate errors."""
-
         # Test generator expression (should be unsupported)
         python_code_generator = """
 def test_generator():
@@ -294,11 +301,17 @@ def main() -> int:
         # Verify complete structure
         assert "data MathUtils = MathUtils" in haskell_code
         assert "newMathUtils :: Int -> MathUtils" in haskell_code
-        assert "processNumbers :: MathUtils -> [a] -> Dict String a" in haskell_code or "processNumbers :: MathUtils" in haskell_code
+        assert (
+            "processNumbers :: MathUtils -> [a] -> Dict String a" in haskell_code
+            or "processNumbers :: MathUtils" in haskell_code
+        )
         assert "main :: IO ()" in haskell_code
 
         # Verify all features work together
-        assert "processNumbers :: MathUtils -> [a] -> Dict String a" in haskell_code or "processNumbers :: MathUtils" in haskell_code
+        assert (
+            "processNumbers :: MathUtils -> [a] -> Dict String a" in haskell_code
+            or "processNumbers :: MathUtils" in haskell_code
+        )
         assert "newMathUtils 5" in haskell_code
         assert "processNumbers" in haskell_code
 

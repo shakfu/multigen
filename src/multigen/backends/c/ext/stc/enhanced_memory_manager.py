@@ -17,7 +17,7 @@ from enum import Enum
 from typing import Any, Optional
 
 from .allocators import AllocatorInstance, AllocatorType, MemoryAllocatorManager
-from .memory_manager import MemoryError, MemoryScope, STCMemoryManager
+from .memory_manager import MemoryScope, STCMemoryError, STCMemoryManager
 from .smart_pointers import SmartPointerManager, SmartPointerType
 
 
@@ -78,7 +78,7 @@ class EnhancedMemoryManager:
         self.scope_stack: list[dict[str, ResourceAllocation]] = [{}]
 
         # Error tracking
-        self.safety_errors: list[MemoryError] = []
+        self.safety_errors: list[STCMemoryError] = []
 
         # Performance metrics
         self.performance_metrics: dict[str, Any] = {
@@ -189,7 +189,7 @@ class EnhancedMemoryManager:
             ):
                 self.smart_pointer_manager.track_assignment(dependent, dependency)
 
-    def detect_memory_issues(self) -> list[MemoryError]:
+    def detect_memory_issues(self) -> list[STCMemoryError]:
         """Comprehensive memory safety analysis."""
         self.safety_errors = []
 
@@ -529,7 +529,7 @@ class EnhancedMemoryManager:
     def _add_error(self, error_type: str, message: str, line_number: int, severity: str) -> None:
         """Add a memory safety error."""
         self.safety_errors.append(
-            MemoryError(error_type=error_type, message=message, line_number=line_number, severity=severity)
+            STCMemoryError(error_type=error_type, message=message, line_number=line_number, severity=severity)
         )
 
 

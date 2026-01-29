@@ -97,9 +97,7 @@ from .optimizers import (
 )
 
 # Python Constraint Checking
-from .python_constraints import (
-    ConstraintCategory as PythonConstraintCategory,
-)
+from .python_constraints import ConstraintCategory as PythonConstraintCategory
 from .python_constraints import (
     PythonConstraintChecker,
     PythonConstraintViolation,

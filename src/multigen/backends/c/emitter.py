@@ -59,9 +59,7 @@ class CEmitter(AbstractEmitter):
         """Generate C function code."""
         return self._emit_function_basic(func_node, type_context)
 
-    def emit_module(
-        self, source_code: str, analysis_result: Optional[Any] = None, semantic_mapping: Any = None
-    ) -> str:
+    def emit_module(self, source_code: str, analysis_result: Optional[Any] = None, semantic_mapping: Any = None) -> str:
         """Generate complete C module using sophisticated py2c conversion."""
         # Note: semantic_mapping from Phase 4 available for future optimization
         try:

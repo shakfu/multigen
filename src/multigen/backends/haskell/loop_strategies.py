@@ -130,7 +130,7 @@ class HaskellNestedListBuildingStrategy(ForLoopStrategy):
 
 
 class HaskellListAppendStrategy(ForLoopStrategy):
-    """Strategy for simple list.append() pattern.
+    r"""Strategy for simple list.append() pattern.
 
     Pattern:
         for i in iter:
@@ -179,7 +179,7 @@ class HaskellListAppendStrategy(ForLoopStrategy):
 
 
 class HaskellAccumulationStrategy(ForLoopStrategy):
-    """Strategy for accumulation pattern with augmented assignment.
+    r"""Strategy for accumulation pattern with augmented assignment.
 
     Pattern:
         for i in iter:
@@ -218,7 +218,7 @@ class HaskellAccumulationStrategy(ForLoopStrategy):
 
 
 class HaskellAssignmentInMainStrategy(ForLoopStrategy):
-    """Strategy for simple assignment in main (IO context).
+    r"""Strategy for simple assignment in main (IO context).
 
     Pattern (in main):
         for i in iter:

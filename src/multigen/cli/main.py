@@ -314,7 +314,7 @@ Optimization: -O0 (none), -O1 (basic), -O2 (moderate, default), -O3 (aggressive)
             available = ", ".join(registry.list_backends())
             self.log.error(f"Unsupported target language '{target}'")
             self.log.info(f"Available backends: {available}")
-            self.log.info(f"Tip: Use 'multigen backends' to see all available backends")
+            self.log.info("Tip: Use 'multigen backends' to see all available backends")
             return 1
 
         if self.verbose:
@@ -409,7 +409,7 @@ Optimization: -O0 (none), -O1 (basic), -O2 (moderate, default), -O3 (aggressive)
                     successful_files.append(str(input_path))
 
                     if self.verbose and result.output_files:
-                        self.log.info(f"Output files generated:")
+                        self.log.info("Output files generated:")
                         for key, filepath in result.output_files.items():
                             self.log.info(f"  {key}: {filepath}")
 
@@ -443,7 +443,7 @@ Optimization: -O0 (none), -O1 (basic), -O2 (moderate, default), -O3 (aggressive)
             available = ", ".join(registry.list_backends())
             self.log.error(f"Unsupported target language '{target}'")
             self.log.info(f"Available backends: {available}")
-            self.log.info(f"Tip: Use 'multigen backends' to see all available backends")
+            self.log.info("Tip: Use 'multigen backends' to see all available backends")
             return 1
 
         if self.verbose:
@@ -603,7 +603,7 @@ Optimization: -O0 (none), -O1 (basic), -O2 (moderate, default), -O3 (aggressive)
                         sys.exit(1)
 
                     if self.verbose and result.output_files:
-                        self.log.info(f"Output files generated:")
+                        self.log.info("Output files generated:")
                         for key, filepath in result.output_files.items():
                             self.log.info(f"  {key}: {filepath}")
 
@@ -654,7 +654,7 @@ Optimization: -O0 (none), -O1 (basic), -O2 (moderate, default), -O3 (aggressive)
             available = ", ".join(registry.list_backends())
             self.log.error(f"Unsupported target language '{target}'")
             self.log.info(f"Available backends: {available}")
-            self.log.info(f"Tip: Use 'multigen backends' to see all available backends")
+            self.log.info("Tip: Use 'multigen backends' to see all available backends")
             return 1
 
         # Parse backend preferences

@@ -11,6 +11,7 @@ def test_list_iteration() -> int:
 
     return total
 
+
 def test_set_iteration() -> int:
     """Test iteration over sets"""
     unique_nums: set[int] = set()
@@ -23,6 +24,7 @@ def test_set_iteration() -> int:
         count = count + 1
 
     return count
+
 
 def test_string_list_iteration() -> int:
     """Test iteration over string lists"""
@@ -37,6 +39,7 @@ def test_string_list_iteration() -> int:
         total_chars = total_chars + 1
 
     return total_chars
+
 
 def main() -> int:
     # Test all iteration functions

@@ -48,7 +48,13 @@ def complex_unsupported():
         """Test simple emission detection."""
         # With runtime support, should prefer sophisticated conversion
         import ast
-        func_node = ast.FunctionDef(name="test", args=ast.arguments(posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[]), body=[], decorator_list=[])
+
+        func_node = ast.FunctionDef(
+            name="test",
+            args=ast.arguments(posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[]),
+            body=[],
+            decorator_list=[],
+        )
         result = self.emitter.can_use_simple_emission(func_node, {})
         assert isinstance(result, bool)
 

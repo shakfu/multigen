@@ -9,6 +9,7 @@ import pytest
 # Check if llvmlite is available before importing LLVM backend
 try:
     import llvmlite  # noqa: F401
+
     LLVMLITE_AVAILABLE = True
 except ImportError:
     LLVMLITE_AVAILABLE = False

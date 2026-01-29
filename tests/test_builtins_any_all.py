@@ -1,16 +1,16 @@
-"""
-Test any() and all() built-in functions across backends.
-"""
+"""Test any() and all() built-in functions across backends."""
 
-import pytest
 import tempfile
 from pathlib import Path
+
+import pytest
+
 from multigen.pipeline import MultiGenPipeline
 
 
 def test_any_basic_cpp():
     """Test basic any() function in C++."""
-    code = '''
+    code = """
 def test_any() -> bool:
     values: list[bool] = [False, False, True, False]
     return any(values)
@@ -18,7 +18,7 @@ def test_any() -> bool:
 def main() -> None:
     result: bool = test_any()
     print(result)
-'''
+"""
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(code)
@@ -37,7 +37,7 @@ def main() -> None:
 
 def test_all_basic_cpp():
     """Test basic all() function in C++."""
-    code = '''
+    code = """
 def test_all() -> bool:
     values: list[bool] = [True, True, True, True]
     return all(values)
@@ -45,7 +45,7 @@ def test_all() -> bool:
 def main() -> None:
     result: bool = test_all()
     print(result)
-'''
+"""
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(code)
@@ -64,7 +64,7 @@ def main() -> None:
 
 def test_any_all_combined_cpp():
     """Test combined any() and all() usage."""
-    code = '''
+    code = """
 def check_conditions() -> bool:
     has_any_true: list[bool] = [False, True, False]
     all_true: list[bool] = [True, True, True]
@@ -76,7 +76,7 @@ def check_conditions() -> bool:
 def main() -> None:
     result: bool = check_conditions()
     print(result)
-'''
+"""
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(code)

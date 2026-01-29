@@ -35,7 +35,7 @@ class ContainerAllocation:
 
 
 @dataclass
-class MemoryError:
+class STCMemoryError:
     """Represents a potential memory management error."""
 
     error_type: str
@@ -66,7 +66,7 @@ class STCMemoryManager:
         self.moved_containers: set[str] = set()
 
         # Memory errors and warnings
-        self.memory_errors: list[MemoryError] = []
+        self.memory_errors: list[STCMemoryError] = []
 
         # Function-specific tracking
         self.current_function: Optional[str] = None
@@ -200,7 +200,7 @@ class STCMemoryManager:
 
         return code
 
-    def analyze_memory_safety(self, ast_node: ast.AST) -> list[MemoryError]:
+    def analyze_memory_safety(self, ast_node: ast.AST) -> list[STCMemoryError]:
         """Analyze AST for potential memory safety issues.
 
         Returns:
@@ -345,19 +345,19 @@ class STCMemoryManager:
     def _add_error(self, error_type: str, message: str, line_number: int) -> None:
         """Add a memory error."""
         self.memory_errors.append(
-            MemoryError(error_type=error_type, message=message, line_number=line_number, severity="error")
+            STCMemoryError(error_type=error_type, message=message, line_number=line_number, severity="error")
         )
 
     def _add_warning(self, error_type: str, message: str, line_number: int) -> None:
         """Add a memory warning."""
         self.memory_errors.append(
-            MemoryError(error_type=error_type, message=message, line_number=line_number, severity="warning")
+            STCMemoryError(error_type=error_type, message=message, line_number=line_number, severity="warning")
         )
 
     def _add_info(self, error_type: str, message: str, line_number: int) -> None:
         """Add a memory info message."""
         self.memory_errors.append(
-            MemoryError(error_type=error_type, message=message, line_number=line_number, severity="info")
+            STCMemoryError(error_type=error_type, message=message, line_number=line_number, severity="info")
         )
 
     def generate_cleanup_summary(self) -> dict[str, Any]:
@@ -381,4 +381,4 @@ class STCMemoryManager:
         return counts
 
 
-__all__ = ["STCMemoryManager", "MemoryScope", "ContainerAllocation", "MemoryError"]
+__all__ = ["STCMemoryManager", "MemoryScope", "ContainerAllocation", "STCMemoryError"]

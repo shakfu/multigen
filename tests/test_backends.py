@@ -1,12 +1,13 @@
 """Tests for MultiGen backend system."""
 
 import pytest
-from multigen.backends.registry import registry
+
 from multigen.backends.base import LanguageBackend
 from multigen.backends.c.backend import CBackend
-from multigen.backends.rust.backend import RustBackend
-from multigen.backends.go.backend import GoBackend
 from multigen.backends.cpp.backend import CppBackend
+from multigen.backends.go.backend import GoBackend
+from multigen.backends.registry import registry
+from multigen.backends.rust.backend import RustBackend
 
 
 class TestBackendRegistry:

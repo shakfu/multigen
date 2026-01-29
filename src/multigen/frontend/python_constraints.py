@@ -16,6 +16,11 @@ from typing import Optional
 from .immutability_analyzer import MutabilityClass
 from .type_inference import TypeInferenceEngine
 
+# Constants for constraint checking
+_INT32_MAX = 2147483647
+_INT32_MIN = -2147483648
+_COMPLEXITY_THRESHOLD = 10
+
 
 class ConstraintCategory(Enum):
     """Categories of constraints."""
@@ -173,13 +178,10 @@ class PythonConstraintChecker:
 
     def _check_integer_overflow(self, tree: ast.AST) -> None:
         """Check for potential integer overflow (TS004)."""
-        INT32_MAX = 2147483647
-        INT32_MIN = -2147483648
-
         for node in ast.walk(tree):
             if isinstance(node, ast.Constant):
                 if isinstance(node.value, int):
-                    if node.value > INT32_MAX or node.value < INT32_MIN:
+                    if node.value > _INT32_MAX or node.value < _INT32_MIN:
                         self.violations.append(
                             PythonConstraintViolation(
                                 category=ConstraintCategory.TYPE_SAFETY,
@@ -202,7 +204,7 @@ class PythonConstraintChecker:
     def _check_unreachable_in_block(self, block: list) -> None:
         """Check for unreachable code in a statement block."""
         found_return = False
-        for i, stmt in enumerate(block):
+        for _i, stmt in enumerate(block):
             if found_return:
                 # Everything after return is unreachable
                 self.violations.append(
@@ -269,38 +271,6 @@ class PythonConstraintChecker:
     def _check_uninitialized_variables(self, tree: ast.AST) -> None:
         """Detect potentially uninitialized variables (SA003)."""
         # Built-in functions and types that are always available
-        builtins = {
-            "int",
-            "float",
-            "str",
-            "bool",
-            "list",
-            "dict",
-            "set",
-            "tuple",
-            "len",
-            "range",
-            "min",
-            "max",
-            "sum",
-            "abs",
-            "print",
-            "open",
-            "enumerate",
-            "zip",
-            "map",
-            "filter",
-            "sorted",
-            "reversed",
-            "isinstance",
-            "type",
-            "hasattr",
-            "getattr",
-            "setattr",
-            "True",
-            "False",
-            "None",
-        }
 
         # Collect module-level function and class names
         module_names = set()
@@ -339,12 +309,10 @@ class PythonConstraintChecker:
 
     def _check_function_complexity(self, tree: ast.AST) -> None:
         """Warn about overly complex functions (CC004)."""
-        COMPLEXITY_THRESHOLD = 10
-
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef):
                 complexity = self._calculate_cyclomatic_complexity(node)
-                if complexity > COMPLEXITY_THRESHOLD:
+                if complexity > _COMPLEXITY_THRESHOLD:
                     self.violations.append(
                         PythonConstraintViolation(
                             category=ConstraintCategory.CODE_QUALITY,
@@ -352,7 +320,7 @@ class PythonConstraintChecker:
                             message=f"Function '{node.name}' has high cyclomatic complexity ({complexity})",
                             line=node.lineno,
                             severity="warning",
-                            suggestion=f"Consider refactoring (threshold: {COMPLEXITY_THRESHOLD})",
+                            suggestion=f"Consider refactoring (threshold: {_COMPLEXITY_THRESHOLD})",
                         )
                     )
 

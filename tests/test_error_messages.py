@@ -7,7 +7,6 @@ import pytest
 from multigen.error_formatter import ErrorFormatter, format_error
 from multigen.errors import (
     ErrorCode,
-    MultiGenError,
     SourceLocation,
     TypeMappingError,
     UnsupportedFeatureError,
@@ -65,9 +64,7 @@ class TestErrorClasses:
 
     def test_error_with_suggestion(self):
         """Test error with helpful suggestion."""
-        error = UnsupportedFeatureError(
-            "Generators not supported", suggestion="Use list comprehensions instead"
-        )
+        error = UnsupportedFeatureError("Generators not supported", suggestion="Use list comprehensions instead")
 
         assert error.context.suggestion == "Use list comprehensions instead"
 

@@ -1,9 +1,7 @@
 """Tests for string methods support in C++ backend."""
 
-import pytest
-
 from multigen.backends.cpp.converter import MultiGenPythonToCppConverter
-from multigen.backends.errors import UnsupportedFeatureError
+
 
 class TestStringMethodsBasics:
     """Test basic string method functionality."""
@@ -58,7 +56,7 @@ def test_strip_chars() -> str:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "StringOps::strip(text, \".\")" in cpp_code
+        assert 'StringOps::strip(text, ".")' in cpp_code
 
     def test_string_find_method(self):
         """Test str.find() method."""
@@ -69,7 +67,7 @@ def test_find() -> int:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "StringOps::find(text, \"world\")" in cpp_code
+        assert 'StringOps::find(text, "world")' in cpp_code
 
     def test_string_replace_method(self):
         """Test str.replace() method."""
@@ -80,7 +78,7 @@ def test_replace() -> str:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "StringOps::replace(text, \"world\", \"universe\")" in cpp_code
+        assert 'StringOps::replace(text, "world", "universe")' in cpp_code
 
     def test_string_split_method(self):
         """Test str.split() method."""
@@ -91,7 +89,7 @@ def test_split() -> list:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "StringOps::split(text, \",\")" in cpp_code
+        assert 'StringOps::split(text, ",")' in cpp_code
 
     def test_string_split_default(self):
         """Test str.split() with default delimiter."""
@@ -156,7 +154,7 @@ def process_text(text: str) -> str:
 
         assert "StringOps::strip(text)" in cpp_code
         assert "StringOps::lower(step1)" in cpp_code
-        assert "StringOps::replace(step2, \" \", \"_\")" in cpp_code
+        assert 'StringOps::replace(step2, " ", "_")' in cpp_code
 
 
 class TestStringMethodsAdvanced:
@@ -176,7 +174,7 @@ def format_name(first: str, last: str) -> str:
 
         assert "StringOps::upper(first)" in cpp_code
         assert "StringOps::lower(last)" in cpp_code
-        assert "return ((StringOps::upper(first) + \" \") + StringOps::lower(last));" in cpp_code
+        assert 'return ((StringOps::upper(first) + " ") + StringOps::lower(last));' in cpp_code
 
     def test_string_method_in_condition(self):
         """Test string method used in conditional expressions."""
@@ -188,7 +186,7 @@ def check_text(text: str) -> bool:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "if ((StringOps::strip(text) == \"\"))" in cpp_code
+        assert 'if ((StringOps::strip(text) == ""))' in cpp_code
 
     def test_string_method_with_numeric_result(self):
         """Test string method that returns numeric value."""
@@ -212,7 +210,7 @@ def test_literal() -> str:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "StringOps::upper(\"hello world\")" in cpp_code
+        assert 'StringOps::upper("hello world")' in cpp_code
 
     def test_multiple_string_methods_same_line(self):
         """Test multiple string methods in the same expression."""
@@ -246,5 +244,5 @@ def test_returns(text: str) -> int:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "int pos = StringOps::find(text, \"test\");" in cpp_code
+        assert 'int pos = StringOps::find(text, "test");' in cpp_code
         assert "return pos;" in cpp_code

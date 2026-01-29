@@ -8,7 +8,7 @@ from ctypes import CFUNCTYPE, c_int64
 from pathlib import Path
 from typing import Any, Optional
 
-import llvmlite.binding as llvm  # type: ignore[import-untyped]
+import llvmlite.binding as llvm  # type: ignore[import-not-found,import-untyped]
 
 
 class LLVMJITExecutor:
@@ -203,20 +203,19 @@ def jit_compile_and_run(llvm_ir_file: str, verbose: bool = False) -> int:
 
     try:
         if verbose:
-            print(f"Compiling {llvm_ir_file}...")
+            pass
 
         # Compile IR
-        mod = executor.compile_ir_file(llvm_ir_file)
+        executor.compile_ir_file(llvm_ir_file)
 
         if verbose:
-            print("Compilation successful")
-            print("Executing main()...")
+            pass
 
         # Execute main
         result = executor.execute_main()
 
         if verbose:
-            print(f"Execution complete. Result: {result}")
+            pass
 
         return result
 
@@ -229,16 +228,13 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
-        print("Usage: python jit_executor.py <llvm_ir_file.ll>")
         sys.exit(1)
 
     llvm_ir_file = sys.argv[1]
 
     try:
         result = jit_compile_and_run(llvm_ir_file, verbose=True)
-        print(f"\nProgram returned: {result}")
         sys.exit(0)
 
-    except Exception as e:
-        print(f"Error: {e}")
+    except Exception:
         sys.exit(1)

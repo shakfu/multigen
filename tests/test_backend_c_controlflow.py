@@ -1,7 +1,5 @@
 """Tests for Python control flow support in C backend."""
 
-
-
 from multigen.backends.c.emitter import MultiGenPythonToCConverter
 
 
@@ -98,4 +96,3 @@ def nested_test(n: int) -> int:
 
         assert "for (int i = 0; i < n; i += 1)" in c_code
         assert "if (((i % 2) == 0))" in c_code
-

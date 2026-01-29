@@ -11,7 +11,7 @@ from enum import Enum
 from typing import Any, Optional
 
 try:
-    import z3  # type: ignore[import-untyped]
+    import z3  # type: ignore[import-not-found,import-untyped]
 
     Z3_AVAILABLE = True
 except ImportError:

@@ -1,9 +1,6 @@
 """Tests for basic Go backend functionality."""
 
-import pytest
-
 from multigen.backends.go.converter import MultiGenPythonToGoConverter
-from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestGoBasicsConversion:

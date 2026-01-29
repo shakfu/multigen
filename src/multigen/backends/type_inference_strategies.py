@@ -322,7 +322,7 @@ class ComprehensionInferenceStrategy(TypeInferenceStrategy):
             return context.type_mapper("list")
 
         # Infer element type from comprehension element
-        element_type = context.infer_recursively(value.elt)
+        context.infer_recursively(value.elt)
         # For now, return generic list type
         # Backends can override to format with element type
         return context.type_mapper("list")

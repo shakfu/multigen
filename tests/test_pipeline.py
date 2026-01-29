@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from multigen.pipeline import MultiGenPipeline, PipelineConfig, BuildMode, OptimizationLevel
 from multigen.backends.registry import registry
+from multigen.pipeline import BuildMode, MultiGenPipeline, OptimizationLevel, PipelineConfig
 
 
 class TestMultiGenPipeline:
@@ -26,9 +26,7 @@ class TestMultiGenPipeline:
     def test_pipeline_with_config(self):
         """Test pipeline with custom configuration."""
         config = PipelineConfig(
-            target_language="c",
-            optimization_level=OptimizationLevel.AGGRESSIVE,
-            build_mode=BuildMode.DIRECT
+            target_language="c", optimization_level=OptimizationLevel.AGGRESSIVE, build_mode=BuildMode.DIRECT
         )
         pipeline = MultiGenPipeline(config)
         assert pipeline.config.target_language == "c"
@@ -94,10 +92,7 @@ class TestMultiGenPipeline:
         try:
             # Create temporary output directory
             with tempfile.TemporaryDirectory() as temp_dir:
-                config = PipelineConfig(
-                    target_language=target,
-                    build_mode=BuildMode.MAKEFILE
-                )
+                config = PipelineConfig(target_language=target, build_mode=BuildMode.MAKEFILE)
                 pipeline = MultiGenPipeline(config)
                 result = pipeline.convert(temp_python_file, temp_dir)
 
@@ -147,10 +142,7 @@ class TestPipelineIntegration:
             # Create temporary output directory
             with tempfile.TemporaryDirectory() as temp_dir:
                 result = convert_python_to_language(
-                    temp_python_file,
-                    target_language="c",
-                    output_path=temp_dir,
-                    build_mode=BuildMode.NONE
+                    temp_python_file, target_language="c", output_path=temp_dir, build_mode=BuildMode.NONE
                 )
 
                 # Check result
@@ -172,11 +164,9 @@ class TestPipelineIntegration:
             # Simple arithmetic
             """def add(x: int, y: int) -> int:
     return x + y""",
-
             # Simple return
             """def get_answer() -> int:
     return 42""",
-
             # Single parameter
             """def twice(x: int) -> int:
     return x * 2""",

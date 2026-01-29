@@ -1,7 +1,5 @@
 """Tests for Haskell backend augmented assignment support."""
 
-import pytest
-
 from multigen.backends.haskell.converter import MultiGenPythonToHaskellConverter
 
 
@@ -263,8 +261,12 @@ def test_nested_augassign(matrix: list) -> int:
         # Nested loops and conditionals generate complex structures
         # May generate fold or may skip with comment in pure functions
         assert "total" in haskell_code
-        assert ("foldl" in haskell_code or "foldr" in haskell_code or
-                "for loop" in haskell_code or "not converted" in haskell_code)
+        assert (
+            "foldl" in haskell_code
+            or "foldr" in haskell_code
+            or "for loop" in haskell_code
+            or "not converted" in haskell_code
+        )
 
     def test_augmented_assignment_with_builtin_functions(self):
         """Test augmented assignment with built-in function results."""

@@ -315,7 +315,7 @@ class TestBoundsProverWithZ3:
 
     def test_complex_expression_verification(self):
         """Test verification with complex index expressions."""
-        from z3 import And, Solver, sat
+        from z3 import Solver, sat
 
         gen = Z3FormulaGenerator()
 

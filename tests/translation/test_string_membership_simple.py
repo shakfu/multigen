@@ -8,6 +8,7 @@ def test_string_membership() -> bool:
 
     return has_hello
 
+
 def main() -> int:
     result: bool = test_string_membership()
     assert result == True

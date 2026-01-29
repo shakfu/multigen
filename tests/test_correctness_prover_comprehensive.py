@@ -159,7 +159,7 @@ class TestCorrectnessProverWithZ3:
 
     def test_simple_property_verification(self):
         """Test simple property verification with Z3."""
-        from z3 import And, Int, Solver, sat
+        from z3 import Int, Solver, sat
 
         # Verify property: x + 0 = x
         x = Int("x")

@@ -11,6 +11,7 @@ def test_list_slicing() -> list[int]:
     subset: list[int] = numbers[1:3]
     return subset
 
+
 def test_slice_with_start_only() -> list[int]:
     """Test slicing with start only"""
     numbers: list[int] = []
@@ -22,6 +23,7 @@ def test_slice_with_start_only() -> list[int]:
     subset: list[int] = numbers[1:]
     return subset
 
+
 def test_slice_with_end_only() -> list[int]:
     """Test slicing with end only"""
     numbers: list[int] = []
@@ -32,6 +34,7 @@ def test_slice_with_end_only() -> list[int]:
     # Slice from start to index 2 (exclusive)
     subset: list[int] = numbers[:2]
     return subset
+
 
 def main() -> int:
     result1: list[int] = test_list_slicing()

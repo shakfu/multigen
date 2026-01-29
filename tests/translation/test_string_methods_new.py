@@ -12,6 +12,7 @@ def test_string_methods() -> str:
 
     return upper_text
 
+
 def main() -> int:
     result: str = test_string_methods()
     assert result == "HELLO WORLD"

@@ -3,10 +3,10 @@ BENCHMARK_RESULTS_DIR := build/benchmark_results
 # Makefile for MultiGen development
 
 .PHONY: help install test test-unit test-integration test-translation \
-		test-py2c test-benchmark test-build test-memory-llvm clean lint format type-check \
+		test-py2c test-benchmark test-build test-memory-llvm clean lint format typecheck \
 		build docs docs-clean docs-serve benchmark benchmark-algorithms \
-		benchmark-data-structures benchmark-report benchmark-clean check snap \
-		check-wheel publish-test publish
+		benchmark-data-structures benchmark-report benchmark-clean qa snap \
+		check publish-test publish
 
 # Default target
 help:
@@ -40,13 +40,14 @@ help:
 	@echo "  lint          Run ruff linting"
 	@echo "  format        Format code with ruff and isort"
 	@echo "  format-check  Check code formatting without changes"
-	@echo "  type-check    Run mypy type checking"
+	@echo "  typecheck     Run mypy type checking"
+	@echo "  qa     	   Run full quality assurance checks"	
 	@echo "  pre-commit    Install and run pre-commit hooks"
 	@echo ""
 	@echo "Build & Publish:"
 	@echo "  build         Build package for distribution"
 	@echo "  clean         Clean build artifacts"
-	@echo "  check-wheel   Verify wheel with twine check"
+	@echo "  check         Verify wheel with twine check"
 	@echo "  publish-test  Publish to TestPyPI"
 	@echo "  publish       Publish to PyPI"
 	@echo ""
@@ -57,7 +58,7 @@ help:
 
 # Installation
 install:
-	@uv run pip install -e .
+	@uv sync --reinstall-package multigen
 
 install-dev:
 	@uv run pip install -e .
@@ -97,27 +98,23 @@ test-coverage:
 	@echo ""
 	@echo "Coverage report generated in htmlcov/index.html"
 
-# quickcheck
-
-check: test type-check benchmark
-
 snap:
 	@git add --all . && git commit -m 'snap' && git push
 
 # Code quality
+qa: test lint typecheck format
+
 lint:
-	@uv run ruff check src tests
+	@uv run ruff check --fix src
 
 format:
-	@uv run ruff check --fix src tests
 	@uv run ruff format src tests
 	@uv run isort --profile=black --line-length=120 src tests
 
 format-check:
-	@uv run ruff check src tests
 	@uv run ruff format --check src tests
 
-type-check:
+typecheck:
 	@uv run mypy src/multigen
 
 pre-commit:
@@ -139,7 +136,7 @@ clean:
 	@find . -type f -name "*.pyc" -delete
 
 # PyPI publishing
-check-wheel:
+check:
 	@echo "Checking wheel with twine..."
 	@uv run twine check dist/*
 
@@ -179,7 +176,7 @@ run-examples:
 	@uv run python examples/variables.py
 
 # CI simulation
-ci-test: install-dev lint format-check type-check test
+ci-test: install-dev lint format-check typecheck test
 
 # Performance monitoring
 perf-monitor:

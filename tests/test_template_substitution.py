@@ -1,10 +1,8 @@
 """Tests for template substitution engine."""
 
-import pytest
 from multigen.backends.c.template_substitution import TemplateSubstitutionEngine
 from multigen.backends.c.type_parameter_extractor import (
     TypeParameterExtractor,
-    ContainerTypeInfo,
 )
 
 
@@ -97,8 +95,11 @@ class TestTemplateSubstitutionEngine:
         template = """{{K}} key = {{K_ZERO}};
 {{V}} val = {{V_ZERO}};"""
         result = self.engine.substitute_map_template(template, "str", "int")
-        assert result == """char* key = NULL;
+        assert (
+            result
+            == """char* key = NULL;
 int val = 0;"""
+        )
 
     def test_substitute_map_compare_operations(self):
         """Test comparison operator substitution."""

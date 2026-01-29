@@ -1,9 +1,6 @@
 """Tests for Rust backend string methods support."""
 
-import pytest
-
 from multigen.backends.rust.converter import MultiGenPythonToRustConverter
-from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestRustStringMethods:

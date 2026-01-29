@@ -5,8 +5,9 @@ loop optimization, function specialization, and vectorization.
 """
 
 from .compile_time_evaluator import CompileTimeEvaluator, CompileTimeReport, ConstantValue, OptimizationCandidate
-from .function_specializer import FunctionProfile, FunctionSpecializer, SpecializationReport
+from .function_specializer import FunctionProfile, FunctionSpecializer
 from .function_specializer import SpecializationCandidate as FunctionSpecializationCandidate
+from .function_specializer import SpecializationReport
 from .loop_analyzer import LoopAnalysisReport, LoopAnalyzer, LoopInfo, LoopOptimization
 from .vectorization_detector import (
     MemoryAccess,

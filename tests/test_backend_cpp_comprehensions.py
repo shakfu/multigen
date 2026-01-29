@@ -1,9 +1,7 @@
 """Tests for Python comprehensions support in C++ backend."""
 
-import pytest
-
 from multigen.backends.cpp.converter import MultiGenPythonToCppConverter
-from multigen.backends.errors import UnsupportedFeatureError
+
 
 class TestListComprehensions:
     """Test list comprehension conversion functionality."""
