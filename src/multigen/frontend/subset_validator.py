@@ -41,7 +41,7 @@ class FeatureRule:
     status: FeatureStatus
     description: str
     ast_nodes: list[type] = field(default_factory=list)
-    validator: Optional[Callable] = None
+    validator: Optional[Callable[..., bool]] = None
     constraints: list[str] = field(default_factory=list)
     examples: dict[str, str] = field(default_factory=dict)
     c_mapping: Optional[str] = None
@@ -345,7 +345,7 @@ class StaticPythonSubsetValidator:
                 tier=SubsetTier.TIER_3_ADVANCED,
                 status=FeatureStatus.PLANNED,
                 description="Python 3.10+ match statements",
-                ast_nodes=[ast.Match],  # type: ignore[attr-defined]
+                ast_nodes=[ast.Match],
                 c_mapping="Switch statements with guards",
             )
 

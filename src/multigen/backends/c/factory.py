@@ -18,7 +18,7 @@ class CFactory(AbstractFactory):
             return f"{type_name} {name} = {value};"
         return f"{type_name} {name};"
 
-    def create_function_signature(self, name: str, params: list[tuple], return_type: str) -> str:
+    def create_function_signature(self, name: str, params: list[tuple[str, str]], return_type: str) -> str:
         """Create C function signature."""
         param_strs = []
         for param_name, param_type in params:
@@ -50,7 +50,7 @@ class CFactory(AbstractFactory):
         params_str = ", ".join(params) if params else "void"
         return f"{return_type} {name}({params_str}) {{\n{body}\n}}"
 
-    def create_struct(self, name: str, fields: list[tuple]) -> str:
+    def create_struct(self, name: str, fields: list[tuple[str, str]]) -> str:
         """Create C struct definition."""
         field_strs = []
         for field_name, field_type in fields:

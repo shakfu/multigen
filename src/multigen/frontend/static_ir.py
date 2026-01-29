@@ -1145,7 +1145,7 @@ class IRBuilder:
         """
         if len(node.values) < 2:
             # Need at least 2 values
-            return IRLiteral(None, IRType(IRDataType.VOID), self._get_location(node))  # type: ignore[return-value]
+            return IRLiteral(None, IRType(IRDataType.VOID), self._get_location(node))
 
         # Determine the operator
         if isinstance(node.op, ast.And):
@@ -1153,7 +1153,7 @@ class IRBuilder:
         elif isinstance(node.op, ast.Or):
             operator = "or"
         else:
-            return IRLiteral(None, IRType(IRDataType.VOID), self._get_location(node))  # type: ignore[return-value]
+            return IRLiteral(None, IRType(IRDataType.VOID), self._get_location(node))
 
         # Build first expression
         result = self._build_expression(node.values[0])

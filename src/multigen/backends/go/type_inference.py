@@ -5,7 +5,7 @@ and special handling for Go idioms like interface{}.
 """
 
 import ast
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from ..type_inference_strategies import (
     CallInferenceStrategy,
@@ -141,7 +141,7 @@ class GoCallInferenceStrategy(CallInferenceStrategy):
     def __init__(
         self,
         function_return_types: Optional[dict[str, str]] = None,
-        struct_info: Optional[dict[str, dict]] = None,
+        struct_info: Optional[dict[str, dict[str, Any]]] = None,
     ) -> None:
         """Initialize with Go converter context.
 

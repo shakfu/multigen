@@ -66,7 +66,7 @@ except ImportError:
 
 # Import Z3 for formal verification (optional)
 try:
-    import z3  # type: ignore[import-untyped,import-not-found]  # noqa: F401
+    import z3  # type: ignore[import-not-found]  # noqa: F401
 
     Z3_AVAILABLE = True
 except ImportError:

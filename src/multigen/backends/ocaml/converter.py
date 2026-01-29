@@ -204,7 +204,7 @@ class MultiGenPythonToOCamlConverter:
                                 mutable.add(target.id)
         return mutable
 
-    def _convert_regular_function(self, node: ast.FunctionDef, params: list[tuple], return_type: str) -> list[str]:
+    def _convert_regular_function(self, node: ast.FunctionDef, params: list[tuple[str, str]], return_type: str) -> list[str]:
         """Convert a regular function definition."""
         func_name = self._to_ocaml_var_name(node.name)
 
@@ -348,7 +348,7 @@ class MultiGenPythonToOCamlConverter:
         self.current_class = None
         return lines
 
-    def _extract_class_fields(self, init_method: ast.FunctionDef) -> list[tuple]:
+    def _extract_class_fields(self, init_method: ast.FunctionDef) -> list[tuple[str, str]]:
         """Extract field definitions from __init__ method."""
         fields = []
 
@@ -375,7 +375,7 @@ class MultiGenPythonToOCamlConverter:
 
         return fields
 
-    def _convert_constructor(self, node: ast.FunctionDef, params: list[tuple]) -> list[str]:
+    def _convert_constructor(self, node: ast.FunctionDef, params: list[tuple[str, str]]) -> list[str]:
         """Convert __init__ method to constructor function."""
         if self.current_class is None:
             raise ValueError("Constructor called outside of class context")
@@ -434,7 +434,7 @@ class MultiGenPythonToOCamlConverter:
 
         return lines
 
-    def _convert_method(self, node: ast.FunctionDef, params: list[tuple], return_type: str) -> list[str]:
+    def _convert_method(self, node: ast.FunctionDef, params: list[tuple[str, str]], return_type: str) -> list[str]:
         """Convert class method to OCaml function."""
         if self.current_class is None:
             raise ValueError("Method called outside of class context")

@@ -74,7 +74,7 @@ class CppFactory(AbstractFactory):
             return f"/* {text} */"
         return f"// {text}"
 
-    def create_function_signature(self, name: str, params: list[tuple], return_type: str) -> str:
+    def create_function_signature(self, name: str, params: list[tuple[str, str]], return_type: str) -> str:
         """Create a C++ function signature."""
         param_strings = []
         for param_name, param_type in params:
@@ -103,7 +103,7 @@ class CppFactory(AbstractFactory):
         """Create a C++ struct."""
         return f"struct {name} {{\n{body}\n}};"
 
-    def get_type_mapping(self) -> dict:
+    def get_type_mapping(self) -> dict[str, str]:
         """Get Python to C++ type mappings."""
         return {
             "int": "int",

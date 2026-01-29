@@ -14,12 +14,12 @@ from typing import Any
 
 # Z3 integration - graceful fallback if not installed
 try:
-    import z3  # type: ignore[import-not-found,import-untyped]
+    import z3  # type: ignore[import-not-found]
 
     Z3_AVAILABLE = True
 except ImportError:
     Z3_AVAILABLE = False
-    z3 = None  # type: ignore[assignment]
+    z3 = None
 
 
 from ..base import AnalysisContext
@@ -150,7 +150,7 @@ class TheoremProver:
 
             if result == z3.sat:
                 # Found counterexample - property is false
-                model_result = solver.model()  # type: ignore[func-returns-value]
+                model_result = solver.model()
                 counterexample = self._extract_counterexample(model_result) if model_result else {}
                 return ProofResult(
                     proof_property=prop,

@@ -18,7 +18,7 @@ Example:
 
 from typing import Any
 
-from llvmlite import binding as llvm  # type: ignore[import-not-found,import-untyped]
+from llvmlite import binding as llvm  # type: ignore[import-not-found]
 
 
 class LLVMOptimizer:

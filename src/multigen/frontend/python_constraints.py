@@ -11,7 +11,7 @@ These checks apply to Python code regardless of target backend.
 import ast
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 from .immutability_analyzer import MutabilityClass
 from .type_inference import TypeInferenceEngine
@@ -49,7 +49,7 @@ class PythonConstraintChecker:
     regardless of target backend.
     """
 
-    def __init__(self, immutability_results: Optional[dict] = None):
+    def __init__(self, immutability_results: Optional[dict[str, Any]] = None):
         """Initialize checker.
 
         Args:
@@ -201,7 +201,7 @@ class PythonConstraintChecker:
             if isinstance(node, ast.FunctionDef):
                 self._check_unreachable_in_block(node.body)
 
-    def _check_unreachable_in_block(self, block: list) -> None:
+    def _check_unreachable_in_block(self, block: list[ast.stmt]) -> None:
         """Check for unreachable code in a statement block."""
         found_return = False
         for _i, stmt in enumerate(block):

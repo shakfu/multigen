@@ -7,12 +7,12 @@ import ast
 from typing import Any, Optional
 
 try:
-    import z3  # type: ignore[import-untyped,import-not-found]
+    import z3  # type: ignore[import-not-found]
 
     Z3_AVAILABLE = True
 except ImportError:
     Z3_AVAILABLE = False
-    z3 = None  # type: ignore[assignment]
+    z3 = None
 
 
 class Z3FormulaGenerator:

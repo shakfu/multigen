@@ -1,6 +1,6 @@
 """OCaml backend implementation for MultiGen."""
 
-from typing import Optional
+from typing import Any, Optional
 
 from ..base import AbstractBuilder, AbstractContainerSystem, AbstractEmitter, AbstractFactory, LanguageBackend
 from ..preferences import BackendPreferences, OCamlPreferences
@@ -76,7 +76,7 @@ class OCamlBackend(LanguageBackend):
         except (subprocess.TimeoutExpired, FileNotFoundError):
             return "OCaml not available"
 
-    def get_advanced_features(self) -> list:
+    def get_advanced_features(self) -> list[str]:
         """Get list of advanced features supported by the OCaml backend."""
         features = [
             "Object-oriented programming (classes, methods, constructors)",
@@ -106,7 +106,7 @@ class OCamlBackend(LanguageBackend):
 
         return features
 
-    def get_preference_summary(self) -> dict:
+    def get_preference_summary(self) -> dict[str, Any]:
         """Get a summary of current preferences."""
         if self.preferences is None:
             return {}

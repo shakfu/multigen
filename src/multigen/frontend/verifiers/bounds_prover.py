@@ -11,12 +11,12 @@ from enum import Enum
 from typing import Optional, Union
 
 try:
-    import z3  # type: ignore[import-not-found,import-untyped]
+    import z3  # type: ignore[import-not-found]
 
     Z3_AVAILABLE = True
 except ImportError:
     Z3_AVAILABLE = False
-    z3 = None  # type: ignore[assignment]
+    z3 = None
 
 
 from ..base import AnalysisContext

@@ -11,12 +11,12 @@ from enum import Enum
 from typing import Any, Optional
 
 try:
-    import z3  # type: ignore[import-not-found,import-untyped]
+    import z3  # type: ignore[import-not-found]
 
     Z3_AVAILABLE = True
 except ImportError:
     Z3_AVAILABLE = False
-    z3 = None  # type: ignore[assignment]
+    z3 = None
 
 
 from ..base import AnalysisContext
@@ -454,17 +454,17 @@ class PerformanceAnalyzer:
         # Create complexity bound based on class
         complexity_bound: Any
         if complexity_class == ComplexityClass.CONSTANT:
-            complexity_bound = resource_usage <= z3.IntVal(1)  # type: ignore[operator]
+            complexity_bound = resource_usage <= z3.IntVal(1)
         elif complexity_class == ComplexityClass.LINEAR:
-            complexity_bound = resource_usage <= n * z3.IntVal(10)  # type: ignore[operator]
+            complexity_bound = resource_usage <= n * z3.IntVal(10)
         elif complexity_class == ComplexityClass.QUADRATIC:
-            complexity_bound = resource_usage <= n * n * z3.IntVal(10)  # type: ignore[operator]
+            complexity_bound = resource_usage <= n * n * z3.IntVal(10)
         elif complexity_class == ComplexityClass.LOGARITHMIC:
             # Approximate log with linear bound for large n
-            complexity_bound = resource_usage <= n  # type: ignore[operator]
+            complexity_bound = resource_usage <= n
         else:
             # Default bound
-            complexity_bound = resource_usage >= 0  # type: ignore[operator]
+            complexity_bound = resource_usage >= 0
 
         return ProofProperty(
             name=name,
@@ -490,7 +490,8 @@ class PerformanceAnalyzer:
             if context.analysis_result.functions:
                 return list(context.analysis_result.functions.keys())[0]
         elif hasattr(context.ast_node, "name"):
-            return context.ast_node.name
+            name: str = getattr(context.ast_node, "name")
+            return name
         return "unknown_function"
 
 

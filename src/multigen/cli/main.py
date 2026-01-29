@@ -885,7 +885,7 @@ Optimization: -O0 (none), -O1 (basic), -O2 (moderate, default), -O3 (aggressive)
 
         return 0
 
-    def run(self, argv: Optional[list] = None) -> int:
+    def run(self, argv: Optional[list[str]] = None) -> int:
         """Run the CLI."""
         parser = self.create_parser()
         args = parser.parse_args(argv)
@@ -918,7 +918,7 @@ Optimization: -O0 (none), -O1 (basic), -O2 (moderate, default), -O3 (aggressive)
             return 1
 
 
-def main(argv: Optional[list] = None) -> int:
+def main(argv: Optional[list[str]] = None) -> int:
     """Main entry point for the CLI."""
     try:
         cli = MultiGenCLI()

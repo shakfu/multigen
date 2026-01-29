@@ -8,7 +8,7 @@ from ctypes import CFUNCTYPE, c_int64
 from pathlib import Path
 from typing import Any, Optional
 
-import llvmlite.binding as llvm  # type: ignore[import-not-found,import-untyped]
+import llvmlite.binding as llvm  # type: ignore[import-not-found]
 
 
 class LLVMJITExecutor:
@@ -123,7 +123,7 @@ class LLVMJITExecutor:
             raise RuntimeError("No execution engine created")
 
         try:
-            addr = self.engine.get_function_address(function_name)
+            addr: int = self.engine.get_function_address(function_name)
             # get_function_address returns 0 if function not found
             if addr == 0:
                 raise RuntimeError(f"Function '{function_name}' not found")

@@ -117,7 +117,7 @@ class CContainerSystem(AbstractContainerSystem):
 
         return imports
 
-    def generate_container_declarations(self, containers: list[tuple]) -> str:
+    def generate_container_declarations(self, containers: list[tuple[str, str]]) -> str:
         """Generate STC container template declarations."""
         if not self.use_stc:
             return "// Basic array-based containers - no declarations needed"

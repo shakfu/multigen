@@ -107,7 +107,8 @@ class ImmutabilityAnalyzer:
             if annotation_mutability == MutabilityClass.IMMUTABLE:
                 return MutabilityClass.IMMUTABLE
             # If annotation suggests mutable type but usage is read-only, downgrade to read-only
-            if annotation_mutability != MutabilityClass.IMMUTABLE and usage_mutability == MutabilityClass.READ_ONLY:
+            # Note: annotation_mutability cannot be IMMUTABLE here (early return above)
+            if usage_mutability == MutabilityClass.READ_ONLY:
                 return MutabilityClass.READ_ONLY
 
         return usage_mutability

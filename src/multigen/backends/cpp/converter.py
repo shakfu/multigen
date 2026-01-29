@@ -636,7 +636,7 @@ class MultiGenPythonToCppConverter:
         else:
             return if_part
 
-    def _convert_method_statements(self, statements: list, class_name: str) -> str:
+    def _convert_method_statements(self, statements: list[ast.stmt], class_name: str) -> str:
         """Convert a list of statements in method context."""
         converted = []
         for stmt in statements:

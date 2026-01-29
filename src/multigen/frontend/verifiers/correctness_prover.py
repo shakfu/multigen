@@ -11,12 +11,12 @@ from enum import Enum
 from typing import Any, Optional
 
 try:
-    import z3  # type: ignore[import-not-found,import-untyped]
+    import z3  # type: ignore[import-not-found]
 
     Z3_AVAILABLE = True
 except ImportError:
     Z3_AVAILABLE = False
-    z3 = None  # type: ignore[assignment]
+    z3 = None
 
 
 from ..base import AnalysisContext
@@ -339,7 +339,7 @@ class CorrectnessProver:
 
         # Ranking function must be non-negative and decrease each iteration
         ranking_formula: Any = z3.And(
-            ranking_var >= 0,  # type: ignore[operator]
+            ranking_var >= 0,
             # Additional constraints would be added based on loop analysis
         )
 
@@ -385,7 +385,8 @@ class CorrectnessProver:
             if context.analysis_result.functions:
                 return list(context.analysis_result.functions.keys())[0]
         elif hasattr(context.ast_node, "name"):
-            return context.ast_node.name
+            name: str = getattr(context.ast_node, "name")
+            return name
         return "unknown_function"
 
     def _infer_specification(self, function_name: str, context: AnalysisContext) -> FormalSpecification:

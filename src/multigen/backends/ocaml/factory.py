@@ -21,7 +21,7 @@ class OCamlFactory(AbstractFactory):
         else:
             return f"let {name} : {ocaml_type}"
 
-    def create_function_signature(self, name: str, params: list[tuple], return_type: str) -> str:
+    def create_function_signature(self, name: str, params: list[tuple[str, str]], return_type: str) -> str:
         """Create OCaml function signature."""
         ocaml_return_type = self._map_python_type_to_ocaml(return_type)
 
@@ -66,6 +66,6 @@ class OCamlFactory(AbstractFactory):
         """Get the file extension for OCaml files."""
         return ".ml"
 
-    def get_runtime_files(self) -> list:
+    def get_runtime_files(self) -> list[str]:
         """Get the list of runtime files needed for OCaml."""
         return ["multigen_runtime.ml"]

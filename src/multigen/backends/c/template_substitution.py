@@ -171,7 +171,7 @@ class TemplateSubstitutionEngine:
             Template with placeholders substituted
         """
 
-        def replace_placeholder(match: re.Match) -> str:
+        def replace_placeholder(match: re.Match[str]) -> str:
             var_name = match.group(1)
             if var_name in context:
                 value = context[var_name]
@@ -180,7 +180,8 @@ class TemplateSubstitutionEngine:
                     return ""  # Booleans are only for conditionals
                 return str(value)
             # Keep placeholder if not in context (might be used elsewhere)
-            return match.group(0)
+            matched: str = match.group(0)
+            return matched
 
         return self.PLACEHOLDER_PATTERN.sub(replace_placeholder, template)
 

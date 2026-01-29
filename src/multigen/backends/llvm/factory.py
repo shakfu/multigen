@@ -41,7 +41,7 @@ class LLVMFactory(AbstractFactory):
             return f"%{name} = alloca {type_name}\nstore {type_name} {value}, {type_name}* %{name}"
         return f"%{name} = alloca {type_name}"
 
-    def create_function_signature(self, name: str, params: list[tuple], return_type: str) -> str:
+    def create_function_signature(self, name: str, params: list[tuple[str, str]], return_type: str) -> str:
         """Create LLVM function signature.
 
         Args:

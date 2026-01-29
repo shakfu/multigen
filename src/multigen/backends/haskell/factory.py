@@ -14,7 +14,7 @@ class HaskellFactory(AbstractFactory):
             return f"{name} :: {type_name}\n{name} = {value}"
         return f"{name} :: {type_name}"
 
-    def create_function_signature(self, name: str, params: list[tuple], return_type: str) -> str:
+    def create_function_signature(self, name: str, params: list[tuple[str, str]], return_type: str) -> str:
         """Create Haskell function signature."""
         if params:
             param_types = [param_type for _, param_type in params]

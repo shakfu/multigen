@@ -6,7 +6,7 @@ reducing complexity and improving maintainability of the Haskell converter.
 
 import ast
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, cast
 
 
 class HaskellStatementVisitor(ABC):
@@ -66,7 +66,8 @@ class HaskellStatementVisitor(ABC):
             return self.visit_expr(stmt)
         else:
             # Fallback to converter's _convert_statement
-            return self.converter._convert_statement(stmt)
+            result = self.converter._convert_statement(stmt)
+            return cast(Optional[str], result)
 
 
 class MainFunctionVisitor(HaskellStatementVisitor):
@@ -119,12 +120,13 @@ class MainFunctionVisitor(HaskellStatementVisitor):
         """Convert if statement, handling conditional assignments specially."""
         # Check if this generates a binding (var = if ... then ... else ...)
         converted = self.converter._convert_statement(node)
-        if converted and "=" in converted and not converted.startswith("if "):
+        converted_str = cast(Optional[str], converted)
+        if converted_str and "=" in converted_str and not converted_str.startswith("if "):
             # It's a binding from conditional assignment
-            return converted
+            return converted_str
         else:
             # Regular if-statement
-            return converted
+            return converted_str
 
     def visit_return(self, node: ast.Return) -> Optional[str]:
         """Ignore return statements in main (Haskell main returns void)."""
@@ -135,7 +137,8 @@ class MainFunctionVisitor(HaskellStatementVisitor):
         # Skip docstrings
         if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
             return None
-        return self.converter._convert_statement(node)
+        result = self.converter._convert_statement(node)
+        return cast(Optional[str], result)
 
 
 class PureFunctionVisitor(HaskellStatementVisitor):
@@ -171,18 +174,21 @@ class PureFunctionVisitor(HaskellStatementVisitor):
 
     def visit_if(self, node: ast.If) -> Optional[str]:
         """Convert if statement."""
-        return self.converter._convert_statement(node)
+        result = self.converter._convert_statement(node)
+        return cast(Optional[str], result)
 
     def visit_return(self, node: ast.Return) -> Optional[str]:
         """Convert return statement (final expression in Haskell)."""
-        return self.converter._convert_statement(node)
+        result = self.converter._convert_statement(node)
+        return cast(Optional[str], result)
 
     def visit_expr(self, node: ast.Expr) -> Optional[str]:
         """Convert expression statement."""
         # Skip docstrings
         if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
             return None
-        return self.converter._convert_statement(node)
+        result = self.converter._convert_statement(node)
+        return cast(Optional[str], result)
 
 
 class FunctionBodyAnalyzer:

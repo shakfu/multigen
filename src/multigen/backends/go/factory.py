@@ -14,7 +14,7 @@ class GoFactory(AbstractFactory):
             return f"var {name} {type_name} = {value}"
         return f"var {name} {type_name}"
 
-    def create_function_signature(self, name: str, params: list[tuple], return_type: str) -> str:
+    def create_function_signature(self, name: str, params: list[tuple[str, str]], return_type: str) -> str:
         """Create Go function signature."""
         param_strs = []
         for param_name, param_type in params:

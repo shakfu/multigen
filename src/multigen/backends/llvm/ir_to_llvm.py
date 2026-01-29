@@ -7,7 +7,7 @@ and generate corresponding LLVM IR instructions.
 import ast
 from typing import Optional, Union
 
-from llvmlite import ir  # type: ignore[import-not-found,import-untyped]
+from llvmlite import ir  # type: ignore[import-not-found]
 
 from ...frontend.static_ir import (
     IRAssignment,

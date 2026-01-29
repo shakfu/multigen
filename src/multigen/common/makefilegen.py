@@ -30,7 +30,7 @@ except (subprocess.CalledProcessError, FileNotFoundError):
     VERSION = 4.0  # Default fallback version
 
 
-def unique_list(lst: list) -> list:
+def unique_list(lst: list[str]) -> list[str]:
     """Remove duplicates while preserving order."""
     seen = set()
     result = []
@@ -101,7 +101,8 @@ class Builder:
                 sys.path.insert(0, str(backends_dir.parent))
                 from stc import get_stc_include_path  # type: ignore[import-not-found]
 
-                return get_stc_include_path()
+                result: str = get_stc_include_path()
+                return result
         except ImportError:
             pass
 
@@ -286,9 +287,10 @@ class MakefileGenerator:
             backends_dir = current_dir.parent / "backends" / "c" / "ext" / "stc"
             if backends_dir.exists():
                 sys.path.insert(0, str(backends_dir.parent))
-                from stc import get_stc_include_path  # type: ignore[import-not-found]
+                from stc import get_stc_include_path
 
-                return get_stc_include_path()
+                result: str = get_stc_include_path()
+                return result
         except ImportError:
             pass
 

@@ -47,7 +47,7 @@ class AbstractFactory(ABC):
         """Create variable declaration."""
 
     @abstractmethod
-    def create_function_signature(self, name: str, params: list[tuple], return_type: str) -> str:
+    def create_function_signature(self, name: str, params: list[tuple[str, str]], return_type: str) -> str:
         """Create function signature."""
 
     @abstractmethod

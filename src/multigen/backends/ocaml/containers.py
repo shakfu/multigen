@@ -105,7 +105,7 @@ class OCamlContainerSystem(AbstractContainerSystem):
             "fold": "Set.fold",
         }
 
-    def generate_list_literal(self, elements: list, element_type: str) -> str:
+    def generate_list_literal(self, elements: list[Any], element_type: str) -> str:
         """Generate OCaml list literal."""
         if not elements:
             return "[]"
@@ -146,7 +146,7 @@ class OCamlContainerSystem(AbstractContainerSystem):
                 pairs.append(f"Map.add {key_str} {value_str}")
             return f"({' ('.join(pairs)} Map.empty{')' * len(pairs)})"
 
-    def generate_set_literal(self, elements: list, element_type: str) -> str:
+    def generate_set_literal(self, elements: list[Any], element_type: str) -> str:
         """Generate OCaml set literal."""
         if not elements:
             return "Set.empty"
@@ -179,13 +179,13 @@ class OCamlContainerSystem(AbstractContainerSystem):
         }
         return type_mapping.get(python_type, python_type)
 
-    def get_include_headers(self) -> list:
+    def get_include_headers(self) -> list[str]:
         """Get required include headers for OCaml."""
         # OCaml doesn't use include headers like C/C++
         # Modules are opened directly in the source
         return []
 
-    def get_container_includes(self, container_types: set) -> list:
+    def get_container_includes(self, container_types: set[str]) -> list[str]:
         """Get specific container module opens for OCaml."""
         includes = []
 

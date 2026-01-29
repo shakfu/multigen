@@ -266,8 +266,8 @@ class CompileTimeEvaluator(BaseOptimizer):
             return simplified
 
         # Return with optimized operands
-        node.left = left if isinstance(left, ast.expr) else node.left  # type: ignore
-        node.right = right if isinstance(right, ast.expr) else node.right  # type: ignore
+        node.left = left if isinstance(left, ast.expr) else node.left
+        node.right = right if isinstance(right, ast.expr) else node.right
         return node
 
     def _optimize_unary_operation(self, node: ast.UnaryOp, report: CompileTimeReport) -> ast.AST:

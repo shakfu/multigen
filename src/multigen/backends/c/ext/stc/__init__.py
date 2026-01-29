@@ -33,7 +33,7 @@ def get_stc_src_path() -> str:
     return str(STC_SRC_DIR)
 
 
-def get_stc_headers() -> list:
+def get_stc_headers() -> list[str]:
     """Get list of available STC header files."""
     stc_headers_dir = STC_INCLUDE_DIR / "stc"
     if stc_headers_dir.exists():
@@ -41,7 +41,7 @@ def get_stc_headers() -> list:
     return []
 
 
-def get_stc_sources() -> list:
+def get_stc_sources() -> list[str]:
     """Get list of available STC source files."""
     if STC_SRC_DIR.exists():
         return [f.name for f in STC_SRC_DIR.glob("*.c")]

@@ -9,7 +9,7 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 
-from llvmlite import binding as llvm  # type: ignore[import-not-found,import-untyped]
+from llvmlite import binding as llvm  # type: ignore[import-not-found]
 
 
 class LLVMCompiler:
@@ -40,7 +40,7 @@ class LLVMCompiler:
         llvm_module.verify()
 
         # Compile to object file
-        obj_bytes = self.target_machine.emit_object(llvm_module)
+        obj_bytes: bytes = self.target_machine.emit_object(llvm_module)
 
         # Write to file if path provided
         if output_path:
@@ -99,7 +99,7 @@ class LLVMCompiler:
         self,
         llvm_ir: str,
         capture_output: bool = True,
-    ) -> subprocess.CompletedProcess:
+    ) -> subprocess.CompletedProcess[str]:
         """Compile LLVM IR and execute it.
 
         Args:
@@ -139,4 +139,5 @@ class LLVMCompiler:
         Returns:
             Target triple string (e.g., "arm64-apple-darwin24.6.0")
         """
-        return self.target_machine.triple
+        triple: str = self.target_machine.triple
+        return triple

@@ -1682,7 +1682,8 @@ class MultiGenPythonToRustConverter:
         )
 
         # Delegate to type inference engine
-        return self.type_inference_engine.infer_type(value, context)
+        result: str = self.type_inference_engine.infer_type(value, context)
+        return result
 
     def _infer_comprehension_element_type(self, expr: ast.expr) -> str:
         """Infer the type of elements produced by a comprehension expression."""

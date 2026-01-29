@@ -115,7 +115,7 @@ format-check:
 	@uv run ruff format --check src tests
 
 typecheck:
-	@uv run mypy src/multigen
+	@uv run mypy --strict src/multigen
 
 pre-commit:
 	@pre-commit install

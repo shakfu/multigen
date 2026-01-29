@@ -1873,7 +1873,8 @@ class MultiGenPythonToGoConverter:
         )
 
         # Delegate to type inference engine
-        return self.type_inference_engine.infer_type(value, context)
+        result: str = self.type_inference_engine.infer_type(value, context)
+        return result
 
     def _infer_loop_variable_type(self, generator: ast.comprehension) -> dict[str, str]:
         """Infer the type of the loop variable in a comprehension."""
