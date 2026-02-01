@@ -39,8 +39,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   - File: `src/multigen/pipeline_types.py`
 
 - **40 new tests** for optimizer interface and pipeline types
-  - `tests/test_optimizer_interface.py` - 17 tests for AbstractOptimizer compliance (all backends)
-  - `tests/test_pipeline_types.py` - 23 tests for phase result dataclasses
+  - `tests/test_optimizer_interface.py` - 23 tests for AbstractOptimizer compliance (all backends)
+  - `tests/test_pipeline_types.py` - 17 tests for phase result dataclasses
+
+- **11 new WebAssembly integration tests** - End-to-end Python -> WASM pipeline
+  - Full pipeline tests: Python source -> LLVM IR -> WebAssembly
+  - Pure function compilation (add, arithmetic, conditionals, recursion, loops)
+  - Multiple functions, optimization levels (O0-O3), targets (wasm32, wasi)
+  - Text format (.wat) and binary format (.wasm) output verification
+  - File: `tests/test_wasm_compiler.py`
 
 ### Changed
 

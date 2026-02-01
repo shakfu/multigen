@@ -33,7 +33,11 @@ Tasks extracted from PROJECT_REVIEW.md (2025-12-27).
 ### ~~Expand Test Coverage~~ ALREADY COMPLETE
 - [x] OCaml tests: **51 tests** in `test_backend_ocaml.py` (containers, comprehensions, OOP, control flow)
 - [x] LLVM tests: **130 tests** across 4 test files (optimization levels, targets, IR generation, compilation)
-- [ ] Add WebAssembly integration tests (llvmlite dependency)
+- [x] WebAssembly integration tests: **24 tests** in `test_wasm_compiler.py`
+  - Full pipeline tests: Python source -> LLVM IR -> WebAssembly
+  - Pure function compilation (add, arithmetic, conditionals, recursion, loops)
+  - Multiple optimization levels (O0-O3), multiple targets (wasm32, wasi)
+  - Text format (.wat) and binary format (.wasm) output
 
 ### ~~Refactor Large Converter Files~~ ALREADY DONE
 - [x] C string methods extracted to `string_methods.py` (254 LOC)
@@ -76,17 +80,24 @@ class Converter:
 
 ## Low Priority
 
-### Target Optimization Phase
-- [ ] Define `AbstractOptimizer` interface
-- [ ] Require implementations from all backends (currently only LLVM has optimization)
+### ~~Target Optimization Phase~~ COMPLETE
+- [x] Define `AbstractOptimizer` interface (`src/multigen/backends/optimizer.py`)
+- [x] All backends implement `get_optimizer()` - LLVM returns `LLVMOptimizer`, others return `NoOpOptimizer`
+- [x] `OptimizationInfo` dataclass for structured optimization metadata
+- [x] 17 tests in `tests/test_optimizer_interface.py`
 
-### Typed Phase Communication
-- [ ] Replace string-keyed dictionaries with typed data classes for phase results
-- [ ] Examples: `ValidationPhaseOutput`, `AnalysisPhaseOutput`
+### ~~Typed Phase Communication~~ COMPLETE
+- [x] Replace string-keyed dictionaries with typed data classes for phase results
+- [x] `ValidationPhaseResult`, `AnalysisPhaseResult`, `PythonOptimizationPhaseResult`
+- [x] `TargetOptimizationPhaseResult`, `GenerationPhaseResult`, `BuildPhaseResult`
+- [x] All 7 pipeline phases migrated to typed results (`src/multigen/pipeline_types.py`)
+- [x] 23 tests in `tests/test_pipeline_types.py`
 
-### Builder Pattern Consistency
-- [ ] Extract common build logic to base class
-- [ ] Currently varies from subprocess calls to complex abstractions
+### ~~Builder Pattern Consistency~~ COMPLETE
+- [x] Extract common build logic to base class (`AbstractBuilder` in `base.py`)
+- [x] `BuildPaths` dataclass for path resolution, `CompilationResult` for subprocess results
+- [x] Helper methods: `_resolve_paths()`, `_run_command()`, `_get_runtime_files()`
+- [x] All 7 builders refactored: C, C++, Rust, Go, Haskell, OCaml, LLVM
 
 ---
 
@@ -121,4 +132,4 @@ class Converter:
 | ~~Hollow Phases~~ | ~~Medium~~ | Resolved | Phase 4 integrated, passes semantic mapping |
 | ~~Type Inference~~ | ~~Medium~~ | Resolved | Shared strategy pattern (400 LOC shared) |
 
-**Updated**: 2026-01-25 - All medium priority items addressed
+**Updated**: 2026-02-01 - All low priority architecture items complete (AbstractOptimizer, typed phases, builder consistency)

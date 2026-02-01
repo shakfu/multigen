@@ -38,12 +38,12 @@ class TestLLVMOptimizer:
         optimizer = LLVMOptimizer(opt_level=2)
         info = optimizer.get_optimization_info()
 
-        assert info["opt_level"] == 2
-        assert info["opt_name"] == "O2"
-        assert info["inlining_threshold"] == 225
-        assert info["vectorization_enabled"] is True
-        assert info["loop_unrolling_enabled"] is True
-        assert "target_triple" in info
+        assert info.level == 2
+        assert info.level_name == "O2"
+        assert info.metrics["inlining_threshold"] == 225
+        assert info.metrics["vectorization_enabled"] is True
+        assert info.metrics["loop_unrolling_enabled"] is True
+        assert "target_triple" in info.metrics
 
     def test_optimize_simple_function(self) -> None:
         """Test optimization of a simple function."""
@@ -280,8 +280,8 @@ class TestLLVMOptimizerTargets:
         optimizer = LLVMOptimizer(opt_level=2)
         info = optimizer.get_optimization_info()
 
-        assert "target_triple" in info
-        assert len(info["target_triple"]) > 0
+        assert "target_triple" in info.metrics
+        assert len(info.metrics["target_triple"]) > 0
 
     def test_optimization_preserves_function_names(self) -> None:
         """Test that optimization preserves function names for external linkage."""
@@ -305,26 +305,26 @@ class TestLLVMOptimizerTargets:
             optimizer = LLVMOptimizer(opt_level=level)
             info = optimizer.get_optimization_info()
 
-            assert info["opt_level"] == level
-            assert info["opt_name"] == f"O{level}"
-            assert "inlining_threshold" in info
-            assert "vectorization_enabled" in info
-            assert "loop_unrolling_enabled" in info
+            assert info.level == level
+            assert info.level_name == f"O{level}"
+            assert "inlining_threshold" in info.metrics
+            assert "vectorization_enabled" in info.metrics
+            assert "loop_unrolling_enabled" in info.metrics
 
     def test_o0_no_inlining(self) -> None:
         """Test that O0 has zero inlining threshold."""
         optimizer = LLVMOptimizer(opt_level=0)
         info = optimizer.get_optimization_info()
 
-        assert info["inlining_threshold"] == 0
+        assert info.metrics["inlining_threshold"] == 0
 
     def test_o3_vectorization_enabled(self) -> None:
         """Test that O3 has vectorization enabled."""
         optimizer = LLVMOptimizer(opt_level=3)
         info = optimizer.get_optimization_info()
 
-        assert info["vectorization_enabled"] is True
-        assert info["loop_unrolling_enabled"] is True
+        assert info.metrics["vectorization_enabled"] is True
+        assert info.metrics["loop_unrolling_enabled"] is True
 
 
 class TestLLVMOptimizerEdgeCases:

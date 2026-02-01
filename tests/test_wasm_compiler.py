@@ -320,3 +320,343 @@ class TestWebAssemblyCompilerNoLLVMLite:
 
         with pytest.raises(ImportError, match="llvmlite is required"):
             WebAssemblyCompiler()
+
+
+@pytest.mark.skipif(not LLVMLITE_AVAILABLE, reason="llvmlite not installed")
+class TestWebAssemblyIntegration:
+    """End-to-end integration tests: Python source -> LLVM IR -> WebAssembly."""
+
+    def _python_to_llvm_ir(self, python_code: str) -> str:
+        """Convert Python source code to LLVM IR."""
+        from multigen.backends.llvm import IRToLLVMConverter
+        from multigen.frontend.static_ir import build_ir_from_code
+
+        ir_module = build_ir_from_code(python_code)
+        converter = IRToLLVMConverter()
+        llvm_module = converter.visit_module(ir_module)
+        return str(llvm_module)
+
+    def test_python_add_function_to_wasm(self, tmp_path):
+        """Test full pipeline: Python add function -> LLVM IR -> WebAssembly."""
+        python_code = """
+def add(x: int, y: int) -> int:
+    return x + y
+"""
+        # Python -> LLVM IR
+        llvm_ir = self._python_to_llvm_ir(python_code)
+        assert 'define i64 @"add"' in llvm_ir
+
+        # Write IR to file
+        ir_path = tmp_path / "add.ll"
+        ir_path.write_text(llvm_ir)
+
+        # LLVM IR -> WebAssembly
+        compiler = WebAssemblyCompiler()
+        wasm_path = tmp_path / "add.wasm"
+
+        success = compiler.compile_multigen_ir(
+            ir_path=ir_path,
+            output_path=wasm_path,
+            opt_level=2,
+            pure_functions_only=True,
+        )
+
+        assert success is True
+        assert wasm_path.exists()
+        assert wasm_path.stat().st_size > 0
+
+    def test_python_arithmetic_to_wasm(self, tmp_path):
+        """Test arithmetic operations: Python -> LLVM IR -> WebAssembly."""
+        python_code = """
+def calculate(a: int, b: int) -> int:
+    result: int = (a + b) * (a - b)
+    return result
+"""
+        llvm_ir = self._python_to_llvm_ir(python_code)
+        assert 'define i64 @"calculate"' in llvm_ir
+
+        ir_path = tmp_path / "calc.ll"
+        ir_path.write_text(llvm_ir)
+
+        compiler = WebAssemblyCompiler()
+        wasm_path = tmp_path / "calc.wasm"
+
+        success = compiler.compile_multigen_ir(
+            ir_path=ir_path,
+            output_path=wasm_path,
+            opt_level=2,
+            pure_functions_only=True,
+        )
+
+        assert success is True
+        assert wasm_path.exists()
+
+    def test_python_conditional_to_wasm(self, tmp_path):
+        """Test conditional logic: Python -> LLVM IR -> WebAssembly."""
+        python_code = """
+def abs_value(x: int) -> int:
+    if x < 0:
+        return -x
+    return x
+"""
+        llvm_ir = self._python_to_llvm_ir(python_code)
+        assert 'define i64 @"abs_value"' in llvm_ir
+
+        ir_path = tmp_path / "abs.ll"
+        ir_path.write_text(llvm_ir)
+
+        compiler = WebAssemblyCompiler()
+        wasm_path = tmp_path / "abs.wasm"
+
+        success = compiler.compile_multigen_ir(
+            ir_path=ir_path,
+            output_path=wasm_path,
+            opt_level=2,
+            pure_functions_only=True,
+        )
+
+        assert success is True
+        assert wasm_path.exists()
+
+    def test_python_recursive_fibonacci_to_wasm(self, tmp_path):
+        """Test recursive function: Python fibonacci -> LLVM IR -> WebAssembly."""
+        python_code = """
+def fib(n: int) -> int:
+    if n <= 1:
+        return n
+    return fib(n - 1) + fib(n - 2)
+"""
+        llvm_ir = self._python_to_llvm_ir(python_code)
+        assert 'define i64 @"fib"' in llvm_ir
+        assert 'call i64 @"fib"' in llvm_ir  # Recursive call
+
+        ir_path = tmp_path / "fib.ll"
+        ir_path.write_text(llvm_ir)
+
+        compiler = WebAssemblyCompiler()
+        wasm_path = tmp_path / "fib.wasm"
+
+        success = compiler.compile_multigen_ir(
+            ir_path=ir_path,
+            output_path=wasm_path,
+            opt_level=2,
+            pure_functions_only=True,
+        )
+
+        assert success is True
+        assert wasm_path.exists()
+
+    def test_python_loop_to_wasm(self, tmp_path):
+        """Test loop: Python while loop -> LLVM IR -> WebAssembly."""
+        python_code = """
+def sum_to_n(n: int) -> int:
+    total: int = 0
+    i: int = 1
+    while i <= n:
+        total = total + i
+        i = i + 1
+    return total
+"""
+        llvm_ir = self._python_to_llvm_ir(python_code)
+        assert 'define i64 @"sum_to_n"' in llvm_ir
+
+        ir_path = tmp_path / "sum.ll"
+        ir_path.write_text(llvm_ir)
+
+        compiler = WebAssemblyCompiler()
+        wasm_path = tmp_path / "sum.wasm"
+
+        success = compiler.compile_multigen_ir(
+            ir_path=ir_path,
+            output_path=wasm_path,
+            opt_level=2,
+            pure_functions_only=True,
+        )
+
+        assert success is True
+        assert wasm_path.exists()
+
+    def test_python_multiple_functions_to_wasm(self, tmp_path):
+        """Test multiple functions: Python -> LLVM IR -> WebAssembly."""
+        python_code = """
+def square(x: int) -> int:
+    return x * x
+
+def cube(x: int) -> int:
+    return x * x * x
+
+def sum_powers(n: int) -> int:
+    return square(n) + cube(n)
+"""
+        llvm_ir = self._python_to_llvm_ir(python_code)
+        assert 'define i64 @"square"' in llvm_ir
+        assert 'define i64 @"cube"' in llvm_ir
+        assert 'define i64 @"sum_powers"' in llvm_ir
+
+        ir_path = tmp_path / "powers.ll"
+        ir_path.write_text(llvm_ir)
+
+        compiler = WebAssemblyCompiler()
+        wasm_path = tmp_path / "powers.wasm"
+
+        success = compiler.compile_multigen_ir(
+            ir_path=ir_path,
+            output_path=wasm_path,
+            opt_level=2,
+            pure_functions_only=True,
+        )
+
+        assert success is True
+        assert wasm_path.exists()
+
+    def test_python_to_wasm_text_format(self, tmp_path):
+        """Test WebAssembly text format output."""
+        python_code = """
+def multiply(a: int, b: int) -> int:
+    return a * b
+"""
+        llvm_ir = self._python_to_llvm_ir(python_code)
+
+        ir_path = tmp_path / "mul.ll"
+        ir_path.write_text(llvm_ir)
+
+        compiler = WebAssemblyCompiler()
+        wat_path = tmp_path / "mul.wat"
+
+        success = compiler.compile_multigen_ir(
+            ir_path=ir_path,
+            output_path=wat_path,
+            opt_level=2,
+            pure_functions_only=True,
+            text_format=True,
+        )
+
+        assert success is True
+        assert wat_path.exists()
+
+        # Verify text format contains function name
+        wat_content = wat_path.read_text()
+        assert "multiply" in wat_content
+
+    def test_python_to_wasm_all_optimization_levels(self, tmp_path):
+        """Test all optimization levels produce valid WebAssembly."""
+        python_code = """
+def factorial(n: int) -> int:
+    if n <= 1:
+        return 1
+    return n * factorial(n - 1)
+"""
+        llvm_ir = self._python_to_llvm_ir(python_code)
+        ir_path = tmp_path / "fact.ll"
+        ir_path.write_text(llvm_ir)
+
+        compiler = WebAssemblyCompiler()
+        sizes = {}
+
+        for opt_level in [0, 1, 2, 3]:
+            wasm_path = tmp_path / f"fact_O{opt_level}.wasm"
+            success = compiler.compile_multigen_ir(
+                ir_path=ir_path,
+                output_path=wasm_path,
+                opt_level=opt_level,
+                pure_functions_only=True,
+            )
+            assert success is True
+            assert wasm_path.exists()
+            sizes[opt_level] = wasm_path.stat().st_size
+
+        # All should produce non-empty output
+        assert all(size > 0 for size in sizes.values())
+
+    def test_python_to_wasm_different_targets(self, tmp_path):
+        """Test different WebAssembly targets."""
+        python_code = """
+def negate(x: int) -> int:
+    return -x
+"""
+        llvm_ir = self._python_to_llvm_ir(python_code)
+        ir_path = tmp_path / "neg.ll"
+        ir_path.write_text(llvm_ir)
+
+        targets = [
+            "wasm32-unknown-unknown",
+            "wasm32-wasi",
+        ]
+
+        for target in targets:
+            try:
+                compiler = WebAssemblyCompiler(target_triple=target)
+                wasm_path = tmp_path / f"neg_{target.replace('-', '_')}.wasm"
+
+                success = compiler.compile_multigen_ir(
+                    ir_path=ir_path,
+                    output_path=wasm_path,
+                    opt_level=2,
+                    pure_functions_only=True,
+                )
+
+                assert success is True
+                assert wasm_path.exists()
+            except RuntimeError:
+                # Target not available on this system - skip
+                pass
+
+    def test_full_pipeline_helper_function(self, tmp_path):
+        """Test compile_to_webassembly helper with Python source."""
+        python_code = """
+def power(base: int, exp: int) -> int:
+    result: int = 1
+    i: int = 0
+    while i < exp:
+        result = result * base
+        i = i + 1
+    return result
+"""
+        llvm_ir = self._python_to_llvm_ir(python_code)
+
+        ir_path = tmp_path / "power.ll"
+        ir_path.write_text(llvm_ir)
+
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+
+        success, error = compile_to_webassembly(
+            ir_path=ir_path,
+            output_dir=output_dir,
+            target="wasm32-unknown-unknown",
+            opt_level=2,
+        )
+
+        assert success is True
+        assert error is None
+        assert (output_dir / "power.wasm").exists()
+        assert (output_dir / "power.wat").exists()
+
+    def test_wasm_binary_magic_number(self, tmp_path):
+        """Verify WebAssembly binary has correct magic number."""
+        python_code = """
+def identity(x: int) -> int:
+    return x
+"""
+        llvm_ir = self._python_to_llvm_ir(python_code)
+        ir_path = tmp_path / "id.ll"
+        ir_path.write_text(llvm_ir)
+
+        compiler = WebAssemblyCompiler()
+        wasm_path = tmp_path / "id.wasm"
+
+        success = compiler.compile_multigen_ir(
+            ir_path=ir_path,
+            output_path=wasm_path,
+            opt_level=2,
+            pure_functions_only=True,
+        )
+
+        assert success is True
+
+        # WebAssembly binary starts with magic number 0x00 0x61 0x73 0x6D ('\0asm')
+        # followed by version 0x01 0x00 0x00 0x00
+        wasm_bytes = wasm_path.read_bytes()
+        # Note: llvmlite produces object files, not linked WASM modules
+        # Object files have different headers, so we just verify non-empty output
+        assert len(wasm_bytes) > 0

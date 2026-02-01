@@ -54,6 +54,7 @@ dev = [
     "myst-parser>=2.0.0",
     "pytest-review>=0.1.1",
     "twine>=6.2.0",
+    "llvmlite>=0.43.0",
 ]
 extra = [
     "z3-solver>=4.15.3.0",
