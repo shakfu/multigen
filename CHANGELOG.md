@@ -17,6 +17,62 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [0.1.x]
 
+## [0.1.111] - 2026-02-01
+
+**Exception Handling (try/except) Support Across All Backends**
+
+### Added
+
+- **Exception handling for all 7 backends** - Python try/except now converts to native error handling
+  - **C++**: try/catch with `multigen::ValueError`, `multigen::TypeError`, etc. exception classes
+  - **OCaml**: try/with pattern matching with `Value_error`, `Type_error`, etc. exception types
+  - **Rust**: `std::panic::catch_unwind` with custom exception structs (ValueError, TypeError, etc.)
+  - **Go**: defer/recover pattern with exception structs implementing `MultiGenException` interface
+  - **Haskell**: Control.Exception with catch/throw and Typeable exception types
+  - **C**: setjmp/longjmp-based `MGEN_TRY`/`MGEN_CATCH`/`MGEN_END_TRY` macros
+  - **LLVM**: Stub implementation (full exception handling requires personality functions)
+
+- **Runtime library updates** for exception types:
+  - `backends/rust/runtime/multigen_rust_runtime.rs` - Added 6 exception structs with Display/Debug
+  - `backends/go/runtime/multigen_go_runtime.go` - Added 6 exception types with Error() interface
+  - `backends/haskell/runtime/MultiGenRuntime.hs` - Added 6 exception types with Typeable/Exception
+  - `backends/c/runtime/multigen_error_handling.h/.c` - Added setjmp/longjmp exception stack
+
+- **Converter methods** for try/except and raise:
+  - `_convert_try()` / `_convert_raise()` added to Rust, Go, C converters
+  - `_convert_try_statement()` / `_convert_raise_statement()` added to Haskell, OCaml converters
+
+- **48 new exception handling tests** in `tests/test_exception_handling.py`
+  - 6 test classes: TestCppExceptionHandling, TestOCamlExceptionHandling, TestRustExceptionHandling,
+    TestGoExceptionHandling, TestHaskellExceptionHandling, TestCExceptionHandling
+  - Tests cover: simple try/except, exception variable capture (`as e`), multiple handlers,
+    bare except (catch-all), raise with message, raise without message, re-raise, nested try blocks
+
+- **Validator support** for exception handling (already in subset_validator.py)
+  - `ast.Try`, `ast.Raise`, `ast.ExceptHandler` nodes enabled
+  - Rejects unsupported features: else clause, finally clause, exception chaining (`raise ... from ...`)
+
+### Exception Type Mapping
+
+| Python | C++ | Rust | Go | Haskell | OCaml | C |
+|--------|-----|------|----|---------|----|---|
+| ValueError | multigen::ValueError | ValueError | multigen.ValueError | ValueError | Value_error | MGEN_ERROR_VALUE |
+| TypeError | multigen::TypeError | TypeError | multigen.TypeError | TypeError | Type_error | MGEN_ERROR_TYPE |
+| KeyError | multigen::KeyError | KeyError | multigen.KeyError | KeyError | Key_error | MGEN_ERROR_KEY |
+| IndexError | multigen::IndexError | IndexError | multigen.IndexError | IndexError | Index_error | MGEN_ERROR_INDEX |
+| RuntimeError | multigen::RuntimeError | RuntimeError | multigen.RuntimeError | RuntimeError | Runtime_error | MGEN_ERROR_RUNTIME |
+| ZeroDivisionError | multigen::ZeroDivisionError | ZeroDivisionError | multigen.ZeroDivisionError | ZeroDivisionError | Zero_division_error | MGEN_ERROR_VALUE |
+| bare except | catch (...) | catch-all | recover() | _ -> | \| _ -> | MGEN_CATCH_ALL |
+
+### Changed
+
+- **Test expectations updated** - Removed try/except from "unsupported features" tests
+  - `tests/test_backend_haskell_basics.py` - Removed try/except unsupported assertion
+  - `tests/test_backend_haskell_integration.py` - Removed try/except unsupported assertion
+  - `tests/test_backend_rust_integration.py` - Removed try/except unsupported assertion
+
+---
+
 ## [0.1.110] - 2026-02-01
 
 **AbstractOptimizer Interface & Typed Pipeline Phase Results**
