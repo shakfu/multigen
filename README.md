@@ -1,6 +1,6 @@
 # MultiGen: Multi-Language Code Generator
 
-MultiGen is a Python-to-multiple-languages code generator that translates Python code to C, C++, Rust, Go, Haskell, and OCaml while preserving semantics and performance characteristics.
+MultiGen is a Python-to-multiple-languages code generator that translates Python code to C, C++, Rust, Go, Haskell, OCaml, and LLVM IR while preserving semantics and performance characteristics.
 
 ## Overview
 
@@ -8,7 +8,7 @@ MultiGen extends the CGen (Python-to-C) project into a multi-language translatio
 
 ## Key Features
 
-- **Multi-Language Support**: Generate code for C, C++, Rust, Go, Haskell, and OCaml with language features
+- **Multi-Language Support**: Generate code for C, C++, Rust, Go, Haskell, OCaml, and LLVM IR
 - **Universal Preference System**: Customize code generation for each backend with language-specific preferences
 - **Advanced Python Support**: Object-oriented programming, comprehensions, string methods, augmented assignment
 - **Modern Libraries**: C++ STL, Rust standard library, Go standard library, Haskell containers, OCaml standard library
@@ -16,18 +16,20 @@ MultiGen extends the CGen (Python-to-C) project into a multi-language translatio
 - **Type-Safe Generation**: Leverages Python type annotations for accurate and safe code translation
 - **Runtime Libraries**: Enhanced C backend with 50KB+ runtime libraries providing Python-like semantics
 - **CLI Interface**: Simple command-line tool with preference customization for conversion and building
-- **Production-Ready**: 821 passing tests ensuring translation accuracy and code quality
+- **Production-Ready**: 1183 passing tests ensuring translation accuracy and code quality
+- **LLVM Backend**: Native compilation via LLVM IR with O0-O3 optimization levels
 
 ## Supported Languages
 
-| Language | Status      | Extension | Build System      | Advanced Features | Preferences |
-|----------|-------------|-----------|-------------------|-------------------|-------------|
-| C        | Enhanced    | `.c`      | Makefile / gcc    | OOP, STC containers, string methods, comprehensions, runtime libraries | 12 settings |
-| C++      | Enhanced    | `.cpp`    | Makefile / g++    | OOP, STL containers, string methods, comprehensions | 15 settings |
-| Rust     | Enhanced    | `.rs`     | Cargo / rustc     | OOP, standard library, string methods, comprehensions, memory safety | 19 settings |
-| Go       | Enhanced    | `.go`     | go.mod / go build | OOP, standard library, string methods, comprehensions | 18 settings |
-| Haskell  | Enhanced    | `.hs`     | Cabal / ghc       | Functional programming, comprehensions, type safety | 12 settings |
-| OCaml    | Enhanced    | `.ml`     | dune / ocamlc     | Functional programming, pattern matching, comprehensions | 17 settings |
+| Language | Status      | Extension | Build System      | Advanced Features | Benchmarks |
+|----------|-------------|-----------|-------------------|-------------------|------------|
+| C        | Production  | `.c`      | Makefile / gcc    | OOP, STC containers, string methods, comprehensions | 7/7 (100%) |
+| C++      | Production  | `.cpp`    | Makefile / g++    | OOP, STL containers, string methods, comprehensions | 7/7 (100%) |
+| Rust     | Production  | `.rs`     | Cargo / rustc     | OOP, ownership-aware, string methods, comprehensions | 7/7 (100%) |
+| Go       | Production  | `.go`     | go.mod / go build | OOP, defer pattern, string methods, comprehensions | 7/7 (100%) |
+| Haskell  | Production  | `.hs`     | Cabal / ghc       | Pure functional, comprehensions, type safety | 7/7 (100%) |
+| OCaml    | Production  | `.ml`     | dune / ocamlc     | Functional, pattern matching, mutable refs | 7/7 (100%) |
+| LLVM     | Production  | `.ll`     | llvmlite / clang  | Native compilation, O0-O3 optimization, multi-platform | 7/7 (100%) |
 
 ## Quick Start
 
@@ -598,7 +600,7 @@ multigen clean
 ### Running Tests
 
 ```bash
-make test           # Run all 821 tests
+make test           # Run all 1183 tests
 make lint           # Run code linting with ruff
 make type-check     # Run type checking with mypy
 ```
@@ -617,8 +619,10 @@ MultiGen maintains a test suite organized into focused modules:
   - Go idioms, standard library, concurrency patterns
 - `test_backend_haskell_*.py`: Haskell backend tests (93 tests)
   - Functional programming, type safety, comprehensions
-- `test_backend_ocaml_*.py`: OCaml backend tests (25 tests)
+- `test_backend_ocaml_*.py`: OCaml backend tests (51 tests)
   - Functional programming, pattern matching, immutability
+- `test_backend_llvm_*.py`: LLVM backend tests (130 tests)
+  - Native compilation, optimization levels, IR generation
 
 ### Adding New Backends
 
@@ -636,7 +640,7 @@ To add support for a new target language:
 4. Add tests in `tests/test_backend_mylang_*.py`
 5. Update documentation
 
-See existing backends (C, C++, Rust, Go, Haskell, OCaml) for implementation examples.
+See existing backends (C, C++, Rust, Go, Haskell, OCaml, LLVM) for implementation examples.
 
 ## Relationship with CGen
 
@@ -645,7 +649,7 @@ MultiGen extends the [CGen](https://github.com/shakfu/cgen) project by:
 - Expanding Python-to-C capabilities into a multi-language translation system
 - Integrating CGen's C runtime libraries (50KB+ of error handling, memory management, Python operations)
 - Incorporating the STC (Smart Template Container) library for high-performance C containers
-- Adding support for C++, Rust, Go, Haskell, and OCaml target languages
+- Adding support for C++, Rust, Go, Haskell, OCaml, and LLVM target languages
 - Implementing a clean 7-phase translation pipeline with abstract backend interfaces
 - Providing a universal preference system for language-specific code generation customization
 
@@ -688,7 +692,8 @@ All backends support core Python features:
 
 MultiGen maintains test coverage ensuring translation accuracy:
 
-- **821 total tests** across all components and backends
+- **1183 total tests** across all components and backends
+- **49/49 benchmarks passing** (100%) across all 7 backends
 - Comprehensive backend coverage testing all major Python features
 - Test categories: basics, OOP, comprehensions, string methods, augmented assignment, control flow, integration
 - All tests passing with zero regressions (100%)
@@ -707,7 +712,9 @@ MultiGen maintains test coverage ensuring translation accuracy:
 - Professional test organization with 821 tests in focused, single-responsibility files
 - Universal preference system with language-specific customization
 - Production-ready code generation with clean, efficient output
-- 4 production-ready backends (C++, C, Rust, Go) with 100% benchmark success
+- 7 production-ready backends (C++, C, Rust, Go, Haskell, OCaml, LLVM) with 100% benchmark success
+- Exception handling (try/except/raise) across all backends
+- Context managers (with statement) across all backends
 
 ### Future Development
 

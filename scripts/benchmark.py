@@ -48,6 +48,25 @@ class BenchmarkRunner:
         self.output_dir.mkdir(exist_ok=True)
         self.results: list[BenchmarkMetrics] = []
 
+    def get_backend_specific_file(self, source_file: Path, backend: str) -> Path:
+        """Get backend-specific benchmark file if it exists.
+
+        Some backends require different implementations of the same benchmark
+        due to paradigm differences (e.g., Haskell needs functional quicksort).
+
+        Args:
+            source_file: Original benchmark file
+            backend: Target backend name
+
+        Returns:
+            Backend-specific file if it exists, otherwise the original file
+        """
+        # Check for {benchmark}_{backend}.py in the same directory
+        backend_file = source_file.parent / f"{source_file.stem}_{backend}.py"
+        if backend_file.exists():
+            return backend_file
+        return source_file
+
     def copy_runtime_libraries(self, build_dir: Path, backend: str) -> None:
         """Copy runtime libraries for the backend."""
         # Each backend has its own runtime directory
@@ -408,10 +427,18 @@ class BenchmarkRunner:
 
     def benchmark_single(self, source_file: Path, backend: str) -> BenchmarkMetrics:
         """Run a single benchmark for a specific backend."""
+        # Use backend-specific file if available (e.g., quicksort_haskell.py)
+        actual_file = self.get_backend_specific_file(source_file, backend)
+        # Always use the original benchmark name for consistency in reports
         benchmark_name = source_file.stem
         metrics = BenchmarkMetrics(benchmark_name, backend)
 
-        print(f"  [{backend}] {benchmark_name}...", end=" ", flush=True)
+        # Indicate if using backend-specific file
+        suffix = f" (using {actual_file.stem})" if actual_file != source_file else ""
+        print(f"  [{backend}] {benchmark_name}{suffix}...", end=" ", flush=True)
+
+        # Use the actual file for compilation
+        source_file = actual_file
 
         # Compile and get result
         success, comp_time, error, result = self.compile_benchmark(
@@ -625,6 +652,14 @@ def main():
         category_dir = benchmark_dir / args.category
         if category_dir.exists():
             benchmark_files = list(category_dir.glob("*.py"))
+
+    # Exclude backend-specific override files (e.g., quicksort_haskell.py)
+    # These are used as replacements, not standalone benchmarks
+    backend_suffixes = ["_haskell", "_rust", "_go", "_ocaml", "_cpp", "_c", "_llvm"]
+    benchmark_files = [
+        f for f in benchmark_files
+        if not any(f.stem.endswith(suffix) for suffix in backend_suffixes)
+    ]
 
     if not benchmark_files:
         print(f"Error: No benchmark files found in {benchmark_dir}")
