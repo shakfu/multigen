@@ -1,8 +1,5 @@
 """Rust build system for MultiGen."""
 
-import shutil
-import subprocess
-from pathlib import Path
 from typing import Any
 
 from ..base import AbstractBuilder
@@ -28,34 +25,25 @@ edition = "2021"
 
     def compile_direct(self, source_file: str, output_dir: str, **kwargs: Any) -> bool:
         """Compile Rust source directly using rustc."""
-        try:
-            source_path = Path(source_file).absolute()
-            out_dir = Path(output_dir).absolute()
-            executable_name = source_path.stem
+        # Resolve paths using base class helper
+        paths = self._resolve_paths(source_file, output_dir)
 
-            # Copy runtime module to the same directory as source file
-            runtime_src = Path(__file__).parent / "runtime" / "multigen_rust_runtime.rs"
-            if runtime_src.exists():
-                # Copy to source directory, not output directory
-                runtime_dst = source_path.parent / "multigen_rust_runtime.rs"
-                shutil.copy2(runtime_src, runtime_dst)
+        # Copy runtime module to source directory (rustc looks for modules there)
+        self._copy_runtime_file("multigen_rust_runtime.rs", paths.source_path.parent)
 
-            # Build rustc command with absolute paths
-            cmd = ["rustc", str(source_path), "-o", str(out_dir / executable_name), "--edition", "2021"]
+        # Build rustc command
+        cmd = [
+            "rustc",
+            str(paths.source_path),
+            "-o",
+            str(paths.executable_path),
+            "--edition",
+            "2021",
+        ]
 
-            # Run compilation (don't set cwd to avoid path issues)
-            result = subprocess.run(cmd, capture_output=True, text=True)
-
-            if result.returncode != 0:
-                # Print error for debugging
-                if result.stderr:
-                    pass
-                return False
-
-            return True
-
-        except Exception:
-            return False
+        # Run compilation using base class helper
+        result = self._run_command(cmd)
+        return result.success
 
     def get_compile_flags(self) -> list[str]:
         """Get Rust compilation flags."""

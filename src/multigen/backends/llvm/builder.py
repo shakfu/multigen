@@ -2,7 +2,6 @@
 
 import re
 import shutil
-import subprocess
 from pathlib import Path
 from typing import Any, Optional
 
@@ -11,6 +10,17 @@ from ..base import AbstractBuilder
 
 class LLVMBuilder(AbstractBuilder):
     """Builder for compiling LLVM IR to native binaries."""
+
+    # Runtime source files to compile
+    RUNTIME_SOURCES = [
+        "vec_int_minimal.c",
+        "vec_vec_int_minimal.c",
+        "vec_str_minimal.c",
+        "map_str_int_minimal.c",
+        "map_int_int_minimal.c",
+        "set_int_minimal.c",
+        "multigen_llvm_string.c",
+    ]
 
     def __init__(self) -> None:
         """Initialize the LLVM builder."""
@@ -111,100 +121,96 @@ run: $(TARGET)
         """
         enable_asan = kwargs.get("enable_asan", False)
         opt_level = kwargs.get("opt_level", 2)
-        try:
-            # Use absolute paths to avoid cwd issues
-            source_path = Path(source_file).resolve()
-            output_path = Path(output_dir).resolve()
-            executable_name = source_path.stem
 
-            # Step 0: Apply LLVM optimization passes to IR
-            from .optimizer import LLVMOptimizer
+        # Resolve paths using base class helper
+        paths = self._resolve_paths(source_file, output_dir)
 
-            llvm_ir = source_path.read_text()
-            optimizer = LLVMOptimizer(opt_level=opt_level)
-            optimized_ir = optimizer.optimize(llvm_ir)
+        # Step 0: Apply LLVM optimization passes to IR
+        from .optimizer import LLVMOptimizer
 
-            # Write optimized IR to a new file
-            optimized_path = output_path / f"{executable_name}.opt.ll"
-            optimized_path.write_text(optimized_ir)
+        llvm_ir = paths.source_path.read_text()
+        optimizer = LLVMOptimizer(opt_level=opt_level)
+        optimized_ir = optimizer.optimize(llvm_ir)
 
-            # Step 1: Compile optimized LLVM IR to object file using llc
-            object_file = output_path / f"{executable_name}.o"
-            llc_cmd = [
-                self.llc_path,
-                "-filetype=obj",
-                str(optimized_path),  # Use optimized IR instead of original
-                "-o",
-                str(object_file),
-            ]
+        # Write optimized IR to a new file
+        optimized_path = paths.output_dir / f"{paths.executable_name}.opt.ll"
+        optimized_path.write_text(optimized_ir)
 
-            result = subprocess.run(llc_cmd, capture_output=True, text=True)
-            if result.returncode != 0:
-                return False
+        # Step 1: Compile optimized LLVM IR to object file using llc
+        object_file = paths.output_dir / f"{paths.executable_name}.o"
+        llc_cmd = [
+            self.llc_path,
+            "-filetype=obj",
+            str(optimized_path),
+            "-o",
+            str(object_file),
+        ]
 
-            # Step 2: Compile runtime libraries
-            runtime_dir = Path(__file__).parent / "runtime"
-            runtime_objects = []
-
-            # Compile each runtime C file
-            runtime_sources = [
-                "vec_int_minimal.c",
-                "vec_vec_int_minimal.c",
-                "vec_str_minimal.c",
-                "map_str_int_minimal.c",
-                "map_int_int_minimal.c",
-                "set_int_minimal.c",
-                "multigen_llvm_string.c",
-            ]
-
-            for runtime_source in runtime_sources:
-                runtime_c = runtime_dir / runtime_source
-                if runtime_c.exists():
-                    runtime_o = output_path / runtime_source.replace(".c", ".o")
-                    clang_compile_runtime_cmd = [
-                        self.clang_path,
-                        "-c",
-                        str(runtime_c),
-                        "-o",
-                        str(runtime_o),
-                        "-I",
-                        str(runtime_dir),  # Include runtime headers
-                    ]
-
-                    # Add ASAN flags if requested
-                    if enable_asan:
-                        clang_compile_runtime_cmd.extend(["-fsanitize=address", "-g"])
-
-                    result = subprocess.run(clang_compile_runtime_cmd, capture_output=True, text=True)
-                    if result.returncode != 0:
-                        return False
-
-                    runtime_objects.append(str(runtime_o))
-
-            # Step 3: Link object files to create executable using clang
-            executable_path = output_path / executable_name
-            clang_cmd = [
-                self.clang_path,
-                str(object_file),
-                *runtime_objects,
-                "-o",
-                str(executable_path),
-            ]
-
-            # Add ASAN flags to linker if requested
-            if enable_asan:
-                clang_cmd.extend(["-fsanitize=address", "-g"])
-
-            result = subprocess.run(clang_cmd, capture_output=True, text=True)
-            if result.returncode != 0:
-                return False
-
-            return True
-
-        except FileNotFoundError:
+        result = self._run_command(llc_cmd)
+        if not result.success:
             return False
-        except Exception:
+
+        # Step 2: Compile runtime libraries
+        runtime_objects = self._compile_runtime_libraries(paths.output_dir, enable_asan)
+        if runtime_objects is None:
             return False
+
+        # Step 3: Link object files to create executable using clang
+        clang_cmd = [
+            self.clang_path,
+            str(object_file),
+            *runtime_objects,
+            "-o",
+            str(paths.executable_path),
+        ]
+
+        # Add ASAN flags to linker if requested
+        if enable_asan:
+            clang_cmd.extend(["-fsanitize=address", "-g"])
+
+        result = self._run_command(clang_cmd)
+        return result.success
+
+    def _compile_runtime_libraries(self, output_dir: Path, enable_asan: bool = False) -> Optional[list[str]]:
+        """Compile LLVM runtime C libraries.
+
+        Args:
+            output_dir: Directory for output object files
+            enable_asan: Enable AddressSanitizer
+
+        Returns:
+            List of object file paths, or None if compilation failed
+        """
+        runtime_dir = self._get_runtime_dir()
+        if runtime_dir is None:
+            return []
+
+        runtime_objects: list[str] = []
+
+        for runtime_source in self.RUNTIME_SOURCES:
+            runtime_c = runtime_dir / runtime_source
+            if runtime_c.exists():
+                runtime_o = output_dir / runtime_source.replace(".c", ".o")
+                cmd = [
+                    self.clang_path,
+                    "-c",
+                    str(runtime_c),
+                    "-o",
+                    str(runtime_o),
+                    "-I",
+                    str(runtime_dir),
+                ]
+
+                if enable_asan:
+                    cmd.extend(["-fsanitize=address", "-g"])
+
+                result = self._run_command(cmd)
+                if not result.success:
+                    return None
+
+                runtime_objects.append(str(runtime_o))
+
+        return runtime_objects
 
     def get_compile_flags(self) -> list[str]:
         """Get LLVM compilation flags.
@@ -320,72 +326,59 @@ int main_wrapper(int argc, char** argv) {{
         Returns:
             True if compilation succeeded
         """
-        try:
-            source_path = Path(source_file)
-            output_path = Path(output_dir)
-            executable_name = source_path.stem
+        # Resolve paths using base class helper
+        paths = self._resolve_paths(source_file, output_dir)
 
-            # Check if we need a wrapper
-            wrapper_code = self.generate_main_wrapper(source_file)
+        # Check if we need a wrapper
+        wrapper_code = self.generate_main_wrapper(source_file)
 
-            # Step 1: Compile LLVM IR to object file
-            object_file = output_path / f"{executable_name}.o"
-            llc_cmd = [
-                self.llc_path,
-                "-filetype=obj",
-                str(source_path),
-                "-o",
-                str(object_file),
-            ]
+        # Step 1: Compile LLVM IR to object file
+        object_file = paths.output_dir / f"{paths.executable_name}.o"
+        llc_cmd = [
+            self.llc_path,
+            "-filetype=obj",
+            str(paths.source_path),
+            "-o",
+            str(object_file),
+        ]
 
-            result = subprocess.run(llc_cmd, capture_output=True, text=True)
-            if result.returncode != 0:
-                return False
+        result = self._run_command(llc_cmd)
+        if not result.success:
+            return False
 
-            # Step 2: Compile wrapper if needed
-            object_files = [str(object_file)]
-            if wrapper_code:
-                wrapper_file = output_path / f"{executable_name}_wrapper.c"
-                wrapper_file.write_text(wrapper_code)
+        # Step 2: Compile wrapper if needed
+        object_files = [str(object_file)]
+        if wrapper_code:
+            wrapper_file = paths.output_dir / f"{paths.executable_name}_wrapper.c"
+            wrapper_file.write_text(wrapper_code)
 
-                wrapper_obj = output_path / f"{executable_name}_wrapper.o"
-                clang_compile_cmd = [
-                    self.clang_path,
-                    "-c",
-                    str(wrapper_file),
-                    "-o",
-                    str(wrapper_obj),
-                ]
-
-                result = subprocess.run(clang_compile_cmd, capture_output=True, text=True)
-                if result.returncode != 0:
-                    return False
-
-                object_files.append(str(wrapper_obj))
-
-            # Step 3: Link all object files
-            executable_path = output_path / executable_name
-
-            # If we have a wrapper, define the entry point
-            link_flags = []
-            if wrapper_code:
-                link_flags = ["-e", "_multigen_main"]
-
-            clang_cmd = [
+            wrapper_obj = paths.output_dir / f"{paths.executable_name}_wrapper.o"
+            clang_compile_cmd = [
                 self.clang_path,
-                *object_files,
-                *link_flags,
+                "-c",
+                str(wrapper_file),
                 "-o",
-                str(executable_path),
+                str(wrapper_obj),
             ]
 
-            result = subprocess.run(clang_cmd, capture_output=True, text=True)
-            if result.returncode != 0:
+            result = self._run_command(clang_compile_cmd)
+            if not result.success:
                 return False
 
-            return True
+            object_files.append(str(wrapper_obj))
 
-        except FileNotFoundError:
-            return False
-        except Exception:
-            return False
+        # Step 3: Link all object files
+        link_flags: list[str] = []
+        if wrapper_code:
+            link_flags = ["-e", "_multigen_main"]
+
+        clang_cmd = [
+            self.clang_path,
+            *object_files,
+            *link_flags,
+            "-o",
+            str(paths.executable_path),
+        ]
+
+        result = self._run_command(clang_cmd)
+        return result.success

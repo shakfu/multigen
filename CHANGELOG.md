@@ -64,6 +64,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   - All backends cache optimizer instance for efficiency
   - Files: `src/multigen/backends/*/backend.py`
 
+- **AbstractBuilder common utilities** - Extracted common build logic to base class
+  - `BuildPaths` dataclass for standardized path resolution
+  - `CompilationResult` dataclass for structured compilation results
+  - `_resolve_paths()` - common path resolution (source, output, executable)
+  - `_run_command()` - subprocess execution with timeout and error handling
+  - `_copy_runtime_file()` - runtime file copying to target directory
+  - `_get_runtime_dir()` / `_get_runtime_files()` - runtime directory access
+  - File: `src/multigen/backends/base.py`
+
+- **All 7 builders refactored** - Use common AbstractBuilder helpers
+  - Rust: 63 -> 45 lines using `_resolve_paths()`, `_copy_runtime_file()`, `_run_command()`
+  - Go: 87 -> 67 lines with streamlined path handling
+  - Haskell: 113 -> 77 lines with improved runtime file copying
+  - OCaml: Refactored `compile_direct()` and `_copy_runtime_files()` to use helpers
+  - LLVM: Uses `_resolve_paths()` and `_run_command()` for compilation pipeline
+  - C++: Refactored `_setup_runtime_environment()` to use `_get_runtime_files()`
+  - C: Uses `_get_runtime_files()` for sources/headers, added `runtime_dir` property
+  - Files: `src/multigen/backends/*/builder.py`
+
 - **All 7 pipeline phases use typed results** - Complete migration from dict to dataclasses
   - `_validation_phase()` -> `ValidationPhaseResult`
   - `_analysis_phase()` -> `AnalysisPhaseResult`

@@ -1,6 +1,6 @@
 """C++ builder for compilation and build file generation."""
 
-import subprocess
+import shutil
 from pathlib import Path
 from typing import Any, Optional
 
@@ -24,20 +24,18 @@ class CppBuilder(AbstractBuilder):
 
     def generate_build_file(self, source_files: list[str], target_name: str) -> str:
         """Generate a Makefile for the C++ project using makefilegen."""
-        # Prepare include directories
-        include_dirs = []
+        include_dirs: list[str] = []
         if self.runtime_headers_dir:
             include_dirs.append(self.runtime_headers_dir)
 
-        # Extract flags from default_flags
+        # Extract flags and standard from default_flags
         flags = [f for f in self.default_flags if not f.startswith("-std=")]
-        std = "c++17"  # Default
+        std = "c++17"
         for f in self.default_flags:
             if f.startswith("-std=c++"):
-                std = f[5:]  # Extract 'c++17' from '-std=c++17'
+                std = f[5:]
                 break
 
-        # Use MakefileGenerator for sophisticated Makefile generation
         generator = MakefileGenerator(
             name=target_name,
             source_dir=".",
@@ -46,7 +44,7 @@ class CppBuilder(AbstractBuilder):
             include_dirs=include_dirs,
             compiler=self.compiler,
             std=std,
-            use_stc=False,  # C++ doesn't use STC
+            use_stc=False,
             project_type="MultiGen",
         )
 
@@ -54,30 +52,18 @@ class CppBuilder(AbstractBuilder):
 
     def compile_direct(self, source_file: str, output_dir: str, **kwargs: Any) -> bool:
         """Compile C++ source directly to executable."""
-        try:
-            source_path = Path(source_file).absolute()
-            out_dir = Path(output_dir).absolute()
-            output_path = out_dir / source_path.stem
+        # Resolve paths using base class helper
+        paths = self._resolve_paths(source_file, output_dir)
 
-            # Setup runtime environment (copy headers if needed)
-            self._setup_runtime_environment(str(out_dir))
+        # Setup runtime environment (copy headers if needed)
+        self._setup_runtime_environment(str(paths.output_dir))
 
-            # Build the compilation command
-            cmd = [self.compiler] + self.get_compile_flags() + [str(source_path), "-o", str(output_path)]
+        # Build the compilation command
+        cmd = [self.compiler] + self.get_compile_flags() + [str(paths.source_path), "-o", str(paths.executable_path)]
 
-            # Execute compilation (don't set cwd to avoid path issues)
-            result = subprocess.run(cmd, capture_output=True, text=True)
-
-            if result.returncode == 0:
-                return True
-            else:
-                # Print error for debugging
-                if result.stderr:
-                    pass
-                return False
-
-        except Exception:
-            return False
+        # Execute compilation using base class helper
+        result = self._run_command(cmd)
+        return result.success
 
     def get_executable_name(self, source_file: str) -> str:
         """Get the executable name for a source file."""
@@ -206,20 +192,13 @@ install(TARGETS {target_name} DESTINATION bin)
         """Setup runtime environment in the output directory."""
         output_path = Path(output_dir)
         runtime_dir = output_path / "runtime"
-
-        # Create runtime directory if it doesn't exist
         runtime_dir.mkdir(exist_ok=True)
 
-        # Check if we need to copy runtime headers from the backend
-        backend_runtime = Path(__file__).parent / "runtime"
-        if backend_runtime.exists():
-            # Copy runtime headers to build directory
-            import shutil
-
-            for header_file in backend_runtime.glob("*.hpp"):
-                target_file = runtime_dir / header_file.name
-                if not target_file.exists():
-                    shutil.copy2(header_file, target_file)
+        # Copy runtime headers from the backend using base class helper
+        for header_file in self._get_runtime_files("*.hpp"):
+            target_file = runtime_dir / header_file.name
+            if not target_file.exists():
+                shutil.copy2(header_file, target_file)
 
         self.runtime_headers_dir = str(runtime_dir)
 

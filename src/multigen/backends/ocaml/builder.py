@@ -1,7 +1,6 @@
 """OCaml builder for compiling generated OCaml code."""
 
 import shutil
-import subprocess
 from pathlib import Path
 from typing import Any, Optional
 
@@ -11,9 +10,10 @@ from ..preferences import BackendPreferences, OCamlPreferences
 
 def _has_opam_initialized() -> bool:
     """Check if opam is available and initialized."""
+    import subprocess
+
     if not shutil.which("opam"):
         return False
-    # Check if opam is initialized by running a simple command
     result = subprocess.run(["opam", "var", "prefix"], capture_output=True, text=True)
     return result.returncode == 0
 
@@ -35,16 +35,13 @@ class OCamlBuilder(AbstractBuilder):
         Returns:
             True if build succeeded, False otherwise
         """
-        try:
-            if makefile:
-                return self._generate_dune_project(output_file)
-            else:
-                return self._compile_direct(output_file)
-        except Exception:
-            return False
+        if makefile:
+            return self._generate_dune_project(output_file)
+        else:
+            return self._compile_direct_internal(output_file)
 
-    def _compile_direct(self, output_file: str) -> bool:
-        """Compile OCaml code directly using ocamlc."""
+    def _compile_direct_internal(self, output_file: str) -> bool:
+        """Compile OCaml code directly using ocamlc (internal method)."""
         base_path = Path(output_file).parent
         runtime_path = base_path / "multigen_runtime.ml"
 
@@ -52,19 +49,15 @@ class OCamlBuilder(AbstractBuilder):
         if not runtime_path.exists():
             self._copy_runtime_files(base_path)
 
-        # Compile with OCaml compiler (use opam if initialized, otherwise direct ocamlc)
+        # Compile with OCaml compiler
         executable = output_file.replace(".ml", "")
         if _has_opam_initialized():
             cmd = ["opam", "exec", "--", "ocamlc", "-o", executable, str(runtime_path), output_file]
         else:
             cmd = ["ocamlc", "-o", executable, str(runtime_path), output_file]
 
-        result = subprocess.run(cmd, capture_output=True, text=True)
-
-        if result.returncode == 0:
-            return True
-        else:
-            return False
+        result = self._run_command(cmd)
+        return result.success
 
     def _generate_dune_project(self, output_file: str) -> bool:
         """Generate a dune-project file for the OCaml project."""
@@ -101,18 +94,11 @@ class OCamlBuilder(AbstractBuilder):
 
     def _copy_runtime_files(self, target_dir: Path) -> None:
         """Copy OCaml runtime files to the target directory."""
-        import shutil
-
-        # Get the path to the runtime directory
-        current_dir = Path(__file__).parent
-        runtime_dir = current_dir / "runtime"
-
-        if runtime_dir.exists():
-            # Copy all .ml files from runtime directory
-            for runtime_file in runtime_dir.glob("*.ml"):
-                target_file = target_dir / runtime_file.name
-                if not target_file.exists():
-                    shutil.copy2(runtime_file, target_file)
+        # Copy all .ml files from runtime directory using base class helper
+        for runtime_file in self._get_runtime_files("*.ml"):
+            target_file = target_dir / runtime_file.name
+            if not target_file.exists():
+                shutil.copy2(runtime_file, target_file)
 
     def get_build_command(self, output_file: str) -> list[str]:
         """Get the command to build the OCaml file."""
@@ -181,21 +167,16 @@ class OCamlBuilder(AbstractBuilder):
 
     def compile_direct(self, source_file: str, output_dir: str, **kwargs: Any) -> bool:
         """Compile OCaml source directly using ocamlc."""
-        source_path = Path(source_file).absolute()
-        out_dir = Path(output_dir).absolute()
-        executable_name = source_path.stem
-
-        # Determine source directory (where .ml files are)
-        source_dir = source_path.parent
+        # Resolve paths using base class helper
+        paths = self._resolve_paths(source_file, output_dir)
+        source_dir = paths.source_path.parent
 
         # Copy runtime file to source directory (OCaml looks for modules there)
         runtime_path = source_dir / "multigen_runtime.ml"
         if not runtime_path.exists():
             self._copy_runtime_files(source_dir)
 
-        # Compile with OCaml compiler (use opam if initialized, otherwise direct ocamlc)
-        # Use absolute paths for all files and include source directory for module resolution
-        executable = out_dir / executable_name
+        # Build command (use opam if initialized, otherwise direct ocamlc)
         if _has_opam_initialized():
             cmd = [
                 "opam",
@@ -205,23 +186,24 @@ class OCamlBuilder(AbstractBuilder):
                 "-I",
                 str(source_dir),
                 "-o",
-                str(executable),
+                str(paths.executable_path),
                 str(runtime_path),
-                str(source_path),
+                str(paths.source_path),
             ]
         else:
-            cmd = ["ocamlc", "-I", str(source_dir), "-o", str(executable), str(runtime_path), str(source_path)]
+            cmd = [
+                "ocamlc",
+                "-I",
+                str(source_dir),
+                "-o",
+                str(paths.executable_path),
+                str(runtime_path),
+                str(paths.source_path),
+            ]
 
-        # Run compilation (don't set cwd to avoid path issues)
-        result = subprocess.run(cmd, capture_output=True, text=True)
-
-        if result.returncode != 0:
-            # Print error for debugging
-            if result.stderr:
-                pass
-            return False
-
-        return True
+        # Run compilation using base class helper
+        result = self._run_command(cmd)
+        return result.success
 
     def get_compile_flags(self) -> list[str]:
         """Get compilation flags for OCaml."""

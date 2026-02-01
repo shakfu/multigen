@@ -1,8 +1,7 @@
 """C build system for MultiGen with integrated runtime libraries."""
 
-import subprocess
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from ...common.makefilegen import MakefileGenerator
 from ..base import AbstractBuilder
@@ -13,8 +12,23 @@ class CBuilder(AbstractBuilder):
 
     def __init__(self) -> None:
         """Initialize builder with runtime support."""
-        self.runtime_dir = Path(__file__).parent / "runtime"
-        self.use_runtime = self.runtime_dir.exists()
+        self._runtime_dir = self._get_runtime_dir()
+        self._stc_include_dir = self._get_stc_include_dir()
+
+    def _get_stc_include_dir(self) -> Optional[Path]:
+        """Get the STC headers include directory."""
+        stc_dir = Path(__file__).parent / "ext" / "stc" / "include"
+        return stc_dir if stc_dir.exists() else None
+
+    @property
+    def use_runtime(self) -> bool:
+        """Check if runtime is available."""
+        return self._runtime_dir is not None
+
+    @property
+    def runtime_dir(self) -> Optional[Path]:
+        """Get the runtime directory (backward compatibility)."""
+        return self._runtime_dir
 
     def get_build_filename(self) -> str:
         """Return Makefile as the build file name."""
@@ -22,21 +36,15 @@ class CBuilder(AbstractBuilder):
 
     def generate_build_file(self, source_files: list[str], target_name: str) -> str:
         """Generate Makefile for C project with MultiGen runtime support using makefilegen."""
-        # Prepare include directories
-        include_dirs = []
-        additional_sources = []
+        include_dirs: list[str] = []
+        additional_sources: list[str] = []
 
-        if self.use_runtime:
-            include_dirs.append(str(self.runtime_dir))
-            # Add include path for STC headers
-            stc_include_dir = Path(__file__).parent / "ext" / "stc" / "include"
-            if stc_include_dir.exists():
-                include_dirs.append(str(stc_include_dir))
-
-            # Add runtime sources
+        if self._runtime_dir:
+            include_dirs.append(str(self._runtime_dir))
+            if self._stc_include_dir:
+                include_dirs.append(str(self._stc_include_dir))
             additional_sources = self.get_runtime_sources()
 
-        # Use MakefileGenerator for sophisticated Makefile generation
         generator = MakefileGenerator(
             name=target_name,
             source_dir=".",
@@ -54,76 +62,41 @@ class CBuilder(AbstractBuilder):
 
     def compile_direct(self, source_file: str, output_dir: str, **kwargs: Any) -> bool:
         """Compile C source directly using gcc with MultiGen runtime support."""
-        try:
-            source_path = Path(source_file)
-            out_dir = Path(output_dir)
-            executable_name = source_path.stem
-            output_path = out_dir / executable_name
+        # Resolve paths using base class helper
+        paths = self._resolve_paths(source_file, output_dir)
 
-            # Build gcc command with base flags
-            cmd = [
-                "gcc",
-                "-Wall",
-                "-Wextra",
-                "-std=c11",
-                "-O2",
-            ]
+        # Build gcc command with base flags
+        cmd = ["gcc", "-Wall", "-Wextra", "-std=c11", "-O2"]
 
-            # Add MultiGen runtime support if available
-            if self.use_runtime:
-                # Add include path for runtime
-                cmd.append(f"-I{self.runtime_dir}")
-                # Add include path for STC headers
-                stc_include_dir = Path(__file__).parent / "ext" / "stc" / "include"
-                if stc_include_dir.exists():
-                    cmd.append(f"-I{stc_include_dir}")
+        # Add MultiGen runtime support if available
+        if self._runtime_dir:
+            cmd.append(f"-I{self._runtime_dir}")
+            if self._stc_include_dir:
+                cmd.append(f"-I{self._stc_include_dir}")
+            cmd.extend(self.get_runtime_sources())
 
-                # Add runtime sources
-                cmd.extend(self.get_runtime_sources())
+        # Add main source file and output
+        cmd.extend([str(paths.source_path), "-o", str(paths.executable_path)])
 
-            # Add main source file and output (use absolute paths to avoid cwd confusion)
-            cmd.extend([str(source_path), "-o", str(output_path)])
-
-            # Run compilation (don't set cwd to avoid path resolution issues)
-            result = subprocess.run(cmd, capture_output=True, text=True)
-
-            return result.returncode == 0
-
-        except Exception:
-            return False
+        # Run compilation using base class helper
+        result = self._run_command(cmd)
+        return result.success
 
     def get_compile_flags(self) -> list[str]:
         """Get C compilation flags including MultiGen runtime support."""
         flags = ["-Wall", "-Wextra", "-std=c11", "-O2"]
 
-        if self.use_runtime:
-            # Add include path for runtime
-            flags.append(f"-I{self.runtime_dir}")
-            # Add include path for STC headers
-            stc_include_dir = Path(__file__).parent / "ext" / "stc" / "include"
-            if stc_include_dir.exists():
-                flags.append(f"-I{stc_include_dir}")
+        if self._runtime_dir:
+            flags.append(f"-I{self._runtime_dir}")
+            if self._stc_include_dir:
+                flags.append(f"-I{self._stc_include_dir}")
 
         return flags
 
     def get_runtime_sources(self) -> list[str]:
         """Get MultiGen runtime source files for compilation."""
-        if not self.use_runtime:
-            return []
-
-        runtime_sources = []
-        for source_file in self.runtime_dir.glob("*.c"):
-            runtime_sources.append(str(source_file))
-
-        return runtime_sources
+        return [str(f) for f in self._get_runtime_files("*.c")]
 
     def get_runtime_headers(self) -> list[str]:
         """Get MultiGen runtime header files for inclusion."""
-        if not self.use_runtime:
-            return []
-
-        runtime_headers = []
-        for header_file in self.runtime_dir.glob("*.h"):
-            runtime_headers.append(header_file.name)
-
-        return runtime_headers
+        return [f.name for f in self._get_runtime_files("*.h")]

@@ -1,8 +1,5 @@
 """Haskell build system for MultiGen."""
 
-import shutil
-import subprocess
-from pathlib import Path
 from typing import Any
 
 from ..base import AbstractBuilder
@@ -54,51 +51,33 @@ executable {target_name}
 
     def compile_direct(self, source_file: str, output_dir: str, **kwargs: Any) -> bool:
         """Compile Haskell source directly using GHC."""
-        try:
-            source_path = Path(source_file).absolute()
-            out_dir = Path(output_dir).absolute()
-            executable_name = source_path.stem
+        # Resolve paths using base class helper
+        paths = self._resolve_paths(source_file, output_dir)
+        source_dir = paths.source_path.parent
 
-            # Determine source directory (where .hs files are)
-            source_dir = source_path.parent
+        # Copy runtime module to source directory (GHC looks for imports there)
+        runtime_path = self._copy_runtime_file("MultiGenRuntime.hs", source_dir)
 
-            # Copy runtime module to source directory (GHC looks for imports there)
-            runtime_src = Path(__file__).parent / "runtime" / "MultiGenRuntime.hs"
-            if runtime_src.exists():
-                runtime_dst = source_dir / "MultiGenRuntime.hs"
-                shutil.copy2(runtime_src, runtime_dst)
+        # Build GHC command
+        cmd = [
+            "ghc",
+            str(paths.source_path),
+            "-o",
+            str(paths.executable_path),
+            "-XOverloadedStrings",
+            "-XFlexibleInstances",
+            "-XTypeSynonymInstances",
+            "-package",
+            "containers",
+        ]
 
-            # Build GHC command with absolute paths
-            cmd = [
-                "ghc",
-                str(source_path),
-                "-o",
-                str(out_dir / executable_name),
-                "-XOverloadedStrings",
-                "-XFlexibleInstances",
-                "-XTypeSynonymInstances",
-                "-package",
-                "containers",
-            ]
+        # Add runtime module path if it was copied
+        if runtime_path is not None:
+            cmd.append(str(runtime_path))
 
-            # Add runtime module path if it exists
-            runtime_path = source_dir / "MultiGenRuntime.hs"
-            if runtime_path.exists():
-                cmd.extend([str(runtime_path)])
-
-            # Run compilation (don't set cwd to avoid path issues)
-            result = subprocess.run(cmd, capture_output=True, text=True)
-
-            if result.returncode != 0:
-                # Print error for debugging
-                if result.stderr:
-                    pass
-                return False
-
-            return True
-
-        except Exception:
-            return False
+        # Run compilation using base class helper
+        result = self._run_command(cmd)
+        return result.success
 
     def get_compile_flags(self) -> list[str]:
         """Get Haskell compilation flags."""
