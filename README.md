@@ -31,6 +31,28 @@ MultiGen extends the CGen (Python-to-C) project into a multi-language translatio
 | OCaml    | Production  | `.ml`     | dune / ocamlc     | Functional, pattern matching, mutable refs | 7/7 (100%) |
 | LLVM     | Production  | `.ll`     | llvmlite / clang  | Native compilation, O0-O3 optimization, multi-platform | 7/7 (100%) |
 
+## Benchmark Results
+
+```sh
+% make benchmark # ran on m1 macbook air 
+================================================================================
+BENCHMARK SUMMARY
+================================================================================
+Total: 7 benchmarks × 7 backends = 49 runs
+Success: 49 | Failed: 0
+
+Backend      Success  Compile (s)  Run (s)      Binary (KB)  LOC
+--------------------------------------------------------------------------------
+c            7/7       0.390        0.275189     94.9         76
+cpp          7/7       0.435        0.251988     36.1         51
+go           7/7       0.190        0.265097     2365.4       38
+haskell      7/7       0.156        0.024035     19944.6      65
+llvm         7/7       0.310        0.251354     49.0         321
+ocaml        7/7       0.234        0.271373     826.3        27
+rust         7/7       0.266        0.250707     443.0        37
+===============================================================================
+```
+
 ## Quick Start
 
 ### Installation
