@@ -1018,6 +1018,8 @@ class MultiGenPythonToGoConverter:
             return self._convert_try(stmt)
         elif isinstance(stmt, ast.Raise):
             return self._convert_raise(stmt)
+        elif isinstance(stmt, ast.With):
+            return self._convert_with(stmt)
         else:
             raise UnsupportedFeatureError(f"Unsupported statement type: {type(stmt).__name__}")
 
@@ -1171,6 +1173,46 @@ class MultiGenPythonToGoConverter:
 
         # Fallback for other raise patterns
         return '    panic("Unknown exception")'
+
+    def _convert_with(self, stmt: ast.With) -> str:
+        """Convert Python with statement to Go using defer.
+
+        Example:
+            with open("file.txt", "r") as f:
+                content = f.read()
+
+        Becomes:
+            f, _ := os.Open("file.txt")
+            defer f.Close()
+            // body...
+        """
+        item = stmt.items[0]
+        var_name = item.optional_vars.id if isinstance(item.optional_vars, ast.Name) else "f"
+        context_expr = item.context_expr
+
+        lines = []
+
+        if isinstance(context_expr, ast.Call) and isinstance(context_expr.func, ast.Name):
+            if context_expr.func.id == "open":
+                filename = self._convert_expression(context_expr.args[0])
+                mode = "r"
+                if len(context_expr.args) > 1 and isinstance(context_expr.args[1], ast.Constant):
+                    mode_val = context_expr.args[1].value
+                    if isinstance(mode_val, str):
+                        mode = mode_val
+
+                if "w" in mode:
+                    lines.append(f"    {var_name}, _ := os.Create({filename})")
+                else:
+                    lines.append(f"    {var_name}, _ := os.Open({filename})")
+                lines.append(f"    defer {var_name}.Close()")
+
+        for s in stmt.body:
+            converted = self._convert_statement(s)
+            if converted.strip():
+                lines.append(converted)
+
+        return "\n".join(lines)
 
     def _convert_return(self, stmt: ast.Return) -> str:
         """Convert return statement."""

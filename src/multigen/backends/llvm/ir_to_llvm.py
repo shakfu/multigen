@@ -34,6 +34,7 @@ from ...frontend.static_ir import (
     IRVariableReference,
     IRVisitor,
     IRWhile,
+    IRWith,
 )
 from .runtime_decls import LLVMRuntimeDeclarations
 
@@ -2256,6 +2257,25 @@ class IRToLLVMConverter(IRVisitor):
         self.builder.call(abort_func, [])
         self.builder.unreachable()
         # TODO: Implement proper LLVM exception throwing with resume instruction
+
+    def visit_with(self, node: IRWith) -> None:
+        """Visit a with statement node (context manager).
+
+        Note: LLVM context managers require file I/O runtime support.
+        This is a stub implementation that visits the body statements.
+        Full file I/O support is planned for future implementation.
+
+        Args:
+            node: IR with statement to convert
+        """
+        if self.builder is None:
+            raise RuntimeError("Builder not initialized - must be inside a function")
+
+        # TODO: Implement proper file I/O with fopen/fclose runtime calls
+        # For now, just visit the body statements without actual file handling
+        # This allows the rest of the code to compile but file operations won't work
+        for stmt in node.body:
+            stmt.accept(self)
 
     def _convert_type(self, ir_type: IRType) -> ir.Type:
         """Map IRType to llvmlite type.

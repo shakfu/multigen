@@ -269,15 +269,7 @@ def test_generator():
 
         # Note: Try/except is now supported (exception handling implemented)
 
-        # Test with statement (should be unsupported)
-        python_code_with = """
-def test_with():
-    with open("file.txt") as f:
-        content = f.read()
-    return content
-"""
-        with pytest.raises(UnsupportedFeatureError):
-            self.converter.convert_code(python_code_with)
+        # Note: With statement is now supported (context managers implemented)
 
     def test_complete_program_generation(self):
         """Test complete program that would compile and run."""

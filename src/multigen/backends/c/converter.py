@@ -700,6 +700,8 @@ class MultiGenPythonToCConverter:
             return self._convert_try(stmt)
         elif isinstance(stmt, ast.Raise):
             return self._convert_raise(stmt)
+        elif isinstance(stmt, ast.With):
+            return self._convert_with(stmt)
         else:
             raise UnsupportedFeatureError(f"Unsupported statement type: {type(stmt).__name__}")
 
@@ -2231,6 +2233,44 @@ class MultiGenPythonToCConverter:
 
         # Fallback for other raise patterns
         return 'MGEN_RAISE(MGEN_ERROR_GENERIC, "Unknown exception");'
+
+    def _convert_with(self, stmt: ast.With) -> str:
+        """Convert Python with statement to C with explicit fopen/fclose.
+
+        Example:
+            with open("file.txt", "r") as f:
+                content = f.read()
+
+        Becomes:
+            FILE* f = fopen("file.txt", "r");
+            if (f != NULL) {
+                // body...
+                fclose(f);
+            }
+        """
+        item = stmt.items[0]
+        var_name = item.optional_vars.id if isinstance(item.optional_vars, ast.Name) else "f"
+        context_expr = item.context_expr
+
+        lines = []
+
+        if isinstance(context_expr, ast.Call) and isinstance(context_expr.func, ast.Name):
+            if context_expr.func.id == "open":
+                filename = self._convert_expression(context_expr.args[0])
+                mode = '"r"'
+                if len(context_expr.args) > 1:
+                    mode = self._convert_expression(context_expr.args[1])
+                lines.append(f"FILE* {var_name} = fopen({filename}, {mode});")
+                lines.append(f"if ({var_name} != NULL) {{")
+
+        for s in stmt.body:
+            converted = self._convert_statement(s)
+            lines.append(f"    {converted}")
+
+        lines.append(f"    fclose({var_name});")
+        lines.append("}")
+
+        return "\n".join(lines)
 
     def _convert_attribute(self, expr: ast.Attribute) -> str:
         """Convert attribute access."""

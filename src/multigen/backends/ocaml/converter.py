@@ -117,6 +117,8 @@ class MultiGenPythonToOCamlConverter:
             return self._convert_try_statement(node)
         elif isinstance(node, ast.Raise):
             return self._convert_raise_statement(node)
+        elif isinstance(node, ast.With):
+            return self._convert_with_statement(node)
         elif isinstance(node, ast.Pass):
             return "()"  # OCaml unit value for pass
         else:
@@ -321,6 +323,53 @@ class MultiGenPythonToOCamlConverter:
 
         # Fallback for unknown patterns
         return 'raise (Failure "Unknown exception")'
+
+    def _convert_with_statement(self, node: ast.With) -> str:
+        """Convert Python with statement to OCaml Fun.protect.
+
+        Example:
+            with open("file.txt", "r") as f:
+                content = f.read()
+
+        Becomes:
+            let f = open_in "file.txt" in
+            Fun.protect ~finally:(fun () -> close_in f) (fun () ->
+                let content = input_all f in
+                ...
+            )
+        """
+        item = node.items[0]
+        var_name = self._to_ocaml_var_name(item.optional_vars.id) if isinstance(item.optional_vars, ast.Name) else "f"
+        context_expr = item.context_expr
+
+        if isinstance(context_expr, ast.Call) and isinstance(context_expr.func, ast.Name):
+            if context_expr.func.id == "open":
+                filename = self._convert_expression(context_expr.args[0])
+                mode = "r"
+                if len(context_expr.args) > 1 and isinstance(context_expr.args[1], ast.Constant):
+                    mode_val = context_expr.args[1].value
+                    if isinstance(mode_val, str):
+                        mode = mode_val
+
+                if "w" in mode:
+                    open_func = "open_out"
+                    close_func = "close_out"
+                else:
+                    open_func = "open_in"
+                    close_func = "close_in"
+
+                body_lines = []
+                for s in node.body:
+                    converted = self._convert_statement(s)
+                    if isinstance(converted, list):
+                        body_lines.extend(converted)
+                    else:
+                        body_lines.append(converted)
+                body = "; ".join(body_lines) if body_lines else "()"
+
+                return f"let {var_name} = {open_func} {filename} in Fun.protect ~finally:(fun () -> {close_func} {var_name}) (fun () -> {body})"
+
+        return "(* Unsupported context manager *)"
 
     def _convert_function_def(self, node: ast.FunctionDef) -> list[str]:
         """Convert Python function definition to OCaml."""

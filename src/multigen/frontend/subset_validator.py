@@ -427,6 +427,21 @@ class StaticPythonSubsetValidator:
             },
         )
 
+        rules["context_managers"] = FeatureRule(
+            name="Context Managers",
+            tier=SubsetTier.TIER_2_STRUCTURED,
+            status=FeatureStatus.PARTIALLY_SUPPORTED,
+            description="Basic with statement for file I/O (single context manager)",
+            ast_nodes=[ast.With],
+            validator=self._validate_with_statement,
+            constraints=["Single context manager only", "File operations only", "Requires 'as' binding"],
+            c_mapping="RAII in C++, defer in Go, bracket in Haskell",
+            examples={
+                "valid": 'with open("file.txt", "r") as f:\n    content = f.read()',
+                "invalid": 'with open("a.txt") as f1, open("b.txt") as f2:\n    pass',
+            },
+        )
+
         return rules
 
     # Validator methods for specific features
@@ -683,6 +698,35 @@ class StaticPythonSubsetValidator:
             return True
 
         # ExceptHandler nodes are always valid if we get here
+        return True
+
+    def _validate_with_statement(self, node: ast.AST) -> bool:
+        """Validate with statement constraints.
+
+        Only basic with statements are supported. Rejects:
+        - Multiple context managers in a single with
+        - Context managers without 'as' variable binding
+        """
+        if isinstance(node, ast.With):
+            # Only allow single context manager
+            if len(node.items) > 1:
+                self.last_validation_error = (
+                    f"Multiple context managers in single 'with' not supported "
+                    f"at line {node.lineno if hasattr(node, 'lineno') else '?'}"
+                )
+                return False
+
+            # Require variable binding
+            item = node.items[0]
+            if item.optional_vars is None:
+                self.last_validation_error = (
+                    f"Context manager requires 'as' variable binding "
+                    f"at line {node.lineno if hasattr(node, 'lineno') else '?'}"
+                )
+                return False
+
+            return True
+
         return True
 
     def _determine_conversion_strategy(self, result: ValidationResult) -> str:

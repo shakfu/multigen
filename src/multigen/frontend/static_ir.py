@@ -612,6 +612,39 @@ class IRRaise(IRStatement):
         return visitor.visit_raise(self)
 
 
+class IRWith(IRStatement):
+    """IR representation of with statements (context managers)."""
+
+    def __init__(
+        self,
+        context_expr: "IRExpression",
+        var_name: str,
+        body: list["IRStatement"],
+        location: Optional[IRLocation] = None,
+    ):
+        super().__init__(location)
+        self.context_expr = context_expr  # The expression producing the context manager
+        self.var_name = var_name  # The 'as' variable name
+        self.body = body
+
+        self.add_child(context_expr)
+        for stmt in self.body:
+            self.add_child(stmt)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize with statement to dictionary representation."""
+        return {
+            "type": "with",
+            "context_expr": self.context_expr.to_dict(),
+            "var_name": self.var_name,
+            "body": [s.to_dict() for s in self.body],
+        }
+
+    def accept(self, visitor: "IRVisitor") -> Any:
+        """Accept a visitor for traversal (visitor pattern)."""
+        return visitor.visit_with(self)
+
+
 class IRIf(IRStatement):
     """IR representation of if statements."""
 
@@ -840,6 +873,11 @@ class IRVisitor(ABC):
     @abstractmethod
     def visit_raise(self, node: "IRRaise") -> Any:
         """Visit a raise statement node."""
+        pass
+
+    @abstractmethod
+    def visit_with(self, node: "IRWith") -> Any:
+        """Visit a with statement node."""
         pass
 
 

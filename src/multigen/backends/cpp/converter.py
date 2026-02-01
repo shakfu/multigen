@@ -872,6 +872,8 @@ class MultiGenPythonToCppConverter:
             return self._convert_try(stmt)
         elif isinstance(stmt, ast.Raise):
             return self._convert_raise(stmt)
+        elif isinstance(stmt, ast.With):
+            return self._convert_with(stmt)
         else:
             raise UnsupportedFeatureError(f"Unsupported statement type: {type(stmt).__name__}")
 
@@ -1012,6 +1014,52 @@ class MultiGenPythonToCppConverter:
 
         # Fallback for unknown patterns
         return '        throw std::runtime_error("Unknown exception");'
+
+    def _convert_with(self, stmt: ast.With) -> str:
+        """Convert Python with statement to C++ using RAII.
+
+        Example:
+            with open("file.txt", "r") as f:
+                content = f.read()
+
+        Becomes:
+            {
+                std::ifstream f("file.txt");
+                std::string content;
+                // body statements...
+            }  // File closed automatically via RAII
+        """
+        item = stmt.items[0]
+        context_expr = item.context_expr
+        var_name = item.optional_vars.id if isinstance(item.optional_vars, ast.Name) else "f"
+
+        lines = ["        {"]
+
+        # Handle open() call
+        if isinstance(context_expr, ast.Call) and isinstance(context_expr.func, ast.Name):
+            if context_expr.func.id == "open":
+                filename = self._convert_expression(context_expr.args[0])
+                mode = "r"
+                if len(context_expr.args) > 1:
+                    mode_arg = context_expr.args[1]
+                    if isinstance(mode_arg, ast.Constant) and isinstance(mode_arg.value, str):
+                        mode = mode_arg.value
+
+                if "w" in mode:
+                    lines.append(f"            std::ofstream {var_name}({filename});")
+                else:
+                    lines.append(f"            std::ifstream {var_name}({filename});")
+
+        # Convert body
+        for s in stmt.body:
+            converted = self._convert_statement(s)
+            if converted.strip():
+                for line in converted.split("\n"):
+                    if line.strip():
+                        lines.append(f"    {line}")
+
+        lines.append("        }")  # RAII: file closed when scope ends
+        return "\n".join(lines)
 
     def _convert_return(self, stmt: ast.Return) -> str:
         """Convert return statement.

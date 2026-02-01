@@ -473,6 +473,9 @@ main = printValue "Generated Haskell code executed successfully"'''
         elif isinstance(node, ast.Raise):
             return self._convert_raise_statement(node)
 
+        elif isinstance(node, ast.With):
+            return self._convert_with_statement(node)
+
         elif isinstance(node, ast.Pass):
             return "()"
 
@@ -602,6 +605,42 @@ main = printValue "Generated Haskell code executed successfully"'''
 
         # Fallback for other raise patterns
         return 'error "Unknown exception"'
+
+    def _convert_with_statement(self, node: ast.With) -> str:
+        r"""Convert Python with statement to Haskell bracket pattern.
+
+        Example:
+            with open("file.txt", "r") as f:
+                content = f.read()
+
+        Becomes:
+            bracket (openFile "file.txt" ReadMode) hClose $ \f -> do
+                content <- hGetContents f
+                ...
+        """
+        item = node.items[0]
+        var_name = self._to_haskell_var_name(item.optional_vars.id) if isinstance(item.optional_vars, ast.Name) else "f"
+        context_expr = item.context_expr
+
+        if isinstance(context_expr, ast.Call) and isinstance(context_expr.func, ast.Name):
+            if context_expr.func.id == "open":
+                filename = self._convert_expression(context_expr.args[0])
+                mode = "ReadMode"
+                if len(context_expr.args) > 1 and isinstance(context_expr.args[1], ast.Constant):
+                    mode_val = context_expr.args[1].value
+                    if isinstance(mode_val, str) and "w" in mode_val:
+                        mode = "WriteMode"
+
+                # Add import for System.IO if not already present
+                self.needed_imports.add("System.IO")
+                self.needed_imports.add("Control.Exception")
+
+                body_lines = [self._convert_statement(s) for s in node.body]
+                body = "\n        ".join(body_lines)
+
+                return f"bracket (openFile {filename} {mode}) hClose $ \\{var_name} -> do\n        {body}"
+
+        return "-- Unsupported context manager"
 
     def _convert_expression(self, node: ast.expr) -> str:
         """Convert Python expression to Haskell."""
