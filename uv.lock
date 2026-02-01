@@ -765,6 +765,7 @@ dev = [
     { name = "sphinx", version = "8.2.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "sphinx-rtd-theme" },
     { name = "twine" },
+    { name = "z3-solver" },
 ]
 extra = [
     { name = "z3-solver" },
@@ -797,6 +798,7 @@ dev = [
     { name = "sphinx", specifier = ">=7.0.0" },
     { name = "sphinx-rtd-theme", specifier = ">=2.0.0" },
     { name = "twine", specifier = ">=6.2.0" },
+    { name = "z3-solver", specifier = ">=4.15.3.0" },
 ]
 extra = [{ name = "z3-solver", specifier = ">=4.15.3.0" }]
 llvm = [{ name = "llvmlite", specifier = ">=0.43.0" }]

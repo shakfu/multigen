@@ -1,6 +1,6 @@
 [project]
 name = "multigen"
-version = "0.1.109"
+version = "0.1.113"
 authors = [
     { name = "Shakeeb Alireza", email = "shakfu@users.noreply.github.com" }
 ]
@@ -55,6 +55,7 @@ dev = [
     "pytest-review>=0.1.1",
     "twine>=6.2.0",
     "llvmlite>=0.43.0",
+    "z3-solver>=4.15.3.0",
 ]
 extra = [
     "z3-solver>=4.15.3.0",
