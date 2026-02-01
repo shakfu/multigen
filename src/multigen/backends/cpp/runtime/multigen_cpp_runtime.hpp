@@ -25,7 +25,7 @@
 namespace multigen {
 
 // ============================================================================
-// Exception Types
+// Exception Types (Internal)
 // ============================================================================
 
 class MultiGenError : public std::runtime_error {
@@ -41,6 +41,40 @@ public:
 class UnsupportedFeatureError : public MultiGenError {
 public:
     explicit UnsupportedFeatureError(const std::string& msg) : MultiGenError("Unsupported feature: " + msg) {}
+};
+
+// ============================================================================
+// Python-like Exception Types
+// ============================================================================
+
+class ValueError : public std::runtime_error {
+public:
+    explicit ValueError(const std::string& msg = "ValueError") : std::runtime_error(msg) {}
+};
+
+class TypeError : public std::runtime_error {
+public:
+    explicit TypeError(const std::string& msg = "TypeError") : std::runtime_error(msg) {}
+};
+
+class KeyError : public std::runtime_error {
+public:
+    explicit KeyError(const std::string& msg = "") : std::runtime_error("KeyError: " + msg) {}
+};
+
+class ZeroDivisionError : public std::runtime_error {
+public:
+    explicit ZeroDivisionError(const std::string& msg = "division by zero") : std::runtime_error(msg) {}
+};
+
+class IndexError : public std::out_of_range {
+public:
+    explicit IndexError(const std::string& msg = "list index out of range") : std::out_of_range(msg) {}
+};
+
+class RuntimeError : public std::runtime_error {
+public:
+    explicit RuntimeError(const std::string& msg = "RuntimeError") : std::runtime_error(msg) {}
 };
 
 // ============================================================================

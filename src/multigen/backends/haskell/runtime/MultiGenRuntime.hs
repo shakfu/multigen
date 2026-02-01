@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 {-|
 Module      : MultiGenRuntime
@@ -37,6 +38,14 @@ module MultiGenRuntime
     , Dict, Set
       -- * Dictionary Operations
     , items, values, keys
+      -- * Exception Types
+    , ValueError(..)
+    , TypeError(..)
+    , KeyError(..)
+    , ZeroDivisionError(..)
+    , IndexError(..)
+    , RuntimeError(..)
+    , tryCatch
     ) where
 
 import qualified Data.Char as Char
@@ -45,6 +54,38 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Map (Map)
 import Data.Set (Set)
+import Control.Exception (Exception, throw, catch, SomeException, fromException)
+import Data.Typeable (Typeable)
+
+-- | Python-like exception types
+
+-- | ValueError exception (Python's ValueError)
+data ValueError = ValueError String deriving (Show, Typeable)
+instance Exception ValueError
+
+-- | TypeError exception (Python's TypeError)
+data TypeError = TypeError String deriving (Show, Typeable)
+instance Exception TypeError
+
+-- | KeyError exception (Python's KeyError)
+data KeyError = KeyError String deriving (Show, Typeable)
+instance Exception KeyError
+
+-- | ZeroDivisionError exception (Python's ZeroDivisionError)
+data ZeroDivisionError = ZeroDivisionError String deriving (Show, Typeable)
+instance Exception ZeroDivisionError
+
+-- | IndexError exception (Python's IndexError)
+data IndexError = IndexError String deriving (Show, Typeable)
+instance Exception IndexError
+
+-- | RuntimeError exception (Python's RuntimeError)
+data RuntimeError = RuntimeError String deriving (Show, Typeable)
+instance Exception RuntimeError
+
+-- | Helper for try/catch pattern
+tryCatch :: IO a -> (SomeException -> IO a) -> IO a
+tryCatch = catch
 
 
 -- | Type synonym for Python-like dictionaries

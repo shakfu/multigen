@@ -414,10 +414,17 @@ class StaticPythonSubsetValidator:
 
         rules["exceptions"] = FeatureRule(
             name="Exception Handling",
-            tier=SubsetTier.TIER_4_UNSUPPORTED,
-            status=FeatureStatus.NOT_SUPPORTED,
-            description="Exception handling requires runtime stack unwinding",
+            tier=SubsetTier.TIER_2_STRUCTURED,
+            status=FeatureStatus.PARTIALLY_SUPPORTED,
+            description="Basic try/except with exception types (no else/finally)",
             ast_nodes=[ast.Try, ast.Raise, ast.ExceptHandler],
+            validator=self._validate_exception_handling,
+            constraints=["No else clause", "No finally clause", "No exception chaining"],
+            c_mapping="try/catch in C++, try/with in OCaml",
+            examples={
+                "valid": "try:\n    x = 1 / 0\nexcept ZeroDivisionError:\n    x = 0",
+                "invalid": "try:\n    x = 1\nexcept:\n    pass\nfinally:\n    cleanup()",
+            },
         )
 
         return rules
@@ -635,6 +642,47 @@ class StaticPythonSubsetValidator:
         if isinstance(node.func, ast.Name):
             forbidden_functions = {"eval", "exec", "compile", "__import__"}
             return node.func.id not in forbidden_functions
+        return True
+
+    def _validate_exception_handling(self, node: ast.AST) -> bool:
+        """Validate exception handling constraints.
+
+        Only basic try/except is supported. Rejects:
+        - else clause on try blocks
+        - finally clause on try blocks
+        - exception chaining (raise ... from ...)
+        """
+        if isinstance(node, ast.Try):
+            # Check for unsupported else clause
+            if node.orelse:
+                self.last_validation_error = (
+                    f"try/except 'else' clause is not supported "
+                    f"at line {node.lineno if hasattr(node, 'lineno') else '?'}"
+                )
+                return False
+
+            # Check for unsupported finally clause
+            if node.finalbody:
+                self.last_validation_error = (
+                    f"try/except 'finally' clause is not supported "
+                    f"at line {node.lineno if hasattr(node, 'lineno') else '?'}"
+                )
+                return False
+
+            return True
+
+        elif isinstance(node, ast.Raise):
+            # Check for exception chaining (raise ... from ...)
+            if node.cause is not None:
+                self.last_validation_error = (
+                    f"Exception chaining (raise ... from ...) is not supported "
+                    f"at line {node.lineno if hasattr(node, 'lineno') else '?'}"
+                )
+                return False
+
+            return True
+
+        # ExceptHandler nodes are always valid if we get here
         return True
 
     def _determine_conversion_strategy(self, result: ValidationResult) -> str:

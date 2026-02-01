@@ -2,6 +2,14 @@
 
 open Printf
 
+(* Python-like Exception Types *)
+exception Value_error of string
+exception Type_error of string
+exception Key_error of string
+exception Zero_division_error of string
+exception Index_error of string
+exception Runtime_error of string
+
 (* String operations module *)
 module StrOps = struct
   let upper s = String.uppercase_ascii s

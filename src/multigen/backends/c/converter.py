@@ -64,6 +64,16 @@ class MultiGenPythonToCConverter:
             "dict": "map_str_int",  # Default, will be specialized
             "set": "set_int",  # Default, will be specialized
         }
+        # Exception type mapping for try/except handling
+        self.exception_map = {
+            "Exception": "MGEN_ERROR_GENERIC",
+            "ValueError": "MGEN_ERROR_VALUE",
+            "TypeError": "MGEN_ERROR_TYPE",
+            "RuntimeError": "MGEN_ERROR_RUNTIME",
+            "IndexError": "MGEN_ERROR_INDEX",
+            "KeyError": "MGEN_ERROR_KEY",
+            "ZeroDivisionError": "MGEN_ERROR_VALUE",  # No specific zero division error in C
+        }
         self.container_system = CContainerSystem()
         self.current_function: str | None = None
         self.current_function_ast: ast.FunctionDef | None = None
@@ -686,6 +696,10 @@ class MultiGenPythonToCConverter:
             return self._convert_assert(stmt)
         elif isinstance(stmt, ast.Pass):
             return "/* pass */"
+        elif isinstance(stmt, ast.Try):
+            return self._convert_try(stmt)
+        elif isinstance(stmt, ast.Raise):
+            return self._convert_raise(stmt)
         else:
             raise UnsupportedFeatureError(f"Unsupported statement type: {type(stmt).__name__}")
 
@@ -2137,6 +2151,86 @@ class MultiGenPythonToCConverter:
                 return f"assert({test_expr});"
         else:
             return f"assert({test_expr});"
+
+    def _convert_try(self, stmt: ast.Try) -> str:
+        """Convert Python try/except to C using setjmp/longjmp macros.
+
+        Uses the MGEN_TRY/MGEN_CATCH/MGEN_END_TRY macros from the runtime.
+
+        Example:
+            try:
+                x = 1 // 0
+            except ZeroDivisionError:
+                return 0
+
+            Becomes:
+            MGEN_TRY {
+                x = 1 / 0;
+            } MGEN_CATCH(MGEN_ERROR_VALUE) {
+                return 0;
+            } MGEN_END_TRY;
+        """
+        lines: list[str] = []
+
+        # Start the try block
+        lines.append("MGEN_TRY {")
+
+        # Convert try body
+        for s in stmt.body:
+            body_line = self._convert_statement(s)
+            if body_line:
+                lines.append(f"    {body_line}")
+
+        # Convert exception handlers
+        for handler in stmt.handlers:
+            if handler.type is None:
+                # Bare except: - catch all
+                lines.append("} MGEN_CATCH_ALL {")
+            else:
+                # Specific exception type
+                exc_type = handler.type.id if isinstance(handler.type, ast.Name) else "Exception"
+                c_exc_type = self.exception_map.get(exc_type, "MGEN_ERROR_GENERIC")
+                lines.append(f"}} MGEN_CATCH({c_exc_type}) {{")
+
+            # If handler has a variable name, get the exception message
+            if handler.name:
+                lines.append(f"    const char* {handler.name} = mgen_current_exception_message();")
+                lines.append(f"    (void){handler.name}; // Suppress unused warning")
+
+            for s in handler.body:
+                body_line = self._convert_statement(s)
+                if body_line:
+                    lines.append(f"    {body_line}")
+
+        lines.append("} MGEN_END_TRY;")
+
+        return "\n".join(lines)
+
+    def _convert_raise(self, stmt: ast.Raise) -> str:
+        """Convert Python raise to C exception throw.
+
+        Example:
+            raise ValueError("message")  ->  MGEN_RAISE(MGEN_ERROR_VALUE, "message");
+            raise  (bare raise)          ->  mgen_rethrow();
+        """
+        if stmt.exc is None:
+            # Bare raise - re-raise current exception
+            return "mgen_rethrow();"
+
+        if isinstance(stmt.exc, ast.Call) and isinstance(stmt.exc.func, ast.Name):
+            exc_type = stmt.exc.func.id
+            c_exc_type = self.exception_map.get(exc_type, "MGEN_ERROR_GENERIC")
+
+            if stmt.exc.args:
+                # Exception with message
+                msg_expr = self._convert_expression(stmt.exc.args[0])
+                return f"MGEN_RAISE({c_exc_type}, {msg_expr});"
+            else:
+                # Exception without message
+                return f'MGEN_RAISE({c_exc_type}, "");\n'
+
+        # Fallback for other raise patterns
+        return 'MGEN_RAISE(MGEN_ERROR_GENERIC, "Unknown exception");'
 
     def _convert_attribute(self, expr: ast.Attribute) -> str:
         """Convert attribute access."""

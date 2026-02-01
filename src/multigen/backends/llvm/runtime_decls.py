@@ -4,7 +4,7 @@ This module generates LLVM IR struct definitions and extern function declaration
 that correspond to the C runtime library (vec_int, map_int_int, set_int, etc.).
 """
 
-from llvmlite import ir  # type: ignore[import-not-found]
+from llvmlite import ir  # type: ignore[import-untyped]
 
 
 class LLVMRuntimeDeclarations:

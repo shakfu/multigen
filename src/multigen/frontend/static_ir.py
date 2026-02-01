@@ -535,6 +535,83 @@ class IRExpressionStatement(IRStatement):
         return visitor.visit_expression_statement(self)
 
 
+@dataclass
+class IRExceptHandler:
+    """IR representation of an exception handler."""
+
+    exception_type: Optional[str]  # None = bare 'except:'
+    exception_name: Optional[str]  # Variable name for 'as e'
+    body: list["IRStatement"]
+    location: Optional[IRLocation] = None
+
+
+class IRTry(IRStatement):
+    """IR representation of try/except blocks."""
+
+    def __init__(
+        self,
+        body: list["IRStatement"],
+        handlers: list[IRExceptHandler],
+        location: Optional[IRLocation] = None,
+    ):
+        super().__init__(location)
+        self.body = body
+        self.handlers = handlers
+
+        for stmt in self.body:
+            self.add_child(stmt)
+        for handler in self.handlers:
+            for stmt in handler.body:
+                self.add_child(stmt)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize try statement to dictionary representation."""
+        return {
+            "type": "try",
+            "body": [s.to_dict() for s in self.body],
+            "handlers": [
+                {
+                    "exception_type": h.exception_type,
+                    "exception_name": h.exception_name,
+                    "body": [s.to_dict() for s in h.body],
+                }
+                for h in self.handlers
+            ],
+        }
+
+    def accept(self, visitor: "IRVisitor") -> Any:
+        """Accept a visitor for traversal (visitor pattern)."""
+        return visitor.visit_try(self)
+
+
+class IRRaise(IRStatement):
+    """IR representation of raise statements."""
+
+    def __init__(
+        self,
+        exception_type: Optional[str] = None,
+        exception_message: Optional["IRExpression"] = None,
+        location: Optional[IRLocation] = None,
+    ):
+        super().__init__(location)
+        self.exception_type = exception_type
+        self.exception_message = exception_message
+        if exception_message:
+            self.add_child(exception_message)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize raise statement to dictionary representation."""
+        return {
+            "type": "raise",
+            "exception_type": self.exception_type,
+            "exception_message": self.exception_message.to_dict() if self.exception_message else None,
+        }
+
+    def accept(self, visitor: "IRVisitor") -> Any:
+        """Accept a visitor for traversal (visitor pattern)."""
+        return visitor.visit_raise(self)
+
+
 class IRIf(IRStatement):
     """IR representation of if statements."""
 
@@ -755,6 +832,16 @@ class IRVisitor(ABC):
         """Visit a type declaration node."""
         pass
 
+    @abstractmethod
+    def visit_try(self, node: "IRTry") -> Any:
+        """Visit a try statement node."""
+        pass
+
+    @abstractmethod
+    def visit_raise(self, node: "IRRaise") -> Any:
+        """Visit a raise statement node."""
+        pass
+
 
 class IRBuilder:
     """Builder for constructing IR from Python AST."""
@@ -859,6 +946,10 @@ class IRBuilder:
             return self._build_while(node)
         elif isinstance(node, ast.For):
             return self._build_for(node)
+        elif isinstance(node, ast.Try):
+            return self._build_try(node)
+        elif isinstance(node, ast.Raise):
+            return self._build_raise(node)
 
         return None
 
@@ -1475,6 +1566,57 @@ class IRBuilder:
             return IRFor(idx_var, start, end, step, body, self._get_location(node))
 
         return None
+
+    def _build_try(self, node: ast.Try) -> IRTry:
+        """Build IR try statement from AST Try node."""
+        # Build try body
+        body_raw = [self._build_statement(s) for s in node.body]
+        body: list[IRStatement] = [s for s in body_raw if s is not None]
+
+        # Build exception handlers
+        handlers: list[IRExceptHandler] = []
+        for h in node.handlers:
+            # Get exception type name
+            exc_type: Optional[str] = None
+            if h.type is not None:
+                if isinstance(h.type, ast.Name):
+                    exc_type = h.type.id
+                elif isinstance(h.type, ast.Attribute):
+                    # Handle qualified names like exceptions.ValueError
+                    exc_type = h.type.attr
+
+            # Get exception variable name (if 'as e' is used)
+            exc_name: Optional[str] = h.name
+
+            # Build handler body
+            handler_body_raw = [self._build_statement(s) for s in h.body]
+            handler_body: list[IRStatement] = [s for s in handler_body_raw if s is not None]
+
+            handlers.append(IRExceptHandler(exc_type, exc_name, handler_body, self._get_location(h)))
+
+        return IRTry(body, handlers, self._get_location(node))
+
+    def _build_raise(self, node: ast.Raise) -> IRRaise:
+        """Build IR raise statement from AST Raise node."""
+        exc_type: Optional[str] = None
+        exc_msg: Optional[IRExpression] = None
+
+        if node.exc is not None:
+            if isinstance(node.exc, ast.Call):
+                # raise ValueError("message")
+                if isinstance(node.exc.func, ast.Name):
+                    exc_type = node.exc.func.id
+                elif isinstance(node.exc.func, ast.Attribute):
+                    exc_type = node.exc.func.attr
+
+                # Get the message argument if present
+                if node.exc.args:
+                    exc_msg = self._build_expression(node.exc.args[0])
+            elif isinstance(node.exc, ast.Name):
+                # raise ValueError (without parentheses - re-raise or type only)
+                exc_type = node.exc.id
+
+        return IRRaise(exc_type, exc_msg, self._get_location(node))
 
     def _extract_ir_type(self, annotation: ast.expr) -> IRType:
         """Extract IR type from AST annotation."""

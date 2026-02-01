@@ -9,6 +9,134 @@ import (
 	"strings"
 )
 
+// Python-like Exception Types
+// These are used with panic/recover for exception handling
+
+// MultiGenException is the interface for all MultiGen exceptions
+type MultiGenException interface {
+	error
+	ExceptionType() string
+}
+
+// ValueError represents a Python ValueError
+type ValueError struct {
+	Message string
+}
+
+func (e ValueError) Error() string {
+	return fmt.Sprintf("ValueError: %s", e.Message)
+}
+
+func (e ValueError) ExceptionType() string {
+	return "ValueError"
+}
+
+// NewValueError creates a new ValueError
+func NewValueError(msg string) ValueError {
+	return ValueError{Message: msg}
+}
+
+// TypeError represents a Python TypeError
+type TypeError struct {
+	Message string
+}
+
+func (e TypeError) Error() string {
+	return fmt.Sprintf("TypeError: %s", e.Message)
+}
+
+func (e TypeError) ExceptionType() string {
+	return "TypeError"
+}
+
+// NewTypeError creates a new TypeError
+func NewTypeError(msg string) TypeError {
+	return TypeError{Message: msg}
+}
+
+// KeyError represents a Python KeyError
+type KeyError struct {
+	Message string
+}
+
+func (e KeyError) Error() string {
+	return fmt.Sprintf("KeyError: %s", e.Message)
+}
+
+func (e KeyError) ExceptionType() string {
+	return "KeyError"
+}
+
+// NewKeyError creates a new KeyError
+func NewKeyError(msg string) KeyError {
+	return KeyError{Message: msg}
+}
+
+// ZeroDivisionError represents a Python ZeroDivisionError
+type ZeroDivisionError struct {
+	Message string
+}
+
+func (e ZeroDivisionError) Error() string {
+	if e.Message == "" {
+		return "ZeroDivisionError: division by zero"
+	}
+	return fmt.Sprintf("ZeroDivisionError: %s", e.Message)
+}
+
+func (e ZeroDivisionError) ExceptionType() string {
+	return "ZeroDivisionError"
+}
+
+// NewZeroDivisionError creates a new ZeroDivisionError
+func NewZeroDivisionError(msg string) ZeroDivisionError {
+	return ZeroDivisionError{Message: msg}
+}
+
+// IndexError represents a Python IndexError
+type IndexError struct {
+	Message string
+}
+
+func (e IndexError) Error() string {
+	return fmt.Sprintf("IndexError: %s", e.Message)
+}
+
+func (e IndexError) ExceptionType() string {
+	return "IndexError"
+}
+
+// NewIndexError creates a new IndexError
+func NewIndexError(msg string) IndexError {
+	return IndexError{Message: msg}
+}
+
+// RuntimeError represents a Python RuntimeError
+type RuntimeError struct {
+	Message string
+}
+
+func (e RuntimeError) Error() string {
+	return fmt.Sprintf("RuntimeError: %s", e.Message)
+}
+
+func (e RuntimeError) ExceptionType() string {
+	return "RuntimeError"
+}
+
+// NewRuntimeError creates a new RuntimeError
+func NewRuntimeError(msg string) RuntimeError {
+	return RuntimeError{Message: msg}
+}
+
+// IsExceptionType checks if a recovered panic is of a specific exception type
+func IsExceptionType(r interface{}, typeName string) bool {
+	if exc, ok := r.(MultiGenException); ok {
+		return exc.ExceptionType() == typeName
+	}
+	return false
+}
+
 // Comparable is a constraint for comparable types
 type Comparable interface {
 	comparable

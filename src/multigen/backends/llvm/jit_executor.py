@@ -8,7 +8,7 @@ from ctypes import CFUNCTYPE, c_int64
 from pathlib import Path
 from typing import Any, Optional
 
-import llvmlite.binding as llvm  # type: ignore[import-not-found]
+import llvmlite.binding as llvm  # type: ignore[import-untyped]
 
 
 class LLVMJITExecutor:

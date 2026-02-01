@@ -7,7 +7,7 @@ and generate corresponding LLVM IR instructions.
 import ast
 from typing import Optional, Union
 
-from llvmlite import ir  # type: ignore[import-not-found]
+from llvmlite import ir  # type: ignore[import-untyped]
 
 from ...frontend.static_ir import (
     IRAssignment,
@@ -24,7 +24,9 @@ from ...frontend.static_ir import (
     IRIf,
     IRLiteral,
     IRModule,
+    IRRaise,
     IRReturn,
+    IRTry,
     IRType,
     IRTypeCast,
     IRTypeDeclaration,
@@ -2213,6 +2215,47 @@ class IRToLLVMConverter(IRVisitor):
         # Type declarations will be implemented when needed for complex types
         # For now, we focus on basic types
         pass
+
+    def visit_try(self, node: IRTry) -> None:
+        """Visit a try/except statement node.
+
+        Note: LLVM exception handling is complex and requires proper personality
+        functions and landing pads. For now, we just execute the try body
+        without exception handling support.
+
+        Args:
+            node: IR try statement to convert
+        """
+        # LLVM exception handling requires EH personality functions and
+        # landing pads which are complex to implement. For now, just
+        # execute the try body directly.
+        for stmt in node.body:
+            stmt.accept(self)
+        # TODO: Implement proper LLVM exception handling with invoke/landingpad
+
+    def visit_raise(self, node: IRRaise) -> None:
+        """Visit a raise statement node.
+
+        Note: LLVM exception raising requires runtime support for unwinding.
+        For now, we simply terminate the program.
+
+        Args:
+            node: IR raise statement to convert
+        """
+        # LLVM exception raising requires runtime unwinding support.
+        # For now, call abort() to terminate the program.
+        if self.builder is None:
+            raise RuntimeError("Builder not initialized - must be inside a function")
+
+        # Call the abort() function from C runtime
+        abort_func = self.module.globals.get("abort")
+        if abort_func is None:
+            abort_type = ir.FunctionType(ir.VoidType(), [])
+            abort_func = ir.Function(self.module, abort_type, name="abort")
+
+        self.builder.call(abort_func, [])
+        self.builder.unreachable()
+        # TODO: Implement proper LLVM exception throwing with resume instruction
 
     def _convert_type(self, ir_type: IRType) -> ir.Type:
         """Map IRType to llvmlite type.

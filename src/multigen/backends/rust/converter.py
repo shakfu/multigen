@@ -29,6 +29,16 @@ class MultiGenPythonToRustConverter:
             "void": "()",
             "None": "()",
         }
+        # Exception type mapping for try/except handling
+        self.exception_map = {
+            "Exception": "std::any::Any",
+            "ValueError": "ValueError",
+            "TypeError": "TypeError",
+            "RuntimeError": "RuntimeError",
+            "IndexError": "IndexError",
+            "KeyError": "KeyError",
+            "ZeroDivisionError": "ZeroDivisionError",
+        }
         self.struct_info: dict[str, dict[str, Any]] = {}  # Track struct definitions for classes
         self.current_function: Optional[str] = None  # Track current function context
         self.current_function_node: Optional[ast.FunctionDef] = None  # Track current function AST node
@@ -748,7 +758,9 @@ class MultiGenPythonToRustConverter:
         elif isinstance(stmt, ast.Assert):
             return self._convert_assert(stmt)
         elif isinstance(stmt, ast.Try):
-            raise UnsupportedFeatureError("Exception handling (try/except) is not supported in Rust backend")
+            return self._convert_try(stmt)
+        elif isinstance(stmt, ast.Raise):
+            return self._convert_raise(stmt)
         elif isinstance(stmt, ast.With):
             raise UnsupportedFeatureError("Context managers (with statement) are not supported in Rust backend")
         else:
@@ -781,6 +793,126 @@ class MultiGenPythonToRustConverter:
                 return f"    assert!({test_expr});"
         else:
             return f"    assert!({test_expr});"
+
+    def _convert_try(self, stmt: ast.Try) -> str:
+        """Convert Python try/except to Rust std::panic::catch_unwind.
+
+        Python's try/except maps to Rust's catch_unwind for panic-based error handling.
+
+        Example:
+            try:
+                x = 1 // 0
+            except ZeroDivisionError:
+                return 0
+
+            Becomes:
+            match std::panic::catch_unwind(|| {
+                ...
+            }) {
+                Ok(v) => v,
+                Err(e) => {
+                    if e.downcast_ref::<ZeroDivisionError>().is_some() {
+                        return 0;
+                    }
+                    std::panic::resume_unwind(e);
+                }
+            }
+        """
+        lines: list[str] = []
+
+        # Start the catch_unwind block
+        lines.append("    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {")
+
+        # Convert try body
+        for s in stmt.body:
+            body_line = self._convert_statement(s)
+            if body_line:
+                # Add extra indentation for nested block
+                for line in body_line.split("\n"):
+                    lines.append(f"    {line}")
+
+        lines.append("    })) {")
+        lines.append("        Ok(v) => v,")
+        lines.append("        Err(e) => {")
+
+        # Convert exception handlers
+        first_handler = True
+        for handler in stmt.handlers:
+            if handler.type is None:
+                # Bare except: - catch all
+                if first_handler:
+                    lines.append("            // Catch all exceptions")
+                else:
+                    lines.append("            } else {")
+                    lines.append("                // Catch all exceptions")
+                for s in handler.body:
+                    body_line = self._convert_statement(s)
+                    if body_line:
+                        for line in body_line.split("\n"):
+                            lines.append(f"            {line}")
+                first_handler = False
+            else:
+                # Specific exception type
+                exc_type = handler.type.id if isinstance(handler.type, ast.Name) else "std::any::Any"
+                rust_exc_type = self.exception_map.get(exc_type, exc_type)
+
+                if first_handler:
+                    lines.append(f"            if e.downcast_ref::<{rust_exc_type}>().is_some() {{")
+                else:
+                    lines.append(f"            }} else if e.downcast_ref::<{rust_exc_type}>().is_some() {{")
+
+                # If handler has a variable name, extract the exception
+                if handler.name:
+                    lines.append(f"                let {handler.name} = e.downcast_ref::<{rust_exc_type}>().unwrap();")
+
+                for s in handler.body:
+                    body_line = self._convert_statement(s)
+                    if body_line:
+                        for line in body_line.split("\n"):
+                            lines.append(f"            {line}")
+                first_handler = False
+
+        # Close handler blocks and add re-panic for unhandled exceptions
+        if stmt.handlers and stmt.handlers[-1].type is not None:
+            # If last handler wasn't a bare except, add re-panic
+            lines.append("            } else {")
+            lines.append("                std::panic::resume_unwind(e);")
+            lines.append("            }")
+        elif not first_handler:
+            # Close the else block from bare except
+            pass
+
+        lines.append("        }")
+        lines.append("    }")
+
+        return "\n".join(lines)
+
+    def _convert_raise(self, stmt: ast.Raise) -> str:
+        """Convert Python raise to Rust panic!.
+
+        Example:
+            raise ValueError("message")  ->  panic!(ValueError::new("message"));
+            raise  (bare raise)          ->  panic!();  // re-raise current exception
+        """
+        if stmt.exc is None:
+            # Bare raise - re-raise current exception
+            # In Rust, this would need to be inside a catch block
+            return "    panic!();"
+
+        if isinstance(stmt.exc, ast.Call) and isinstance(stmt.exc.func, ast.Name):
+            exc_type = stmt.exc.func.id
+            rust_exc_type = self.exception_map.get(exc_type, exc_type)
+
+            if stmt.exc.args:
+                # Exception with message
+                msg_expr = self._convert_expression(stmt.exc.args[0])
+                return f"    panic!({rust_exc_type}::new({msg_expr}));"
+            else:
+                # Exception without message
+                return f'    panic!({rust_exc_type}::new(""));\n'
+
+        # Fallback for other raise patterns
+        return '    panic!("Unknown exception");'
 
     def _convert_return(self, stmt: ast.Return) -> str:
         """Convert return statement."""

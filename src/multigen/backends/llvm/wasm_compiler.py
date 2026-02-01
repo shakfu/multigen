@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Optional
 
 try:
-    from llvmlite import binding as llvm  # type: ignore[import-not-found]
+    from llvmlite import binding as llvm  # type: ignore[import-untyped]
 
     LLVMLITE_AVAILABLE = True
 except ImportError:

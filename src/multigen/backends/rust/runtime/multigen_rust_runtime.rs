@@ -4,6 +4,143 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::hash::Hash;
+use std::any::Any;
+
+// Python-like Exception Types
+// These are used with panic! for exception handling
+
+/// Base trait for MultiGen exceptions
+pub trait MultiGenException: std::fmt::Debug + std::fmt::Display {}
+
+#[derive(Debug, Clone)]
+pub struct ValueError {
+    pub message: String,
+}
+
+impl ValueError {
+    pub fn new(msg: &str) -> Self {
+        ValueError { message: msg.to_string() }
+    }
+}
+
+impl std::fmt::Display for ValueError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ValueError: {}", self.message)
+    }
+}
+
+impl MultiGenException for ValueError {}
+
+#[derive(Debug, Clone)]
+pub struct TypeError {
+    pub message: String,
+}
+
+impl TypeError {
+    pub fn new(msg: &str) -> Self {
+        TypeError { message: msg.to_string() }
+    }
+}
+
+impl std::fmt::Display for TypeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "TypeError: {}", self.message)
+    }
+}
+
+impl MultiGenException for TypeError {}
+
+#[derive(Debug, Clone)]
+pub struct KeyError {
+    pub message: String,
+}
+
+impl KeyError {
+    pub fn new(msg: &str) -> Self {
+        KeyError { message: msg.to_string() }
+    }
+}
+
+impl std::fmt::Display for KeyError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "KeyError: {}", self.message)
+    }
+}
+
+impl MultiGenException for KeyError {}
+
+#[derive(Debug, Clone)]
+pub struct ZeroDivisionError {
+    pub message: String,
+}
+
+impl ZeroDivisionError {
+    pub fn new(msg: &str) -> Self {
+        ZeroDivisionError { message: msg.to_string() }
+    }
+}
+
+impl std::fmt::Display for ZeroDivisionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ZeroDivisionError: {}", self.message)
+    }
+}
+
+impl MultiGenException for ZeroDivisionError {}
+
+#[derive(Debug, Clone)]
+pub struct IndexError {
+    pub message: String,
+}
+
+impl IndexError {
+    pub fn new(msg: &str) -> Self {
+        IndexError { message: msg.to_string() }
+    }
+}
+
+impl std::fmt::Display for IndexError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "IndexError: {}", self.message)
+    }
+}
+
+impl MultiGenException for IndexError {}
+
+#[derive(Debug, Clone)]
+pub struct RuntimeError {
+    pub message: String,
+}
+
+impl RuntimeError {
+    pub fn new(msg: &str) -> Self {
+        RuntimeError { message: msg.to_string() }
+    }
+}
+
+impl std::fmt::Display for RuntimeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "RuntimeError: {}", self.message)
+    }
+}
+
+impl MultiGenException for RuntimeError {}
+
+/// Helper function to check if a panic matches a specific exception type
+pub fn panic_is_exception<T: 'static>(err: &Box<dyn Any + Send>) -> bool {
+    err.downcast_ref::<T>().is_some()
+}
+
+/// Helper function to extract exception message from panic
+pub fn get_panic_message(err: &Box<dyn Any + Send>) -> String {
+    if let Some(s) = err.downcast_ref::<String>() {
+        s.clone()
+    } else if let Some(s) = err.downcast_ref::<&str>() {
+        s.to_string()
+    } else {
+        "Unknown error".to_string()
+    }
+}
 
 // String operations using Rust standard library
 pub struct StrOps;

@@ -28,6 +28,16 @@ class MultiGenPythonToGoConverter:
             "void": "",
             "None": "",
         }
+        # Exception type mapping for try/except handling
+        self.exception_map = {
+            "Exception": "error",
+            "ValueError": "multigen.ValueError",
+            "TypeError": "multigen.TypeError",
+            "RuntimeError": "multigen.RuntimeError",
+            "IndexError": "multigen.IndexError",
+            "KeyError": "multigen.KeyError",
+            "ZeroDivisionError": "multigen.ZeroDivisionError",
+        }
         self.struct_info: dict[str, dict[str, Any]] = {}  # Track struct definitions for classes
         self.current_function: Optional[str] = None  # Track current function context
         self.declared_vars: set[str] = set()  # Track declared variables in current function
@@ -1004,6 +1014,10 @@ class MultiGenPythonToGoConverter:
             return "    // pass"
         elif isinstance(stmt, ast.Assert):
             return self._convert_assert(stmt)
+        elif isinstance(stmt, ast.Try):
+            return self._convert_try(stmt)
+        elif isinstance(stmt, ast.Raise):
+            return self._convert_raise(stmt)
         else:
             raise UnsupportedFeatureError(f"Unsupported statement type: {type(stmt).__name__}")
 
@@ -1034,6 +1048,129 @@ class MultiGenPythonToGoConverter:
                 return f'    if !({test_expr}) {{ panic("assertion failed") }}'
         else:
             return f'    if !({test_expr}) {{ panic("assertion failed") }}'
+
+    def _convert_try(self, stmt: ast.Try) -> str:
+        """Convert Python try/except to Go defer/recover pattern.
+
+        Python's try/except maps to Go's defer/recover for panic-based error handling.
+
+        Example:
+            try:
+                x = 1 // 0
+            except ZeroDivisionError:
+                return 0
+
+            Becomes:
+            func() int {
+                defer func() {
+                    if r := recover(); r != nil {
+                        if _, ok := r.(multigen.ZeroDivisionError); ok {
+                            return 0
+                        }
+                        panic(r)
+                    }
+                }()
+                // try body
+            }()
+        """
+        lines: list[str] = []
+
+        # Start the anonymous function with defer/recover
+        lines.append("    func() {")
+        lines.append("        defer func() {")
+        lines.append("            if r := recover(); r != nil {")
+
+        # Convert exception handlers
+        first_handler = True
+        for handler in stmt.handlers:
+            if handler.type is None:
+                # Bare except: - catch all
+                if first_handler:
+                    lines.append("                // Catch all exceptions")
+                else:
+                    lines.append("                } else {")
+                    lines.append("                    // Catch all exceptions")
+                for s in handler.body:
+                    body_line = self._convert_statement(s)
+                    if body_line:
+                        for line in body_line.split("\n"):
+                            lines.append(f"            {line}")
+                first_handler = False
+            else:
+                # Specific exception type
+                exc_type = handler.type.id if isinstance(handler.type, ast.Name) else "error"
+                go_exc_type = self.exception_map.get(exc_type, exc_type)
+
+                if first_handler:
+                    lines.append(f"                if _, ok := r.({go_exc_type}); ok {{")
+                else:
+                    lines.append(f"                }} else if _, ok := r.({go_exc_type}); ok {{")
+
+                # If handler has a variable name, extract the exception
+                if handler.name:
+                    lines.append(f"                    {handler.name} := r.({go_exc_type})")
+                    # Suppress unused variable warning
+                    lines.append(f"                    _ = {handler.name}")
+
+                for s in handler.body:
+                    body_line = self._convert_statement(s)
+                    if body_line:
+                        for line in body_line.split("\n"):
+                            lines.append(f"                {line}")
+                first_handler = False
+
+        # Close handler blocks and add re-panic for unhandled exceptions
+        if stmt.handlers and stmt.handlers[-1].type is not None:
+            # If last handler wasn't a bare except, add re-panic
+            lines.append("                } else {")
+            lines.append("                    panic(r)")
+            lines.append("                }")
+        elif not first_handler:
+            # Close the else block from bare except
+            pass
+
+        lines.append("            }")
+        lines.append("        }()")
+
+        # Convert try body
+        for s in stmt.body:
+            body_line = self._convert_statement(s)
+            if body_line:
+                for line in body_line.split("\n"):
+                    lines.append(f"    {line}")
+
+        lines.append("    }()")
+
+        return "\n".join(lines)
+
+    def _convert_raise(self, stmt: ast.Raise) -> str:
+        """Convert Python raise to Go panic.
+
+        Example:
+            raise ValueError("message")  ->  panic(multigen.NewValueError("message"))
+            raise  (bare raise)          ->  panic(r)  // re-raise current exception
+        """
+        if stmt.exc is None:
+            # Bare raise - re-raise current exception
+            return "    panic(r)"
+
+        if isinstance(stmt.exc, ast.Call) and isinstance(stmt.exc.func, ast.Name):
+            exc_type = stmt.exc.func.id
+            go_exc_type = self.exception_map.get(exc_type, exc_type)
+
+            # Extract simple type name for constructor (e.g., multigen.ValueError -> ValueError)
+            simple_type = go_exc_type.split(".")[-1] if "." in go_exc_type else go_exc_type
+
+            if stmt.exc.args:
+                # Exception with message
+                msg_expr = self._convert_expression(stmt.exc.args[0])
+                return f"    panic(multigen.New{simple_type}({msg_expr}))"
+            else:
+                # Exception without message
+                return f'    panic(multigen.New{simple_type}(""))'
+
+        # Fallback for other raise patterns
+        return '    panic("Unknown exception")'
 
     def _convert_return(self, stmt: ast.Return) -> str:
         """Convert return statement."""

@@ -121,3 +121,79 @@ const char* multigen_error_name(multigen_error_t code) {
             return "UnknownError";
     }
 }
+
+// Exception handling implementation using setjmp/longjmp
+
+// Global exception stack
+mgen_exception_context_t mgen_exception_stack[MGEN_MAX_TRY_DEPTH];
+int mgen_exception_depth = -1;
+
+void mgen_exception_init(void) {
+    mgen_exception_depth = -1;
+    for (int i = 0; i < MGEN_MAX_TRY_DEPTH; i++) {
+        mgen_exception_stack[i].active = 0;
+        mgen_exception_stack[i].exception_type = MGEN_OK;
+        mgen_exception_stack[i].exception_message[0] = '\0';
+    }
+}
+
+int mgen_try_push(void) {
+    if (mgen_exception_depth >= MGEN_MAX_TRY_DEPTH - 1) {
+        fprintf(stderr, "MultiGen: Maximum try/catch nesting depth exceeded\n");
+        return -1;
+    }
+    mgen_exception_depth++;
+    mgen_exception_stack[mgen_exception_depth].active = 1;
+    mgen_exception_stack[mgen_exception_depth].exception_type = MGEN_OK;
+    mgen_exception_stack[mgen_exception_depth].exception_message[0] = '\0';
+    return mgen_exception_depth;
+}
+
+void mgen_try_pop(void) {
+    if (mgen_exception_depth >= 0) {
+        mgen_exception_stack[mgen_exception_depth].active = 0;
+        mgen_exception_depth--;
+    }
+}
+
+void mgen_throw(multigen_error_t type, const char* message) {
+    if (mgen_exception_depth >= 0 && mgen_exception_stack[mgen_exception_depth].active) {
+        mgen_exception_stack[mgen_exception_depth].exception_type = type;
+        if (message) {
+            strncpy(mgen_exception_stack[mgen_exception_depth].exception_message,
+                    message,
+                    sizeof(mgen_exception_stack[mgen_exception_depth].exception_message) - 1);
+            mgen_exception_stack[mgen_exception_depth].exception_message[
+                sizeof(mgen_exception_stack[mgen_exception_depth].exception_message) - 1] = '\0';
+        }
+        longjmp(mgen_exception_stack[mgen_exception_depth].env, 1);
+    } else {
+        // No try block active, print error and abort
+        fprintf(stderr, "Unhandled exception: %s: %s\n",
+                multigen_error_name(type), message ? message : "");
+        abort();
+    }
+}
+
+multigen_error_t mgen_current_exception_type(void) {
+    if (mgen_exception_depth >= 0) {
+        return mgen_exception_stack[mgen_exception_depth].exception_type;
+    }
+    return MGEN_OK;
+}
+
+const char* mgen_current_exception_message(void) {
+    if (mgen_exception_depth >= 0) {
+        return mgen_exception_stack[mgen_exception_depth].exception_message;
+    }
+    return "";
+}
+
+void mgen_rethrow(void) {
+    if (mgen_exception_depth >= 0) {
+        multigen_error_t type = mgen_exception_stack[mgen_exception_depth].exception_type;
+        const char* msg = mgen_exception_stack[mgen_exception_depth].exception_message;
+        mgen_try_pop();
+        mgen_throw(type, msg);
+    }
+}

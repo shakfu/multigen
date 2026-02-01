@@ -34,6 +34,16 @@ class MultiGenPythonToHaskellConverter:
             "None": "()",
             "NoneType": "()",
         }
+        # Exception type mapping for try/except handling
+        self.exception_map = {
+            "Exception": "SomeException",
+            "ValueError": "ValueError",
+            "TypeError": "TypeError",
+            "RuntimeError": "RuntimeError",
+            "IndexError": "IndexError",
+            "KeyError": "KeyError",
+            "ZeroDivisionError": "ZeroDivisionError",
+        }
         self.data_types: dict[str, Any] = {}  # Track data type definitions for classes
         self.current_function: Optional[str] = None  # Track current function context
         self.declared_vars: set[str] = set()  # Track declared variables in current function
@@ -457,6 +467,15 @@ main = printValue "Generated Haskell code executed successfully"'''
         elif isinstance(node, ast.Assert):
             return self._convert_assert_statement(node)
 
+        elif isinstance(node, ast.Try):
+            return self._convert_try_statement(node)
+
+        elif isinstance(node, ast.Raise):
+            return self._convert_raise_statement(node)
+
+        elif isinstance(node, ast.Pass):
+            return "()"
+
         else:
             raise UnsupportedFeatureError(f"Unsupported statement type: {type(node).__name__}")
 
@@ -492,6 +511,97 @@ main = printValue "Generated Haskell code executed successfully"'''
                 return f'if not ({test_expr}) then error "assertion failed" else {success_value}'
         else:
             return f'if not ({test_expr}) then error "assertion failed" else {success_value}'
+
+    def _convert_try_statement(self, node: ast.Try) -> str:
+        r"""Convert Python try/except to Haskell catch pattern.
+
+        Python's try/except maps to Haskell's catch from Control.Exception.
+
+        Example:
+            try:
+                x = 1 // 0
+            except ZeroDivisionError:
+                return 0
+
+            Becomes:
+            catch (do
+                -- try body
+            ) (\e -> case e of
+                ZeroDivisionError _ -> return 0
+                _ -> throw e
+            )
+        """
+        lines: list[str] = []
+
+        # Start the catch expression
+        lines.append("catch (do")
+
+        # Convert try body
+        for stmt in node.body:
+            body_line = self._convert_statement(stmt)
+            if body_line:
+                lines.append(f"    {body_line}")
+
+        lines.append(") (\\e -> case (fromException e) of")
+
+        # Convert exception handlers
+        for handler in node.handlers:
+            if handler.type is None:
+                # Bare except: - catch all
+                lines.append("    Just _ -> do")
+                for stmt in handler.body:
+                    body_line = self._convert_statement(stmt)
+                    if body_line:
+                        lines.append(f"        {body_line}")
+            else:
+                # Specific exception type
+                exc_type = handler.type.id if isinstance(handler.type, ast.Name) else "SomeException"
+                haskell_exc_type = self.exception_map.get(exc_type, exc_type)
+
+                if handler.name:
+                    # Exception with variable name
+                    lines.append(f"    Just ({haskell_exc_type} {handler.name}) -> do")
+                else:
+                    lines.append(f"    Just ({haskell_exc_type} _) -> do")
+
+                for stmt in handler.body:
+                    body_line = self._convert_statement(stmt)
+                    if body_line:
+                        lines.append(f"        {body_line}")
+
+        # Add re-throw for unhandled exceptions
+        if node.handlers and node.handlers[-1].type is not None:
+            lines.append("    _ -> throw e")
+
+        lines.append(")")
+
+        return "\n".join(lines)
+
+    def _convert_raise_statement(self, node: ast.Raise) -> str:
+        """Convert Python raise to Haskell throw.
+
+        Example:
+            raise ValueError("message")  ->  throw (ValueError "message")
+            raise  (bare raise)          ->  throw e  -- re-raise current exception
+        """
+        if node.exc is None:
+            # Bare raise - re-raise current exception
+            return "throw e"
+
+        if isinstance(node.exc, ast.Call) and isinstance(node.exc.func, ast.Name):
+            exc_type = node.exc.func.id
+            haskell_exc_type = self.exception_map.get(exc_type, exc_type)
+
+            if node.exc.args:
+                # Exception with message
+                msg_expr = self._convert_expression(node.exc.args[0])
+                return f"throw ({haskell_exc_type} {msg_expr})"
+            else:
+                # Exception without message
+                return f'throw ({haskell_exc_type} "")'
+
+        # Fallback for other raise patterns
+        return 'error "Unknown exception"'
 
     def _convert_expression(self, node: ast.expr) -> str:
         """Convert Python expression to Haskell."""

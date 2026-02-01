@@ -267,17 +267,7 @@ def test_generator():
         with pytest.raises(UnsupportedFeatureError):
             self.converter.convert_code(python_code_generator)
 
-        # Test try/except (should be unsupported)
-        python_code_exception = """
-def test_exception():
-    try:
-        x = 1 / 0
-    except ZeroDivisionError:
-        x = 0
-    return x
-"""
-        with pytest.raises(UnsupportedFeatureError):
-            self.converter.convert_code(python_code_exception)
+        # Note: Try/except is now supported (exception handling implemented)
 
         # Test with statement (should be unsupported)
         python_code_with = """

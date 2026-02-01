@@ -113,6 +113,12 @@ class MultiGenPythonToOCamlConverter:
             return "(* Import statement ignored *)"
         elif isinstance(node, ast.Assert):
             return self._convert_assert_statement(node)
+        elif isinstance(node, ast.Try):
+            return self._convert_try_statement(node)
+        elif isinstance(node, ast.Raise):
+            return self._convert_raise_statement(node)
+        elif isinstance(node, ast.Pass):
+            return "()"  # OCaml unit value for pass
         else:
             raise UnsupportedFeatureError(f"Unsupported statement: {type(node).__name__}")
 
@@ -144,6 +150,177 @@ class MultiGenPythonToOCamlConverter:
                 return f"assert ({test_expr})"
         else:
             return f"assert ({test_expr})"
+
+    # Exception type mapping from Python to OCaml
+    EXCEPTION_MAPPING = {
+        "Exception": "_",  # Catch-all pattern
+        "ValueError": "Value_error",
+        "TypeError": "Type_error",
+        "RuntimeError": "Runtime_error",
+        "IndexError": "Index_error",
+        "KeyError": "Key_error",
+        "ZeroDivisionError": "Zero_division_error",
+    }
+
+    def _convert_try_statement(self, node: ast.Try) -> str:
+        """Convert Python try/except to OCaml try/with.
+
+        Example:
+            try:
+                x = 1 / 0
+            except ZeroDivisionError as e:
+                print("Error")
+
+        Becomes:
+            try
+              let x = 1 / 0 in
+              ()
+            with
+            | Zero_division_error e ->
+              print_value "Error"
+        """
+        lines = ["try"]
+
+        # Convert try body
+        body_lines = []
+        for s in node.body:
+            converted = self._convert_statement(s)
+            if converted:
+                if isinstance(converted, list):
+                    body_lines.extend(converted)
+                else:
+                    body_lines.append(converted)
+
+        # Build the try body with proper sequencing
+        if len(body_lines) == 0:
+            lines.append("  ()")
+        elif len(body_lines) == 1:
+            line = body_lines[0]
+            if line.rstrip().endswith(" in"):
+                lines.append(f"  {line}")
+                lines.append("  ()")
+            else:
+                lines.append(f"  {line}")
+        else:
+            lines.append("  begin")
+            for i, line in enumerate(body_lines):
+                if i < len(body_lines) - 1:
+                    if not line.rstrip().endswith(" in"):
+                        lines.append(f"    {line};")
+                    else:
+                        lines.append(f"    {line}")
+                else:
+                    if line.rstrip().endswith(" in"):
+                        lines.append(f"    {line}")
+                        lines.append("    ()")
+                    else:
+                        lines.append(f"    {line}")
+            lines.append("  end")
+
+        lines.append("with")
+
+        # Convert exception handlers
+        for handler in node.handlers:
+            if handler.type is None:
+                # Bare except: catches everything
+                pattern = "| _ ->"
+            else:
+                # Get exception type name
+                exc_type_name = ""
+                if isinstance(handler.type, ast.Name):
+                    exc_type_name = handler.type.id
+                elif isinstance(handler.type, ast.Attribute):
+                    exc_type_name = handler.type.attr
+
+                # Map to OCaml exception type
+                ocaml_exc_type = self.EXCEPTION_MAPPING.get(exc_type_name, exc_type_name)
+
+                if handler.name:
+                    # except ValueError as e:
+                    pattern = f"| {ocaml_exc_type} {handler.name} ->"
+                else:
+                    # except ValueError:
+                    pattern = f"| {ocaml_exc_type} _ ->"
+
+            lines.append(pattern)
+
+            # Convert handler body
+            handler_lines = []
+            for s in handler.body:
+                converted = self._convert_statement(s)
+                if converted:
+                    if isinstance(converted, list):
+                        handler_lines.extend(converted)
+                    else:
+                        handler_lines.append(converted)
+
+            if len(handler_lines) == 0:
+                lines.append("  ()")
+            elif len(handler_lines) == 1:
+                line = handler_lines[0]
+                if line.rstrip().endswith(" in"):
+                    lines.append(f"  {line}")
+                    lines.append("  ()")
+                else:
+                    lines.append(f"  {line}")
+            else:
+                lines.append("  begin")
+                for i, line in enumerate(handler_lines):
+                    if i < len(handler_lines) - 1:
+                        if not line.rstrip().endswith(" in"):
+                            lines.append(f"    {line};")
+                        else:
+                            lines.append(f"    {line}")
+                    else:
+                        if line.rstrip().endswith(" in"):
+                            lines.append(f"    {line}")
+                            lines.append("    ()")
+                        else:
+                            lines.append(f"    {line}")
+                lines.append("  end")
+
+        return "\n".join(lines)
+
+    def _convert_raise_statement(self, node: ast.Raise) -> str:
+        """Convert Python raise to OCaml raise.
+
+        Example:
+            raise ValueError("invalid value")
+
+        Becomes:
+            raise (Value_error "invalid value")
+        """
+        if node.exc is None:
+            # Re-raise current exception - use reraise
+            return "raise"
+
+        if isinstance(node.exc, ast.Call) and isinstance(node.exc.func, ast.Name):
+            # raise ValueError("message")
+            exc_type_name = node.exc.func.id
+            ocaml_exc_type = self.EXCEPTION_MAPPING.get(exc_type_name, exc_type_name)
+
+            if ocaml_exc_type == "_":
+                # Can't raise catch-all
+                ocaml_exc_type = "Failure"
+
+            if node.exc.args:
+                # Has message argument
+                msg = self._convert_expression(node.exc.args[0])
+                return f"raise ({ocaml_exc_type} {msg})"
+            else:
+                # No message argument
+                return f'raise ({ocaml_exc_type} "")'
+
+        elif isinstance(node.exc, ast.Name):
+            # raise ValueError (without parentheses)
+            exc_type_name = node.exc.id
+            ocaml_exc_type = self.EXCEPTION_MAPPING.get(exc_type_name, exc_type_name)
+            if ocaml_exc_type == "_":
+                ocaml_exc_type = "Failure"
+            return f'raise ({ocaml_exc_type} "")'
+
+        # Fallback for unknown patterns
+        return 'raise (Failure "Unknown exception")'
 
     def _convert_function_def(self, node: ast.FunctionDef) -> list[str]:
         """Convert Python function definition to OCaml."""

@@ -9,7 +9,7 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 
-from llvmlite import binding as llvm  # type: ignore[import-not-found]
+from llvmlite import binding as llvm  # type: ignore[import-untyped]
 
 
 class LLVMCompiler:

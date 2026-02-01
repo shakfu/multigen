@@ -868,6 +868,10 @@ class MultiGenPythonToCppConverter:
             return "        // pass"
         elif isinstance(stmt, ast.Assert):
             return self._convert_assert(stmt)
+        elif isinstance(stmt, ast.Try):
+            return self._convert_try(stmt)
+        elif isinstance(stmt, ast.Raise):
+            return self._convert_raise(stmt)
         else:
             raise UnsupportedFeatureError(f"Unsupported statement type: {type(stmt).__name__}")
 
@@ -898,6 +902,116 @@ class MultiGenPythonToCppConverter:
                 return f"        assert({test_expr});"
         else:
             return f"        assert({test_expr});"
+
+    # Exception type mapping from Python to C++
+    EXCEPTION_MAPPING = {
+        "Exception": "std::exception",
+        "ValueError": "multigen::ValueError",
+        "TypeError": "multigen::TypeError",
+        "RuntimeError": "multigen::RuntimeError",
+        "IndexError": "multigen::IndexError",
+        "KeyError": "multigen::KeyError",
+        "ZeroDivisionError": "multigen::ZeroDivisionError",
+    }
+
+    def _convert_try(self, stmt: ast.Try) -> str:
+        """Convert Python try/except to C++ try/catch.
+
+        Example:
+            try:
+                x = 1 / 0
+            except ZeroDivisionError as e:
+                print("Error")
+
+        Becomes:
+            try {
+                x = 1 / 0;
+            } catch (const multigen::ZeroDivisionError& e) {
+                cout << "Error" << endl;
+            }
+        """
+        lines = ["        try {"]
+
+        # Convert try body
+        for s in stmt.body:
+            converted = self._convert_statement(s)
+            if converted.strip():
+                # Add extra indentation for try body
+                for line in converted.split("\n"):
+                    if line.strip():
+                        lines.append(f"    {line}")
+
+        lines.append("        }")
+
+        # Convert exception handlers
+        for handler in stmt.handlers:
+            if handler.type is None:
+                # Bare except: catches everything
+                lines.append("        catch (...) {")
+            else:
+                # Get exception type name
+                exc_type_name = ""
+                if isinstance(handler.type, ast.Name):
+                    exc_type_name = handler.type.id
+                elif isinstance(handler.type, ast.Attribute):
+                    exc_type_name = handler.type.attr
+
+                # Map to C++ exception type
+                cpp_exc_type = self.EXCEPTION_MAPPING.get(exc_type_name, "std::exception")
+
+                if handler.name:
+                    # except ValueError as e:
+                    lines.append(f"        catch (const {cpp_exc_type}& {handler.name}) {{")
+                else:
+                    # except ValueError:
+                    lines.append(f"        catch (const {cpp_exc_type}&) {{")
+
+            # Convert handler body
+            for s in handler.body:
+                converted = self._convert_statement(s)
+                if converted.strip():
+                    for line in converted.split("\n"):
+                        if line.strip():
+                            lines.append(f"    {line}")
+
+            lines.append("        }")
+
+        return "\n".join(lines)
+
+    def _convert_raise(self, stmt: ast.Raise) -> str:
+        """Convert Python raise to C++ throw.
+
+        Example:
+            raise ValueError("invalid value")
+
+        Becomes:
+            throw multigen::ValueError("invalid value");
+        """
+        if stmt.exc is None:
+            # Re-raise current exception
+            return "        throw;"
+
+        if isinstance(stmt.exc, ast.Call) and isinstance(stmt.exc.func, ast.Name):
+            # raise ValueError("message")
+            exc_type_name = stmt.exc.func.id
+            cpp_exc_type = self.EXCEPTION_MAPPING.get(exc_type_name, "std::runtime_error")
+
+            if stmt.exc.args:
+                # Has message argument
+                msg = self._convert_expression(stmt.exc.args[0])
+                return f"        throw {cpp_exc_type}({msg});"
+            else:
+                # No message argument
+                return f"        throw {cpp_exc_type}();"
+
+        elif isinstance(stmt.exc, ast.Name):
+            # raise ValueError (without parentheses)
+            exc_type_name = stmt.exc.id
+            cpp_exc_type = self.EXCEPTION_MAPPING.get(exc_type_name, "std::runtime_error")
+            return f"        throw {cpp_exc_type}();"
+
+        # Fallback for unknown patterns
+        return '        throw std::runtime_error("Unknown exception");'
 
     def _convert_return(self, stmt: ast.Return) -> str:
         """Convert return statement.

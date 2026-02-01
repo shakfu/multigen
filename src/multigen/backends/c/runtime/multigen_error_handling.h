@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <setjmp.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -121,6 +122,86 @@ const char* multigen_error_name(multigen_error_t code);
             return MGEN_ERROR_INDEX; \
         } \
     } while(0)
+
+// Exception handling using setjmp/longjmp
+// Maximum nesting depth for try/catch blocks
+#define MGEN_MAX_TRY_DEPTH 16
+
+// Exception context for setjmp/longjmp-based try/catch
+typedef struct {
+    jmp_buf env;
+    multigen_error_t exception_type;
+    char exception_message[256];
+    int active;
+} mgen_exception_context_t;
+
+// Global exception stack
+extern mgen_exception_context_t mgen_exception_stack[MGEN_MAX_TRY_DEPTH];
+extern int mgen_exception_depth;
+
+/**
+ * Initialize exception handling system
+ */
+void mgen_exception_init(void);
+
+/**
+ * Push a new try block onto the exception stack
+ */
+int mgen_try_push(void);
+
+/**
+ * Pop a try block from the exception stack
+ */
+void mgen_try_pop(void);
+
+/**
+ * Throw an exception
+ */
+void mgen_throw(multigen_error_t type, const char* message);
+
+/**
+ * Get current exception type (for catch blocks)
+ */
+multigen_error_t mgen_current_exception_type(void);
+
+/**
+ * Get current exception message (for catch blocks)
+ */
+const char* mgen_current_exception_message(void);
+
+/**
+ * Re-throw current exception
+ */
+void mgen_rethrow(void);
+
+// Macros for try/catch syntax
+#define MGEN_TRY \
+    do { \
+        int _mgen_try_idx = mgen_try_push(); \
+        if (_mgen_try_idx >= 0 && setjmp(mgen_exception_stack[_mgen_try_idx].env) == 0) {
+
+#define MGEN_CATCH(exception_type) \
+        } else if (mgen_current_exception_type() == (exception_type)) {
+
+#define MGEN_CATCH_ALL \
+        } else if (mgen_exception_depth >= 0) {
+
+#define MGEN_END_TRY \
+        } \
+        mgen_try_pop(); \
+    } while(0)
+
+// Convenience macro for raising exceptions
+#define MGEN_RAISE(exception_type, message) \
+    mgen_throw((exception_type), (message))
+
+// Map Python exception names to C error codes
+#define MGEN_ZERO_DIVISION_ERROR MGEN_ERROR_VALUE
+#define MGEN_VALUE_ERROR MGEN_ERROR_VALUE
+#define MGEN_TYPE_ERROR MGEN_ERROR_TYPE
+#define MGEN_KEY_ERROR MGEN_ERROR_KEY
+#define MGEN_INDEX_ERROR MGEN_ERROR_INDEX
+#define MGEN_RUNTIME_ERROR MGEN_ERROR_RUNTIME
 
 #ifdef __cplusplus
 }
