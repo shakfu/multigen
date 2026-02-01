@@ -17,6 +17,59 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [0.1.x]
 
+## [0.1.112] - 2026-02-01
+
+**Context Managers (with statement) Support Across All Backends**
+
+### Added
+
+- **Context manager support for all 7 backends** - Python `with open(...) as f:` now converts to native resource management
+  - **C++**: RAII with `std::ifstream`/`std::ofstream` in scope blocks (automatic cleanup via destructor)
+  - **C**: `fopen`/`fclose` pattern with NULL check and explicit cleanup
+  - **Rust**: Scope-based Drop with `std::fs::File::open`/`create` and `.unwrap()`
+  - **Go**: `defer` pattern with `os.Open`/`os.Create` and deferred `Close()`
+  - **Haskell**: `bracket` pattern with `openFile`/`hClose` and `ReadMode`/`WriteMode`
+  - **OCaml**: `Fun.protect` pattern with `open_in`/`open_out` and `~finally` cleanup
+  - **LLVM**: Stub implementation with `IRWith` in Static IR (file I/O requires runtime)
+
+- **Static IR support** for context managers
+  - New `IRWith` class in `frontend/static_ir.py` for with statement representation
+  - Added `visit_with()` abstract method to `IRVisitor` interface
+  - LLVM backend implements `visit_with()` stub in `ir_to_llvm.py`
+
+- **Validator support** for context managers
+  - New `context_managers` feature rule in `subset_validator.py`
+  - `_validate_with_statement()` method enforces constraints
+  - Rejects: multiple context managers (`with a, b:`), missing `as` binding
+
+- **23 new context manager tests** in `tests/test_context_managers.py`
+  - 7 test classes: TestContextManagerValidation, TestCppContextManagers, TestCContextManagers,
+    TestRustContextManagers, TestGoContextManagers, TestHaskellContextManagers, TestOCamlContextManagers
+  - Tests cover: file read/write, mode handling, RAII scope, defer, bracket, Fun.protect patterns
+  - Edge cases: nested with statements, variable naming, validation constraints
+
+### Context Manager Mapping
+
+| Python | C++ | C | Rust | Go | Haskell | OCaml |
+|--------|-----|---|------|----|---------|----|
+| `with open(f, "r") as x:` | `{ ifstream x(f); }` | `FILE* x = fopen(f,"r"); fclose(x);` | `{ let x = File::open(f)?; }` | `x, _ := os.Open(f); defer x.Close()` | `bracket (openFile f ReadMode) hClose` | `let x = open_in f in Fun.protect ~finally:...` |
+| `with open(f, "w") as x:` | `{ ofstream x(f); }` | `FILE* x = fopen(f,"w"); fclose(x);` | `{ let x = File::create(f)?; }` | `x, _ := os.Create(f); defer x.Close()` | `bracket (openFile f WriteMode) hClose` | `let x = open_out f in Fun.protect ~finally:...` |
+
+### Changed
+
+- **Test expectations updated** - Removed with statement from "unsupported features" tests
+  - `tests/test_backend_haskell_integration.py` - Removed with statement unsupported assertion
+  - `tests/test_backend_rust_integration.py` - Removed with statement unsupported assertion
+
+### Constraints (Phase 1)
+
+- Single context manager only (no `with a, b:` syntax)
+- File operations only (`open()` function)
+- Requires `as` binding (no bare `with expr:`)
+- No nested with in single statement (can nest separate with statements)
+
+---
+
 ## [0.1.111] - 2026-02-01
 
 **Exception Handling (try/except) Support Across All Backends**
