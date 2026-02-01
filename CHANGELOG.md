@@ -64,9 +64,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   - All backends cache optimizer instance for efficiency
   - Files: `src/multigen/backends/*/backend.py`
 
-- **Pipeline target optimization phase** - Uses typed results and backend optimizer
-  - `_target_optimization_phase()` now returns `TargetOptimizationPhaseResult`
-  - Queries backend's optimizer for optimization info when available
+- **All 7 pipeline phases use typed results** - Complete migration from dict to dataclasses
+  - `_validation_phase()` -> `ValidationPhaseResult`
+  - `_analysis_phase()` -> `AnalysisPhaseResult`
+  - `_python_optimization_phase()` -> `PythonOptimizationPhaseResult`
+  - `_mapping_phase()` -> `SemanticMapping` (already typed, unchanged)
+  - `_target_optimization_phase()` -> `TargetOptimizationPhaseResult`
+  - `_generation_phase()` -> `GenerationPhaseResult`
+  - `_build_phase()` -> `BuildPhaseResult`
   - Added `_get_opt_level_int()` helper to reduce code duplication
   - File: `src/multigen/pipeline.py`
 

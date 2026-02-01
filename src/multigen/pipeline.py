@@ -34,7 +34,12 @@ from .backends.preferences import BackendPreferences
 from .backends.registry import registry
 from .common import log
 from .pipeline_types import (
+    AnalysisPhaseResult,
+    BuildPhaseResult,
+    GenerationPhaseResult,
+    PythonOptimizationPhaseResult,
     TargetOptimizationPhaseResult,
+    ValidationPhaseResult,
 )
 
 # Import frontend analysis components
@@ -404,40 +409,58 @@ class MultiGenPipeline:
 
     def _validation_phase(self, source_code: str, input_path: Path, result: PipelineResult) -> bool:
         """Phase 1: Validate static-python style and translatability."""
+        # Track validation state for typed result
+        memory_safety_errors: list[str] = []
+        memory_safety_warnings: list[str] = []
+        memory_safety_checked = False
+        violations: list[str] = []
+        warnings: list[str] = []
+
         try:
             # Parse AST for validation
             ast.parse(source_code)
 
             if FRONTEND_AVAILABLE and self.config.enable_advanced_analysis:
                 # Validate Python subset compatibility
-                validation_result = self.subset_validator.validate_code(source_code)
-                result.phase_results[PipelinePhase.VALIDATION] = validation_result
+                frontend_validation = self.subset_validator.validate_code(source_code)
 
-                if not validation_result.is_valid:
+                if not frontend_validation.is_valid:
+                    violations = [str(v) for v in frontend_validation.violations]
                     result.success = False
-                    result.errors.extend([str(violation) for violation in validation_result.violations])
+                    result.errors.extend(violations)
+                    result.phase_results[PipelinePhase.VALIDATION] = ValidationPhaseResult(
+                        is_valid=False,
+                        parse_success=True,
+                        violations=violations,
+                    )
                     return False
 
                 # Check memory safety constraints for C/C++ targets
                 if MEMORY_SAFETY_AVAILABLE and self.config.target_language in ["c", "cpp"]:
+                    memory_safety_checked = True
                     memory_safety_checker = MemorySafetyChecker(language=self.config.target_language)
-                    memory_warnings = memory_safety_checker.check_code(source_code)
+                    memory_check_results = memory_safety_checker.check_code(source_code)
 
                     # Add memory safety warnings/errors
-                    for warning in memory_warnings:
+                    for warning in memory_check_results:
+                        msg = f"[{warning.violation_type.value}] {warning.message} (line {warning.line})"
                         if warning.severity == "error":
-                            result.errors.append(
-                                f"[{warning.violation_type.value}] {warning.message} (line {warning.line})"
-                            )
+                            memory_safety_errors.append(msg)
+                            result.errors.append(msg)
                         else:
-                            result.warnings.append(
-                                f"[{warning.violation_type.value}] {warning.message} (line {warning.line})"
-                            )
+                            memory_safety_warnings.append(msg)
+                            result.warnings.append(msg)
 
                     # Fail if there are critical memory safety errors
-                    critical_errors = [w for w in memory_warnings if w.severity == "error"]
-                    if critical_errors:
+                    if memory_safety_errors:
                         result.success = False
+                        result.phase_results[PipelinePhase.VALIDATION] = ValidationPhaseResult(
+                            is_valid=False,
+                            parse_success=True,
+                            memory_safety_checked=True,
+                            memory_safety_errors=memory_safety_errors,
+                            memory_safety_warnings=memory_safety_warnings,
+                        )
                         return False
 
                 # Run formal verification if enabled
@@ -494,19 +517,41 @@ class MultiGenPipeline:
 
                             self.log.debug(f"Verification complete: {proof.summary}")
 
+                # Success with advanced analysis
+                result.phase_results[PipelinePhase.VALIDATION] = ValidationPhaseResult(
+                    is_valid=True,
+                    parse_success=True,
+                    memory_safety_checked=memory_safety_checked,
+                    memory_safety_errors=memory_safety_errors,
+                    memory_safety_warnings=memory_safety_warnings,
+                    warnings=warnings,
+                )
             else:
                 # Basic validation - just check if it parses
-                result.phase_results[PipelinePhase.VALIDATION] = {"basic_parse": True}
+                result.phase_results[PipelinePhase.VALIDATION] = ValidationPhaseResult(
+                    is_valid=True,
+                    parse_success=True,
+                )
 
             return True
 
         except SyntaxError as e:
             result.success = False
             result.errors.append(f"Syntax error: {str(e)}")
+            result.phase_results[PipelinePhase.VALIDATION] = ValidationPhaseResult(
+                is_valid=False,
+                parse_success=False,
+                violations=[f"Syntax error: {str(e)}"],
+            )
             return False
         except Exception as e:
             result.success = False
             result.errors.append(f"Validation phase error: {str(e)}")
+            result.phase_results[PipelinePhase.VALIDATION] = ValidationPhaseResult(
+                is_valid=False,
+                parse_success=False,
+                violations=[f"Validation phase error: {str(e)}"],
+            )
             return False
 
     def _analysis_phase(self, source_code: str, result: PipelineResult) -> Optional[Any]:
@@ -515,12 +560,17 @@ class MultiGenPipeline:
             if FRONTEND_AVAILABLE and self.config.enable_advanced_analysis:
                 # Use comprehensive AST analysis
                 analysis_result = self.ast_analyzer.analyze(source_code)
-                result.phase_results[PipelinePhase.ANALYSIS] = {"ast_analysis": analysis_result}
 
                 if not analysis_result.convertible:
                     result.success = False
                     result.errors.extend(analysis_result.errors)
                     result.warnings.extend(analysis_result.warnings)
+                    result.phase_results[PipelinePhase.ANALYSIS] = AnalysisPhaseResult(
+                        success=False,
+                        convertible=False,
+                        errors=list(analysis_result.errors),
+                        warnings=list(analysis_result.warnings),
+                    )
                     return None
 
                 # Run advanced static analysis
@@ -576,30 +626,51 @@ class MultiGenPipeline:
                 advanced_analysis["python_constraints"] = constraint_violations
 
                 # Add warnings/errors from constraint violations
+                analysis_errors: list[str] = []
+                analysis_warnings: list[str] = []
                 for violation in constraint_violations:
                     if violation.severity == "error":
-                        result.errors.append(f"[{violation.rule_id}] {violation.message} (line {violation.line})")
+                        msg = f"[{violation.rule_id}] {violation.message} (line {violation.line})"
+                        analysis_errors.append(msg)
+                        result.errors.append(msg)
                     else:
-                        result.warnings.append(f"[{violation.rule_id}] {violation.message} (line {violation.line})")
+                        msg = f"[{violation.rule_id}] {violation.message} (line {violation.line})"
+                        analysis_warnings.append(msg)
+                        result.warnings.append(msg)
 
                 # Fail if there are critical constraint violations
-                critical_errors = [v for v in constraint_violations if v.severity == "error"]
-                if critical_errors:
+                if analysis_errors:
                     result.success = False
-                    self.log.error(f"Found {len(critical_errors)} critical constraint violations")
+                    self.log.error(f"Found {len(analysis_errors)} critical constraint violations")
+                    result.phase_results[PipelinePhase.ANALYSIS] = AnalysisPhaseResult(
+                        success=False,
+                        convertible=True,
+                        errors=analysis_errors,
+                        warnings=analysis_warnings,
+                        advanced_analysis=advanced_analysis,
+                    )
                     return None
 
-                # Store advanced analysis results
-                result.phase_results[PipelinePhase.ANALYSIS]["advanced"] = advanced_analysis
+                # Extract counts from analysis result if available
+                function_count = len(getattr(analysis_result, "functions", {}))
+                imports = list(getattr(analysis_result, "imports", []))
 
-                # Store additional data for later phases
-                # Note: Additional data (source_code, ast_root) stored in phase_results
+                # Store typed analysis result
+                result.phase_results[PipelinePhase.ANALYSIS] = AnalysisPhaseResult(
+                    success=True,
+                    convertible=True,
+                    function_count=function_count,
+                    imports=imports,
+                    errors=analysis_errors,
+                    warnings=analysis_warnings,
+                    advanced_analysis=advanced_analysis,
+                )
+
                 return analysis_result
             else:
                 # Simple analysis using built-in frontend function
                 try:
                     simple_analysis = analyze_python_code(source_code)
-                    result.phase_results[PipelinePhase.ANALYSIS] = simple_analysis
 
                     # Create a simple analysis result object
                     class SimpleAnalysisResult:
@@ -611,6 +682,10 @@ class MultiGenPipeline:
                             self.errors = analysis.errors if hasattr(analysis, "errors") else []
                             self.warnings = analysis.warnings if hasattr(analysis, "warnings") else []
 
+                    result.phase_results[PipelinePhase.ANALYSIS] = AnalysisPhaseResult(
+                        success=True,
+                        convertible=simple_analysis.convertible,
+                    )
                     return SimpleAnalysisResult(source_code, simple_analysis)
                 except Exception:
                     # Fallback to basic analysis if simplified result creation fails
@@ -625,12 +700,20 @@ class MultiGenPipeline:
                             "warnings": [],
                         },
                     )()
-                    result.phase_results[PipelinePhase.ANALYSIS] = {"basic": True}
+                    result.phase_results[PipelinePhase.ANALYSIS] = AnalysisPhaseResult(
+                        success=True,
+                        convertible=True,
+                    )
                     return basic_result
 
         except Exception as e:
             result.success = False
             result.errors.append(f"Analysis phase error: {str(e)}")
+            result.phase_results[PipelinePhase.ANALYSIS] = AnalysisPhaseResult(
+                success=False,
+                convertible=False,
+                errors=[f"Analysis phase error: {str(e)}"],
+            )
             return None
 
     def _python_optimization_phase(self, source_code: str, analysis_result: Any, result: PipelineResult) -> Any:
@@ -663,9 +746,18 @@ class MultiGenPipeline:
                 vectorization_result = self.vectorization_detector.optimize(context)
                 optimizations["vectorization"] = vectorization_result
 
-                result.phase_results[PipelinePhase.PYTHON_OPTIMIZATION] = optimizations
+                result.phase_results[PipelinePhase.PYTHON_OPTIMIZATION] = PythonOptimizationPhaseResult(
+                    enabled=True,
+                    optimizations_applied=list(optimizations.keys()),
+                    compile_time=compile_time_result,
+                    loops=loop_result,
+                    specialization=specialization_result,
+                    vectorization=vectorization_result,
+                )
             else:
-                result.phase_results[PipelinePhase.PYTHON_OPTIMIZATION] = {"enabled": False}
+                result.phase_results[PipelinePhase.PYTHON_OPTIMIZATION] = PythonOptimizationPhaseResult(
+                    enabled=False,
+                )
 
             return analysis_result  # Return analysis for next phase
 
@@ -754,9 +846,11 @@ class MultiGenPipeline:
     ) -> None:
         """Extract variable types from analysis result."""
         # Try type inference results from advanced analysis
-        analysis_phase = result.phase_results.get(PipelinePhase.ANALYSIS, {})
-        advanced = analysis_phase.get("advanced", {})
-        type_inference = advanced.get("type_inference", {})
+        analysis_phase = result.phase_results.get(PipelinePhase.ANALYSIS)
+        if isinstance(analysis_phase, AnalysisPhaseResult) and analysis_phase.advanced_analysis:
+            type_inference = analysis_phase.advanced_analysis.get("type_inference", {})
+        else:
+            type_inference = {}
 
         for func_name, func_inference in type_inference.items():
             if isinstance(func_inference, dict):
@@ -883,11 +977,13 @@ class MultiGenPipeline:
             result.generated_code = generated_code
             result.output_files[f"{self.config.target_language}_source"] = str(source_file_path)
             result.generated_files.append(str(source_file_path))
-            result.phase_results[PipelinePhase.GENERATION] = {
-                "source_file": str(source_file_path),
-                "backend": self.backend.get_name(),
-                "generated_lines": len(generated_code.splitlines()),
-            }
+            result.phase_results[PipelinePhase.GENERATION] = GenerationPhaseResult(
+                success=True,
+                source_file=str(source_file_path),
+                backend_name=self.backend.get_name(),
+                file_extension=file_extension,
+                generated_lines=len(generated_code.splitlines()),
+            )
             return True
 
         except Exception as e:
@@ -937,10 +1033,11 @@ class MultiGenPipeline:
                     result.errors.append("Direct compilation failed")
                     return False
 
-            result.phase_results[PipelinePhase.BUILD] = {
-                "mode": self.config.build_mode.value,
-                "outputs": result.output_files,
-            }
+            result.phase_results[PipelinePhase.BUILD] = BuildPhaseResult(
+                success=True,
+                mode=self.config.build_mode.value,
+                outputs=dict(result.output_files),
+            )
 
             return True
 

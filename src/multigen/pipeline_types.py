@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
     from .backends.optimizer import OptimizationInfo
+    from .frontend.base import OptimizationResult
 
 
 @dataclass
@@ -108,10 +109,10 @@ class PythonOptimizationPhaseResult:
 
     enabled: bool
     optimizations_applied: list[str] = field(default_factory=list)
-    compile_time: Optional[dict[str, Any]] = None
-    loops: Optional[dict[str, Any]] = None
-    specialization: Optional[dict[str, Any]] = None
-    vectorization: Optional[dict[str, Any]] = None
+    compile_time: Optional["OptimizationResult"] = None
+    loops: Optional["OptimizationResult"] = None
+    specialization: Optional["OptimizationResult"] = None
+    vectorization: Optional["OptimizationResult"] = None
 
 
 # Note: MappingPhaseResult uses SemanticMapping from pipeline.py
