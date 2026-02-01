@@ -3,11 +3,13 @@
 from typing import Optional
 
 from ..base import AbstractBuilder, AbstractContainerSystem, AbstractEmitter, AbstractFactory, LanguageBackend
+from ..optimizer import AbstractOptimizer
 from ..preferences import BackendPreferences
 from .builder import LLVMBuilder
 from .containers import LLVMContainerSystem
 from .emitter import LLVMEmitter
 from .factory import LLVMFactory
+from .optimizer import LLVMOptimizer
 
 
 class LLVMBackend(LanguageBackend):
@@ -28,6 +30,7 @@ class LLVMBackend(LanguageBackend):
         self._factory: Optional[AbstractFactory] = None
         self._builder: Optional[AbstractBuilder] = None
         self._container_system: Optional[AbstractContainerSystem] = None
+        self._optimizer: Optional[LLVMOptimizer] = None
 
     def get_name(self) -> str:
         """Get backend name."""
@@ -60,6 +63,19 @@ class LLVMBackend(LanguageBackend):
         if self._container_system is None:
             self._container_system = LLVMContainerSystem()
         return self._container_system
+
+    def get_optimizer(self) -> AbstractOptimizer:
+        """Get the LLVM optimizer.
+
+        Returns an LLVMOptimizer instance that implements the AbstractOptimizer
+        interface for LLVM IR optimization with O0-O3 support.
+
+        Returns:
+            LLVMOptimizer instance
+        """
+        if self._optimizer is None:
+            self._optimizer = LLVMOptimizer()
+        return self._optimizer
 
     def supports_feature(self, feature: str) -> bool:
         """Check if a feature is supported.

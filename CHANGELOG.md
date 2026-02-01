@@ -17,6 +17,61 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [0.1.x]
 
+## [0.1.110] - 2026-02-01
+
+**AbstractOptimizer Interface & Typed Pipeline Phase Results**
+
+### Added
+
+- **AbstractOptimizer interface** - Standardized optimization across backends
+  - New `AbstractOptimizer` ABC with `optimize()`, `get_optimization_info()`, `supports_level`
+  - `OptimizationInfo` dataclass for structured optimization metadata (level, passes, metrics)
+  - `NoOpOptimizer` implementation for backends without optimization support
+  - File: `src/multigen/backends/optimizer.py`
+
+- **Typed pipeline phase results** - Replace `dict[PipelinePhase, Any]` with dataclasses
+  - `ValidationPhaseResult` - validation status, violations, memory safety
+  - `AnalysisPhaseResult` - AST analysis, function counts, complexity
+  - `PythonOptimizationPhaseResult` - Python-level optimization results
+  - `TargetOptimizationPhaseResult` - target language optimization with optimizer info
+  - `GenerationPhaseResult` - code generation output metadata
+  - `BuildPhaseResult` - compilation results with timing/size metrics
+  - File: `src/multigen/pipeline_types.py`
+
+- **40 new tests** for optimizer interface and pipeline types
+  - `tests/test_optimizer_interface.py` - 17 tests for AbstractOptimizer compliance (all backends)
+  - `tests/test_pipeline_types.py` - 23 tests for phase result dataclasses
+
+### Changed
+
+- **LLVMOptimizer implements AbstractOptimizer** - Full interface compliance
+  - Returns `OptimizationInfo` instead of dict from `get_optimization_info()`
+  - Added `supports_level` property returning `(0, 3)`
+  - Added `_get_passes_for_level()` and `_get_transformations_for_level()` helpers
+  - File: `src/multigen/backends/llvm/optimizer.py`
+
+- **LanguageBackend base class** - Added optional `get_optimizer()` method
+  - Returns `None` by default; backends opt-in by overriding
+  - File: `src/multigen/backends/base.py`
+
+- **LLVMBackend** - Implements `get_optimizer()` returning `LLVMOptimizer`
+  - Lazy initialization with caching
+  - File: `src/multigen/backends/llvm/backend.py`
+
+- **All backends implement `get_optimizer()`** - Uniform interface across all 7 backends
+  - C, C++, Rust, Go, Haskell, OCaml return `NoOpOptimizer` (delegates to compiler)
+  - LLVM returns `LLVMOptimizer` with full pass management
+  - All backends cache optimizer instance for efficiency
+  - Files: `src/multigen/backends/*/backend.py`
+
+- **Pipeline target optimization phase** - Uses typed results and backend optimizer
+  - `_target_optimization_phase()` now returns `TargetOptimizationPhaseResult`
+  - Queries backend's optimizer for optimization info when available
+  - Added `_get_opt_level_int()` helper to reduce code duplication
+  - File: `src/multigen/pipeline.py`
+
+---
+
 ## [0.1.109] - 2026-01-29
 
 **C Runtime POSIX Compliance & OCaml Builder Robustness**

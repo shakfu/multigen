@@ -3,6 +3,7 @@
 from typing import Optional
 
 from ..base import AbstractBuilder, AbstractContainerSystem, AbstractEmitter, AbstractFactory, LanguageBackend
+from ..optimizer import AbstractOptimizer, NoOpOptimizer
 from ..preferences import BackendPreferences, HaskellPreferences
 from .builder import HaskellBuilder
 from .containers import HaskellContainerSystem
@@ -18,6 +19,7 @@ class HaskellBackend(LanguageBackend):
         if preferences is None:
             preferences = HaskellPreferences()
         super().__init__(preferences)
+        self._optimizer: Optional[NoOpOptimizer] = None
 
     def get_name(self) -> str:
         """Return backend name."""
@@ -42,3 +44,16 @@ class HaskellBackend(LanguageBackend):
     def get_container_system(self) -> AbstractContainerSystem:
         """Get Haskell container system."""
         return HaskellContainerSystem()
+
+    def get_optimizer(self) -> AbstractOptimizer:
+        """Get Haskell optimizer (delegates to compiler).
+
+        Haskell optimization is handled by GHC (ghc -O, -O2, etc.)
+        rather than at the code generation level.
+
+        Returns:
+            NoOpOptimizer instance
+        """
+        if self._optimizer is None:
+            self._optimizer = NoOpOptimizer()
+        return self._optimizer

@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING, Optional
 
 from ..base import LanguageBackend
+from ..optimizer import AbstractOptimizer, NoOpOptimizer
 from ..preferences import BackendPreferences, CppPreferences
 
 if TYPE_CHECKING:
@@ -17,6 +18,7 @@ class CppBackend(LanguageBackend):
         if preferences is None:
             preferences = CppPreferences()
         super().__init__(preferences)
+        self._optimizer: Optional[NoOpOptimizer] = None
 
     def get_name(self) -> str:
         """Get the backend name."""
@@ -49,3 +51,16 @@ class CppBackend(LanguageBackend):
         from .containers import CppContainerSystem
 
         return CppContainerSystem()
+
+    def get_optimizer(self) -> AbstractOptimizer:
+        """Get C++ optimizer (delegates to compiler).
+
+        C++ optimization is handled by the compiler (g++ -O2, clang++ -O2, etc.)
+        rather than at the code generation level.
+
+        Returns:
+            NoOpOptimizer instance
+        """
+        if self._optimizer is None:
+            self._optimizer = NoOpOptimizer()
+        return self._optimizer

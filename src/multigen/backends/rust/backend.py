@@ -3,6 +3,7 @@
 from typing import Optional
 
 from ..base import AbstractBuilder, AbstractContainerSystem, AbstractEmitter, AbstractFactory, LanguageBackend
+from ..optimizer import AbstractOptimizer, NoOpOptimizer
 from ..preferences import BackendPreferences, RustPreferences
 from .builder import RustBuilder
 from .containers import RustContainerSystem
@@ -18,6 +19,7 @@ class RustBackend(LanguageBackend):
         if preferences is None:
             preferences = RustPreferences()
         super().__init__(preferences)
+        self._optimizer: Optional[NoOpOptimizer] = None
 
     def get_name(self) -> str:
         """Return backend name."""
@@ -42,3 +44,16 @@ class RustBackend(LanguageBackend):
     def get_container_system(self) -> AbstractContainerSystem:
         """Get Rust container system."""
         return RustContainerSystem()
+
+    def get_optimizer(self) -> AbstractOptimizer:
+        """Get Rust optimizer (delegates to compiler).
+
+        Rust optimization is handled by rustc/LLVM (rustc -O, --release, etc.)
+        rather than at the code generation level.
+
+        Returns:
+            NoOpOptimizer instance
+        """
+        if self._optimizer is None:
+            self._optimizer = NoOpOptimizer()
+        return self._optimizer

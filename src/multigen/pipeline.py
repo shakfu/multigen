@@ -33,6 +33,9 @@ from typing import Any, Optional, Union
 from .backends.preferences import BackendPreferences
 from .backends.registry import registry
 from .common import log
+from .pipeline_types import (
+    TargetOptimizationPhaseResult,
+)
 
 # Import frontend analysis components
 try:
@@ -811,27 +814,56 @@ class MultiGenPipeline:
     def _target_optimization_phase(self, analysis_result: Any, result: PipelineResult) -> Any:
         """Phase 5: Target language-specific optimizations."""
         try:
-            # This phase would handle target language-specific optimizations
-            # For example:
-            # - C: STC container optimizations, pointer optimizations
-            # - Rust: Borrow checker optimizations, zero-copy optimizations
-            # - Go: Goroutine usage, channel optimizations
+            # Get optimization level as integer
+            opt_level = self._get_opt_level_int()
 
-            target_opts = {
-                "target_language": self.config.target_language,
-                "optimizations_applied": [],
-            }
+            # Get optimizer from backend if available
+            optimizer = self.backend.get_optimizer()
 
-            # Backend-specific optimizations could be added here
-            if hasattr(self.backend, "optimize"):
-                target_opts["backend_optimizations"] = self.backend.optimize(analysis_result)
+            if optimizer is not None:
+                # Backend has optimizer support
+                opt_info = optimizer.get_optimization_info()
+                phase_result = TargetOptimizationPhaseResult(
+                    target_language=self.config.target_language,
+                    optimization_level=opt_level,
+                    optimizer_available=True,
+                    optimizations_applied=opt_info.passes_applied,
+                    optimizer_info=opt_info,
+                )
+                self.log.debug(
+                    f"Target optimization: {self.config.target_language} with "
+                    f"{opt_info.level_name}, {len(opt_info.passes_applied)} passes"
+                )
+            else:
+                # No optimizer available for this backend
+                phase_result = TargetOptimizationPhaseResult(
+                    target_language=self.config.target_language,
+                    optimization_level=opt_level,
+                    optimizer_available=False,
+                    optimizations_applied=[],
+                    optimizer_info=None,
+                )
 
-            result.phase_results[PipelinePhase.TARGET_OPTIMIZATION] = target_opts
+            result.phase_results[PipelinePhase.TARGET_OPTIMIZATION] = phase_result
             return analysis_result
 
         except Exception as e:
             result.warnings.append(f"Target optimization phase warning: {str(e)}")
             return analysis_result
+
+    def _get_opt_level_int(self) -> int:
+        """Convert OptimizationLevel enum to integer (0-3).
+
+        Returns:
+            Integer optimization level: 0=none, 1=basic, 2=moderate, 3=aggressive
+        """
+        opt_level_map = {
+            OptimizationLevel.NONE: 0,
+            OptimizationLevel.BASIC: 1,
+            OptimizationLevel.MODERATE: 2,
+            OptimizationLevel.AGGRESSIVE: 3,
+        }
+        return opt_level_map.get(self.config.optimization_level, 2)
 
     def _generation_phase(
         self, source_code: str, analysis_result: Any, output_dir: Path, result: PipelineResult
@@ -886,13 +918,7 @@ class MultiGenPipeline:
             elif self.config.build_mode == BuildMode.DIRECT:
                 # Direct compilation using backend
                 # Pass optimization level to builder (LLVM backend uses this)
-                opt_level_map = {
-                    OptimizationLevel.NONE: 0,
-                    OptimizationLevel.BASIC: 1,
-                    OptimizationLevel.MODERATE: 2,
-                    OptimizationLevel.AGGRESSIVE: 3,
-                }
-                opt_level = opt_level_map.get(self.config.optimization_level, 2)
+                opt_level = self._get_opt_level_int()
 
                 # Check if builder supports opt_level parameter (LLVM does)
                 import inspect

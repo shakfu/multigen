@@ -2,9 +2,12 @@
 
 import ast
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from .preferences import BackendPreferences
+
+if TYPE_CHECKING:
+    from .optimizer import AbstractOptimizer
 
 
 class LanguageBackend(ABC):
@@ -37,6 +40,19 @@ class LanguageBackend(ABC):
     @abstractmethod
     def get_container_system(self) -> "AbstractContainerSystem":
         """Get language-specific container library integration."""
+
+    def get_optimizer(self) -> Optional["AbstractOptimizer"]:
+        """Get language-specific optimizer (optional).
+
+        Backends with optimization support should override this method
+        to return their optimizer instance. The optimizer implements
+        the AbstractOptimizer interface for standardized optimization.
+
+        Returns:
+            AbstractOptimizer instance if the backend supports optimization,
+            None otherwise (default).
+        """
+        return None
 
 
 class AbstractFactory(ABC):

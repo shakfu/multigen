@@ -16,12 +16,14 @@ Example:
     >>> optimized_ir = optimizer.optimize(original_ir)
 """
 
-from typing import Any
+from typing import Optional
 
 from llvmlite import binding as llvm  # type: ignore[import-not-found]
 
+from ..optimizer import AbstractOptimizer, OptimizationInfo
 
-class LLVMOptimizer:
+
+class LLVMOptimizer(AbstractOptimizer):
     """Manages LLVM optimization passes for IR optimization.
 
     This class configures and applies LLVM optimization passes based on
@@ -52,14 +54,18 @@ class LLVMOptimizer:
         target = llvm.Target.from_default_triple()
         self.target_machine = target.create_target_machine(opt=opt_level)
 
-    def optimize(self, llvm_ir: str) -> str:
+    def optimize(self, llvm_ir: str, opt_level: Optional[int] = None) -> str:
         """Apply optimization passes to LLVM IR.
 
         This method parses the IR, configures optimization passes based on
         the optimization level, runs the passes, and returns optimized IR.
 
+        Implements AbstractOptimizer.optimize().
+
         Args:
             llvm_ir: LLVM IR as string
+            opt_level: Optional override for optimization level (0-3).
+                       If not provided, uses the instance's opt_level.
 
         Returns:
             Optimized LLVM IR as string
@@ -68,6 +74,9 @@ class LLVMOptimizer:
             ValueError: If IR is invalid or cannot be parsed
             RuntimeError: If optimization passes fail
         """
+        # Use provided opt_level or fall back to instance level
+        effective_level = opt_level if opt_level is not None else self.opt_level
+
         # Parse and verify IR
         try:
             llvm_module = llvm.parse_assembly(llvm_ir)
@@ -76,7 +85,7 @@ class LLVMOptimizer:
             raise ValueError(f"Failed to parse LLVM IR: {e}") from e
 
         # Skip optimization for O0
-        if self.opt_level == 0:
+        if effective_level == 0:
             return str(llvm_module)
 
         # Create pipeline tuning options
@@ -247,17 +256,104 @@ class LLVMOptimizer:
         # Function merging
         mpm.add_merge_functions_pass()  # Merge identical functions
 
-    def get_optimization_info(self) -> dict[str, Any]:
+    def get_optimization_info(self) -> OptimizationInfo:
         """Get information about the current optimization configuration.
 
+        Implements AbstractOptimizer.get_optimization_info().
+
         Returns:
-            Dictionary with optimization settings and metadata
+            OptimizationInfo dataclass with optimization settings and metadata
         """
-        return {
-            "opt_level": self.opt_level,
-            "opt_name": {0: "O0", 1: "O1", 2: "O2", 3: "O3"}[self.opt_level],
-            "inlining_threshold": self._get_inlining_threshold(),
-            "vectorization_enabled": self.opt_level >= 2,
-            "loop_unrolling_enabled": self.opt_level >= 2,
-            "target_triple": self.target_machine.triple,
-        }
+        return OptimizationInfo(
+            level=self.opt_level,
+            level_name=f"O{self.opt_level}",
+            passes_applied=self._get_passes_for_level(),
+            transformations=self._get_transformations_for_level(),
+            metrics={
+                "inlining_threshold": self._get_inlining_threshold(),
+                "vectorization_enabled": self.opt_level >= 2,
+                "loop_unrolling_enabled": self.opt_level >= 2,
+                "target_triple": self.target_machine.triple,
+            },
+        )
+
+    @property
+    def supports_level(self) -> tuple[int, int]:
+        """Return supported optimization level range.
+
+        Implements AbstractOptimizer.supports_level.
+
+        Returns:
+            (0, 3) indicating LLVM supports O0 through O3
+        """
+        return (0, 3)
+
+    def _get_passes_for_level(self) -> list[str]:
+        """Get list of optimization passes for the current level.
+
+        Returns:
+            List of pass names that will be applied
+        """
+        passes: list[str] = []
+
+        if self.opt_level >= 1:
+            passes.extend(
+                [
+                    "dead_arg_elimination",
+                    "dead_code_elimination",
+                    "global_opt",
+                    "ipsccp",
+                    "simplify_cfg",
+                    "instruction_combine",
+                ]
+            )
+
+        if self.opt_level >= 2:
+            passes.extend(
+                [
+                    "always_inliner",
+                    "global_dce",
+                    "reassociate",
+                    "sccp",
+                    "sroa",
+                    "mem_copy_opt",
+                    "dead_store_elimination",
+                    "tail_call_elimination",
+                    "loop_rotate",
+                    "loop_simplify",
+                ]
+            )
+
+        if self.opt_level >= 3:
+            passes.extend(
+                [
+                    "aggressive_dce",
+                    "aggressive_instcombine",
+                    "loop_unroll",
+                    "loop_unroll_and_jam",
+                    "loop_strength_reduce",
+                    "argument_promotion",
+                    "merge_functions",
+                ]
+            )
+
+        return passes
+
+    def _get_transformations_for_level(self) -> list[str]:
+        """Get list of high-level transformations for the current level.
+
+        Returns:
+            List of transformation descriptions
+        """
+        if self.opt_level == 0:
+            return ["none"]
+
+        transformations = ["dead_code_elimination", "constant_propagation"]
+
+        if self.opt_level >= 2:
+            transformations.extend(["inlining", "loop_optimization", "memory_optimization"])
+
+        if self.opt_level >= 3:
+            transformations.extend(["aggressive_unrolling", "function_merging"])
+
+        return transformations

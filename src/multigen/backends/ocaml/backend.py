@@ -3,6 +3,7 @@
 from typing import Any, Optional
 
 from ..base import AbstractBuilder, AbstractContainerSystem, AbstractEmitter, AbstractFactory, LanguageBackend
+from ..optimizer import AbstractOptimizer, NoOpOptimizer
 from ..preferences import BackendPreferences, OCamlPreferences
 from .builder import OCamlBuilder
 from .containers import OCamlContainerSystem
@@ -20,6 +21,7 @@ class OCamlBackend(LanguageBackend):
         super().__init__(preferences)
         # Ensure preferences is never None after initialization
         assert self.preferences is not None
+        self._optimizer: Optional[NoOpOptimizer] = None
 
     def get_name(self) -> str:
         """Return backend name."""
@@ -44,6 +46,19 @@ class OCamlBackend(LanguageBackend):
     def get_container_system(self) -> AbstractContainerSystem:
         """Get OCaml container system."""
         return OCamlContainerSystem()
+
+    def get_optimizer(self) -> AbstractOptimizer:
+        """Get OCaml optimizer (delegates to compiler).
+
+        OCaml optimization is handled by ocamlopt (native compiler)
+        rather than at the code generation level.
+
+        Returns:
+            NoOpOptimizer instance
+        """
+        if self._optimizer is None:
+            self._optimizer = NoOpOptimizer()
+        return self._optimizer
 
     def get_build_system(self) -> str:
         """Get the build system used by OCaml."""
