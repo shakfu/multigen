@@ -642,17 +642,6 @@ To add support for a new target language:
 
 See existing backends (C, C++, Rust, Go, Haskell, OCaml, LLVM) for implementation examples.
 
-## Relationship with CGen
-
-MultiGen extends the [CGen](https://github.com/shakfu/cgen) project by:
-
-- Expanding Python-to-C capabilities into a multi-language translation system
-- Integrating CGen's C runtime libraries (50KB+ of error handling, memory management, Python operations)
-- Incorporating the STC (Smart Template Container) library for high-performance C containers
-- Adding support for C++, Rust, Go, Haskell, OCaml, and LLVM target languages
-- Implementing a clean 7-phase translation pipeline with abstract backend interfaces
-- Providing a universal preference system for language-specific code generation customization
-
 ## Contributing
 
 1. Fork the repository
