@@ -15,11 +15,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ---
 
-## [0.1.x]
+## [Unreleased]
 
-## [0.1.115] - 2026-02-14
-
-**`yield from` Support Across All Backends (Eager Collection Extension)**
+## [0.1.114]
 
 ### Added
 
@@ -58,54 +56,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   - `TestOCamlYieldFrom` (3 tests): range, function call, mixed
   - `TestIRGenerators`: ir_yield_from_node (IRYieldFrom creation and is_generator flag)
 
-### Fixed
-
-- **AST analyzer complexity gate**: High complexity score (`UNSUPPORTED`) no longer blocks conversion -- only actual errors prevent translation. Triple-nested loops (e.g., matrix multiplication) now translate successfully.
-- **C backend rvalue address-of bug**: `len()` on nested container expressions (e.g., `len(matrix[i])`) no longer generates invalid `&func_call_expr`. Detects function call expressions and skips `&` prefix.
-- **Batch build**: 26/26 translations, 26/26 builds (was 25/26 + 25/26). `nested_dict_list.py` moved to `tests/translation/known_limitations/` (genuine type system limitation: `dict[str, list[int]]` not yet supported).
-
-### Changed
-
-- **Test count**: 1249 -> 1269 (20 new tests)
-- **Validator**: yield_from moved from Tier 4 (Unsupported) to Tier 2 (Structured)
-- **Generator detection**: All 7 backends updated to detect `ast.YieldFrom` alongside `ast.Yield`
-- **Batch build status**: 26/26 translations, 26/26 builds (zero failures)
-
-### Technical Details
-
-`yield from` is the natural complement to `yield` in the eager collection strategy:
-- `yield x` appends one element to the accumulator
-- `yield from expr` extends the accumulator with all elements from the expression
-
-```python
-# Input Python
-def gen(n: int) -> int:
-    yield 0
-    yield from range(n)
-    yield 99
-
-# Output C++ (example)
-std::vector<int> gen(int n) {
-    std::vector<int> __mgen_result;
-    __mgen_result.push_back(0);
-    for (int __mgen_yf = 0; __mgen_yf < n; __mgen_yf++) { __mgen_result.push_back(__mgen_yf); }
-    __mgen_result.push_back(99);
-    return __mgen_result;
-}
-```
-
-Supported expressions: `yield from func()`, `yield from range(...)`, `yield from variable`.
-
-**Not supported** (Phase 2): `.send()`, `.throw()`, generator expressions, lazy evaluation.
-
----
-
-## [0.1.114] - 2026-02-14
-
-**Generator/Yield Support Across All Backends (Eager Collection Strategy)**
-
-### Added
-
 - **Generator function support for all 7 backends** - Python `yield` now converts to eager list collection
   - **C++**: `std::vector<T>` accumulator with `push_back()`, function returns `std::vector<int>`
   - **C**: `vec_int` accumulator with `vec_int_push()`, function returns `vec_int`
@@ -139,14 +89,48 @@ Supported expressions: `yield from func()`, `yield from range(...)`, `yield from
 
 ### Changed
 
+- **Test count**: 1249 -> 1269 (20 new tests)
+- **Validator**: yield_from moved from Tier 4 (Unsupported) to Tier 2 (Structured)
+- **Generator detection**: All 7 backends updated to detect `ast.YieldFrom` alongside `ast.Yield`
+- **Batch build status**: 26/26 translations, 26/26 builds (zero failures)
+
 - **Test count**: 1183 -> 1249 (66 new tests total including generators)
 - **Validator**: generators rule moved from Tier 3 (Advanced) to Tier 2 (Structured)
 
 ### Fixed
 
+- **AST analyzer complexity gate**: High complexity score (`UNSUPPORTED`) no longer blocks conversion -- only actual errors prevent translation. Triple-nested loops (e.g., matrix multiplication) now translate successfully.
+- **C backend rvalue address-of bug**: `len()` on nested container expressions (e.g., `len(matrix[i])`) no longer generates invalid `&func_call_expr`. Detects function call expressions and skips `&` prefix.
+- **Batch build**: 26/26 translations, 26/26 builds (was 25/26 + 25/26). `nested_dict_list.py` moved to `tests/translation/known_limitations/` (genuine type system limitation: `dict[str, list[int]]` not yet supported).
+
 - **mypy z3 type ignores**: Changed `type: ignore[import-not-found]` to `type: ignore[import-untyped]` across 6 files to fix strict mypy errors when z3 is installed
 
 ### Technical Details
+
+`yield from` is the natural complement to `yield` in the eager collection strategy:
+- `yield x` appends one element to the accumulator
+- `yield from expr` extends the accumulator with all elements from the expression
+
+```python
+# Input Python
+def gen(n: int) -> int:
+    yield 0
+    yield from range(n)
+    yield 99
+
+# Output C++ (example)
+std::vector<int> gen(int n) {
+    std::vector<int> __mgen_result;
+    __mgen_result.push_back(0);
+    for (int __mgen_yf = 0; __mgen_yf < n; __mgen_yf++) { __mgen_result.push_back(__mgen_yf); }
+    __mgen_result.push_back(99);
+    return __mgen_result;
+}
+```
+
+Supported expressions: `yield from func()`, `yield from range(...)`, `yield from variable`.
+
+**Not supported** (Phase 2): `.send()`, `.throw()`, generator expressions, lazy evaluation.
 
 Generator functions are detected by scanning for `ast.Yield` nodes in the function body. The eager
 collection strategy transforms generators into functions that return a collected list:
@@ -178,7 +162,7 @@ uses its idiomatic collection type and append operation.
 
 ---
 
-## [0.1.113] - 2026-02-01
+## [0.1.113]
 
 **Haskell Achieves 7/7 Benchmarks - All 7 Backends Now at 100%**
 
