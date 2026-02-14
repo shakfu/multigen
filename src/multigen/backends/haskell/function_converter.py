@@ -64,9 +64,16 @@ def convert_function_with_visitor(converter: "MultiGenPythonToHaskellConverter",
             f"use filter-based quicksort: qsort (p:xs) = qsort [x|x<-xs,x<p] ++ [p] ++ qsort [x|x<-xs,x>=p])"
         )
 
+    # Detect generator functions (contain yield)
+    is_generator = any(isinstance(n, ast.Yield) for n in ast.walk(node))
+
     # Handle main function specially
     if node.name == "main":
         return _convert_main_function(converter, node)
+
+    # Handle generator functions
+    if is_generator:
+        return _convert_generator_function(converter, node, func_name)
 
     # Handle regular pure functions
     return _convert_pure_function(converter, node, func_name)
@@ -331,6 +338,221 @@ def _param_used_as_2d_list(
 def _returns_2d_list(converter: "MultiGenPythonToHaskellConverter", node: ast.FunctionDef) -> bool:
     """Check if function returns 2D list."""
     return converter._returns_2d_list(node)
+
+
+def _convert_generator_function(
+    converter: "MultiGenPythonToHaskellConverter", node: ast.FunctionDef, func_name: str
+) -> str:
+    """Convert generator function to Haskell using accumulation pattern.
+
+    Generators are converted to functions that return a list by building
+    up results via concatenation.
+    """
+    # Extract parameters
+    params = []
+    for arg in node.args.args:
+        param_name = converter._to_haskell_var_name(arg.arg)
+        param_type = "a"
+        if arg.annotation:
+            param_type = converter._convert_type_annotation(arg.annotation)
+        params.append((param_name, param_type))
+
+    # Determine element type from return annotation
+    element_type = "Int"
+    if node.returns:
+        element_type = converter._convert_type_annotation(node.returns)
+
+    # Return type is a list of the element type
+    return_type = f"[{element_type}]"
+
+    # Build type signature
+    if params:
+        param_types = [p[1] for p in params]
+        all_types = param_types + [return_type]
+        base_signature = " -> ".join(all_types)
+    else:
+        base_signature = return_type
+    signature = f"{func_name} :: {base_signature}"
+
+    # Convert function body using accumulation pattern
+    # We generate a helper that accumulates results
+    converter.current_function = func_name
+
+    # For simple while-loop generators, generate a recursive helper
+    # Pattern: def gen(n): i=0; while i<n: yield i; i+=1
+    # -> gen n = genHelper 0 [] where genHelper i acc = if i < n then genHelper (i+1) (acc ++ [i]) else acc
+    body = _convert_generator_body(converter, node, func_name, params)
+
+    converter.current_function = None
+    converter.declared_vars = set()
+
+    param_names = " ".join([p[0] for p in params])
+    param_pattern = f" {param_names}" if param_names else ""
+    return f"{signature}\n{func_name}{param_pattern} = {body}"
+
+
+def _convert_generator_body(
+    converter: "MultiGenPythonToHaskellConverter",
+    node: ast.FunctionDef,
+    func_name: str,
+    params: list[tuple[str, str]],
+) -> str:
+    """Convert generator body to Haskell accumulation pattern."""
+    # Analyze the body to find while-loop or for-loop generators
+    filtered_body = [
+        stmt
+        for stmt in node.body
+        if not (
+            isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Constant) and isinstance(stmt.value.value, str)
+        )
+    ]
+
+    # Look for simple while-loop pattern:
+    # var = init; while cond: yield expr; var += step
+    init_stmts: list[ast.stmt] = []
+    loop_stmt: Optional[ast.stmt] = None
+    for stmt in filtered_body:
+        if isinstance(stmt, ast.While):
+            loop_stmt = stmt
+            break
+        elif isinstance(stmt, ast.For):
+            loop_stmt = stmt
+            break
+        else:
+            init_stmts.append(stmt)
+
+    if loop_stmt is not None and isinstance(loop_stmt, ast.While):
+        return _convert_while_generator(converter, init_stmts, loop_stmt, params)
+    elif loop_stmt is not None and isinstance(loop_stmt, ast.For):
+        return _convert_for_generator(converter, init_stmts, loop_stmt, params)
+
+    # Fallback: collect all yield expressions into a list literal
+    yield_exprs = []
+    for stmt in filtered_body:
+        if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Yield) and stmt.value.value:
+            yield_exprs.append(converter._convert_expression(stmt.value.value))
+    if yield_exprs:
+        return "[" + ", ".join(yield_exprs) + "]"
+    return "[]"
+
+
+def _convert_while_generator(
+    converter: "MultiGenPythonToHaskellConverter",
+    init_stmts: list[ast.stmt],
+    while_stmt: ast.While,
+    params: list[tuple[str, str]],
+) -> str:
+    """Convert while-loop generator to recursive helper."""
+    # Extract initial variable values
+    init_vars: dict[str, str] = {}
+    for stmt in init_stmts:
+        if isinstance(stmt, (ast.Assign, ast.AnnAssign)):
+            target = stmt.targets[0] if isinstance(stmt, ast.Assign) else stmt.target
+            if isinstance(target, ast.Name) and hasattr(stmt, "value") and stmt.value:
+                var_name = converter._to_haskell_var_name(target.id)
+                init_vars[var_name] = converter._convert_expression(stmt.value)
+
+    # Convert condition
+    condition = converter._convert_expression(while_stmt.test)
+
+    # Analyze loop body for yields and updates
+    yield_exprs = []
+    update_vars: dict[str, str] = {}
+
+    for stmt in while_stmt.body:
+        if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Yield) and stmt.value.value:
+            yield_exprs.append(converter._convert_expression(stmt.value.value))
+        elif isinstance(stmt, ast.AugAssign) and isinstance(stmt.target, ast.Name):
+            var_name = converter._to_haskell_var_name(stmt.target.id)
+            value = converter._convert_expression(stmt.value)
+            op = stmt.op
+            if isinstance(op, ast.Add):
+                update_vars[var_name] = f"({var_name} + {value})"
+            elif isinstance(op, ast.Sub):
+                update_vars[var_name] = f"({var_name} - {value})"
+            elif isinstance(op, ast.Mult):
+                update_vars[var_name] = f"({var_name} * {value})"
+            else:
+                update_vars[var_name] = f"({var_name} + {value})"
+        elif isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Name):
+            var_name = converter._to_haskell_var_name(stmt.targets[0].id)
+            update_vars[var_name] = converter._convert_expression(stmt.value)
+
+    # Handle conditional yield (yield inside if)
+    for stmt in while_stmt.body:
+        if isinstance(stmt, ast.If):
+            for sub in stmt.body:
+                if isinstance(sub, ast.Expr) and isinstance(sub.value, ast.Yield) and sub.value.value:
+                    yield_exprs.append(converter._convert_expression(sub.value.value))
+
+    if not yield_exprs:
+        return "[]"
+
+    # Build recursive helper
+    helper_vars = list(init_vars.keys())
+    helper_params = " ".join(helper_vars + ["acc"])
+    init_args = " ".join(init_vars.values()) + " []"
+
+    # Build recursive call arguments
+    rec_args = []
+    for var in helper_vars:
+        if var in update_vars:
+            rec_args.append(update_vars[var])
+        else:
+            rec_args.append(var)
+    rec_args_str = " ".join(rec_args)
+
+    yield_expr = yield_exprs[0]  # Use first yield expression
+    return (
+        f"helper {init_args}\n"
+        f"  where\n"
+        f"    helper {helper_params} = if {condition} then helper {rec_args_str} (acc ++ [{yield_expr}]) else acc"
+    )
+
+
+def _convert_for_generator(
+    converter: "MultiGenPythonToHaskellConverter",
+    init_stmts: list[ast.stmt],
+    for_stmt: ast.For,
+    params: list[tuple[str, str]],
+) -> str:
+    """Convert for-loop generator to list operation."""
+    # Handle range-based for loop
+    if isinstance(for_stmt.iter, ast.Call) and isinstance(for_stmt.iter.func, ast.Name):
+        if for_stmt.iter.func.id == "range" and isinstance(for_stmt.target, ast.Name):
+            loop_var = converter._to_haskell_var_name(for_stmt.target.id)
+            args = for_stmt.iter.args
+
+            # Build range expression
+            if len(args) == 1:
+                range_expr = f"[0..({converter._convert_expression(args[0])} - 1)]"
+            elif len(args) == 2:
+                start = converter._convert_expression(args[0])
+                end = converter._convert_expression(args[1])
+                range_expr = f"[{start}..({end} - 1)]"
+            else:
+                range_expr = "[0..0]"
+
+            # Find yield expression in body
+            yield_exprs = []
+            for stmt in for_stmt.body:
+                if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Yield) and stmt.value.value:
+                    yield_exprs.append(converter._convert_expression(stmt.value.value))
+                elif isinstance(stmt, ast.If):
+                    for sub in stmt.body:
+                        if isinstance(sub, ast.Expr) and isinstance(sub.value, ast.Yield) and sub.value.value:
+                            cond = converter._convert_expression(stmt.test)
+                            expr = converter._convert_expression(sub.value.value)
+                            yield_exprs.append(f"if {cond} then [{expr}] else []")
+
+            if yield_exprs:
+                yield_expr = yield_exprs[0]
+                # Check for conditional yield
+                if "if " in yield_expr and "then [" in yield_expr:
+                    return f"concatMap (\\{loop_var} -> {yield_expr}) {range_expr}"
+                return f"map (\\{loop_var} -> {yield_expr}) {range_expr}"
+
+    return "[]"
 
 
 __all__ = ["convert_function_with_visitor"]

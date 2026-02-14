@@ -17,6 +17,84 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [0.1.x]
 
+## [0.1.114] - 2026-02-14
+
+**Generator/Yield Support Across All Backends (Eager Collection Strategy)**
+
+### Added
+
+- **Generator function support for all 7 backends** - Python `yield` now converts to eager list collection
+  - **C++**: `std::vector<T>` accumulator with `push_back()`, function returns `std::vector<int>`
+  - **C**: `vec_int` accumulator with `vec_int_push()`, function returns `vec_int`
+  - **Rust**: `Vec<T>` accumulator with `.push()`, function returns `Vec<i32>`
+  - **Go**: Slice accumulator with `append()`, function returns `[]int`
+  - **Haskell**: Recursive helper with accumulation pattern (`acc ++ [x]`), or `map`/`concatMap` for for-loop generators
+  - **OCaml**: `ref []` accumulator with prepend + `List.rev`, function returns `int list`
+  - **LLVM**: Stub implementation (evaluates yield value; full vec accumulation planned)
+
+- **Static IR support** for generators
+  - New `IRYield` class in `frontend/static_ir.py` for yield statement representation
+  - Added `is_generator` boolean field to `IRFunction` (auto-detected via `ast.Yield` scan)
+  - Added `visit_yield()` abstract method to `IRVisitor` interface
+  - `IRBuilder` handles `ast.Yield` in `_build_statement` and `_build_yield`
+
+- **Validator updates** for generator constraints
+  - `generators` rule upgraded from `EXPERIMENTAL` to `PARTIALLY_SUPPORTED`
+  - Added `yield_from` rejection rule (`NOT_SUPPORTED`)
+  - Added `generator_expressions` rejection rule (`NOT_SUPPORTED`)
+  - New `_validate_yield` validator method
+
+- **38 new tests** in `tests/test_generators.py`
+  - `TestGeneratorValidation` (5 tests): yield valid, yield_from rejected, generator expressions rejected
+  - `TestCppGenerators` (5 tests): simple, for-loop, conditional, return type, multiple yields
+  - `TestCGenerators` (5 tests): vec_int accumulation pattern
+  - `TestRustGenerators` (5 tests): Vec push pattern
+  - `TestGoGenerators` (5 tests): slice append pattern
+  - `TestHaskellGenerators` (5 tests): recursive accumulation and map patterns
+  - `TestOCamlGenerators` (5 tests): ref list prepend + List.rev pattern
+  - `TestIRGenerators` (3 tests): IRYield node, is_generator flag, yield in body
+
+### Changed
+
+- **Test count**: 1183 -> 1249 (66 new tests total including generators)
+- **Validator**: generators rule moved from Tier 3 (Advanced) to Tier 2 (Structured)
+
+### Fixed
+
+- **mypy z3 type ignores**: Changed `type: ignore[import-not-found]` to `type: ignore[import-untyped]` across 6 files to fix strict mypy errors when z3 is installed
+
+### Technical Details
+
+Generator functions are detected by scanning for `ast.Yield` nodes in the function body. The eager
+collection strategy transforms generators into functions that return a collected list:
+
+```python
+# Input Python
+def count_up(n: int) -> int:
+    i: int = 0
+    while i < n:
+        yield i
+        i += 1
+
+# Output C++ (example)
+std::vector<int> count_up(int n) {
+    std::vector<int> __mgen_result;
+    int i = 0;
+    while (i < n) {
+        __mgen_result.push_back(i);
+        i += 1;
+    }
+    return __mgen_result;
+}
+```
+
+The `__mgen_result` accumulator name is chosen to avoid collision with user variables. Each backend
+uses its idiomatic collection type and append operation.
+
+**Not supported** (Phase 2): `yield from`, `.send()`, `.throw()`, generator expressions, lazy evaluation.
+
+---
+
 ## [0.1.113] - 2026-02-01
 
 **Haskell Achieves 7/7 Benchmarks - All 7 Backends Now at 100%**

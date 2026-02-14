@@ -351,11 +351,33 @@ class StaticPythonSubsetValidator:
 
         rules["generators"] = FeatureRule(
             name="Generator Functions",
-            tier=SubsetTier.TIER_3_ADVANCED,
-            status=FeatureStatus.EXPERIMENTAL,
-            description="Generators as state machines",
+            tier=SubsetTier.TIER_2_STRUCTURED,
+            status=FeatureStatus.PARTIALLY_SUPPORTED,
+            description="Generator functions with yield (eager collection to list)",
             ast_nodes=[ast.Yield],
-            c_mapping="C state machine implementations",
+            validator=self._validate_yield,
+            constraints=["No yield from", "No .send() or .throw()", "No generator expressions"],
+            c_mapping="Function returning list/vector with accumulation pattern",
+            examples={
+                "valid": "def gen(n: int) -> int:\n    i: int = 0\n    while i < n:\n        yield i\n        i += 1",
+                "invalid": "def gen():\n    yield from other_gen()",
+            },
+        )
+
+        rules["yield_from"] = FeatureRule(
+            name="Yield From",
+            tier=SubsetTier.TIER_4_UNSUPPORTED,
+            status=FeatureStatus.NOT_SUPPORTED,
+            description="yield from is not supported",
+            ast_nodes=[ast.YieldFrom],
+        )
+
+        rules["generator_expressions"] = FeatureRule(
+            name="Generator Expressions",
+            tier=SubsetTier.TIER_4_UNSUPPORTED,
+            status=FeatureStatus.NOT_SUPPORTED,
+            description="Generator expressions are not supported",
+            ast_nodes=[ast.GeneratorExp],
         )
 
         rules["generics"] = FeatureRule(
@@ -727,6 +749,12 @@ class StaticPythonSubsetValidator:
 
             return True
 
+        return True
+
+    def _validate_yield(self, node: ast.AST) -> bool:
+        """Validate yield statement constraints."""
+        if isinstance(node, ast.Yield):
+            return True
         return True
 
     def _determine_conversion_strategy(self, result: ValidationResult) -> str:

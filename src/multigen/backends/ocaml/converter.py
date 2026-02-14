@@ -97,6 +97,8 @@ class MultiGenPythonToOCamlConverter:
             return self._convert_annotated_assignment(node)
         elif isinstance(node, ast.AugAssign):
             return self._convert_augmented_assignment(node)
+        elif isinstance(node, ast.Expr) and isinstance(node.value, ast.Yield):
+            return self._convert_yield_statement(node.value)
         elif isinstance(node, ast.Expr):
             return self._convert_expression_statement(node)
         elif isinstance(node, ast.Return):
@@ -436,6 +438,11 @@ class MultiGenPythonToOCamlConverter:
         """Convert a regular function definition."""
         func_name = self._to_ocaml_var_name(node.name)
 
+        # Detect generator functions (contain yield)
+        is_generator = any(isinstance(n, ast.Yield) for n in ast.walk(node))
+        if is_generator:
+            return self._convert_generator_function(node, params, return_type)
+
         # Find mutable variables for this function
         self.mutable_vars = self._find_mutable_variables(node)
 
@@ -528,6 +535,65 @@ class MultiGenPythonToOCamlConverter:
                 lines.append("  ()")
 
         return lines
+
+    def _convert_generator_function(
+        self, node: ast.FunctionDef, params: list[tuple[str, str]], return_type: str
+    ) -> list[str]:
+        """Convert a generator function to OCaml using ref accumulator pattern."""
+        func_name = self._to_ocaml_var_name(node.name)
+
+        # Function signature
+        if params:
+            param_list = " ".join([name for name, _ in params])
+            signature = f"let {func_name} {param_list} ="
+        else:
+            signature = f"let {func_name} () ="
+
+        lines = [signature]
+        lines.append("  let __mgen_result = ref [] in")
+
+        # Convert body statements
+        filtered_body = [
+            stmt
+            for stmt in node.body
+            if not (
+                isinstance(stmt, ast.Expr)
+                and isinstance(stmt.value, ast.Constant)
+                and isinstance(stmt.value.value, str)
+            )
+        ]
+
+        self.mutable_vars = self._find_mutable_variables(node)
+        param_names = {name for name, _ in params}
+        self.mutable_vars = self.mutable_vars - param_names
+        # Add __mgen_result to mutable vars so it uses ref semantics
+        self.mutable_vars.add("__mgen_result")
+
+        body_lines: list[str] = []
+        for stmt in filtered_body:
+            if isinstance(stmt, ast.Return):
+                # Skip explicit returns in generators
+                continue
+            converted = self._convert_statement(stmt)
+            if isinstance(converted, list):
+                body_lines.extend(converted)
+            else:
+                body_lines.append(converted)
+
+        for line in body_lines:
+            lines.append(f"  {line};")
+
+        lines.append("  List.rev !__mgen_result")
+
+        return lines
+
+    def _convert_yield_statement(self, node: ast.Yield) -> str:
+        """Convert yield to prepend on accumulator ref."""
+        if node.value is not None:
+            value = self._convert_expression(node.value)
+        else:
+            value = "0"
+        return f"__mgen_result := {value} :: !__mgen_result"
 
     def _convert_class_def(self, node: ast.ClassDef) -> list[str]:
         """Convert Python class to OCaml record type and functions."""

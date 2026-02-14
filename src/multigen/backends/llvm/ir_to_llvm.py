@@ -35,6 +35,7 @@ from ...frontend.static_ir import (
     IRVisitor,
     IRWhile,
     IRWith,
+    IRYield,
 )
 from .runtime_decls import LLVMRuntimeDeclarations
 
@@ -2276,6 +2277,23 @@ class IRToLLVMConverter(IRVisitor):
         # This allows the rest of the code to compile but file operations won't work
         for stmt in node.body:
             stmt.accept(self)
+
+    def visit_yield(self, node: IRYield) -> None:
+        """Visit a yield statement node (generator).
+
+        Note: LLVM generator support requires vec runtime support for accumulation.
+        This is a stub implementation that generates a no-op.
+        Full generator support is planned for future implementation.
+
+        Args:
+            node: IR yield statement to convert
+        """
+        if self.builder is None:
+            raise RuntimeError("Builder not initialized - must be inside a function")
+
+        # TODO: Implement proper generator support with vec_int_push runtime calls
+        # For now, evaluate the value expression (for side effects) but discard result
+        node.value.accept(self)
 
     def _convert_type(self, ir_type: IRType) -> ir.Type:
         """Map IRType to llvmlite type.

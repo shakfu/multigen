@@ -603,6 +603,9 @@ class MultiGenPythonToCConverter:
         # Reset temp variable counters for each function (allows reuse of simple names)
         self._temp_var_counters = {}
 
+        # Detect generator functions (contain yield)
+        is_generator = any(isinstance(n, ast.Yield) for n in ast.walk(node))
+
         # Build parameter list
         params = []
         for arg in node.args.args:
@@ -651,6 +654,13 @@ class MultiGenPythonToCConverter:
                                 return_type = "vec_vec_int"
                                 break
 
+        # For generators, determine vec type and rewrite return type
+        gen_vec_type = "vec_int"  # default
+        if is_generator:
+            gen_vec_type = self._get_generator_vec_type(node, return_type)
+            return_type = gen_vec_type
+            self._current_gen_vec_type = gen_vec_type
+
         # Build function signature
         params_str = ", ".join(params) if params else "void"
         signature = f"{return_type} {node.name}({params_str})"
@@ -660,17 +670,38 @@ class MultiGenPythonToCConverter:
 
         # Convert function body
         body_lines = []
+
+        # For generators, inject accumulator at start
+        if is_generator:
+            body_lines.append(f"{gen_vec_type} __mgen_result = {gen_vec_type}_init();")
+
         for stmt in node.body:
             converted = self._convert_statement(stmt)
             if converted:
                 body_lines.extend(converted.split("\n"))
+
+        # For generators, add return at end
+        if is_generator:
+            body_lines.append("return __mgen_result;")
 
         # Format function
         body = "\n".join(f"    {line}" if line.strip() else "" for line in body_lines)
 
         self.current_function = None
         self.current_function_ast = None
+        if is_generator:
+            self._current_gen_vec_type = ""
         return f"{signature} {{\n{body}\n}}"
+
+    def _get_generator_vec_type(self, node: ast.FunctionDef, return_type: str) -> str:
+        """Determine the C vec type for a generator function."""
+        if node.returns:
+            py_type = self._get_type_annotation(node.returns)
+            if py_type == "str":
+                return "vec_str"
+            elif py_type == "float":
+                return "vec_int"  # C backend uses vec_int for doubles too
+        return "vec_int"
 
     def _convert_statement(self, stmt: ast.stmt) -> str:
         """Convert Python statement to C code."""
@@ -688,6 +719,8 @@ class MultiGenPythonToCConverter:
             return self._convert_while(stmt)
         elif isinstance(stmt, ast.For):
             return self._convert_for(stmt)
+        elif isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Yield):
+            return self._convert_yield(stmt.value)
         elif isinstance(stmt, ast.Expr):
             return self._convert_expression_statement(stmt)
         elif isinstance(stmt, ast.ClassDef):
@@ -704,6 +737,15 @@ class MultiGenPythonToCConverter:
             return self._convert_with(stmt)
         else:
             raise UnsupportedFeatureError(f"Unsupported statement type: {type(stmt).__name__}")
+
+    def _convert_yield(self, node: ast.Yield) -> str:
+        """Convert yield to vec push on accumulator."""
+        gen_vec_type = getattr(self, "_current_gen_vec_type", "vec_int")
+        if node.value is not None:
+            value = self._convert_expression(node.value)
+        else:
+            value = "0"
+        return f"{gen_vec_type}_push(&__mgen_result, {value});"
 
     def _convert_return(self, stmt: ast.Return) -> str:
         """Convert return statement.

@@ -435,6 +435,12 @@ main = printValue "Generated Haskell code executed successfully"'''
             else:
                 return "-- Complex annotated assignment"
 
+        elif isinstance(node, ast.Expr) and isinstance(node.value, ast.Yield):
+            # Yield is handled at the function level for generators
+            if node.value.value:
+                return self._convert_expression(node.value.value)
+            return "()"
+
         elif isinstance(node, ast.Expr):
             # Check if this is a mutation that needs to be converted to reassignment
             if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Attribute):

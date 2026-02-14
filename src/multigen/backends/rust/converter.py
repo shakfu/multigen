@@ -692,6 +692,16 @@ class MultiGenPythonToRustConverter:
             else:
                 return_type = ""
 
+        # Detect generator functions (contain yield)
+        is_generator = any(isinstance(n, ast.Yield) for n in ast.walk(node))
+
+        # For generators, rewrite return type
+        gen_element_type = "i32"  # default
+        if is_generator:
+            gen_element_type = self._get_generator_element_type_rust(node)
+            actual_return_type = f"Vec<{gen_element_type}>"
+            return_type = f" -> Vec<{gen_element_type}>"
+
         # Store function return type for later reference
         self.function_return_types[node.name] = actual_return_type
 
@@ -703,6 +713,8 @@ class MultiGenPythonToRustConverter:
         self.current_function_node = node  # Store AST node for analysis
         self.declared_vars = set()  # Reset for new function
         self.variable_types = {}  # Reset variable type tracking for new function
+        self._is_generator = is_generator
+        self._gen_element_type = gen_element_type
         # Add parameters to declared variables and their types
         for arg in node.args.args:
             self.declared_vars.add(arg.arg)
@@ -722,11 +734,35 @@ class MultiGenPythonToRustConverter:
                     self.variable_types[arg.arg] = param_type
             else:
                 self.variable_types[arg.arg] = param_type
+
+        # Build body parts
+        body_parts = []
+
+        # For generators, inject accumulator at start
+        if is_generator:
+            body_parts.append(f"    let mut __mgen_result: Vec<{gen_element_type}> = Vec::new();")
+
         body = self._convert_statements(node.body)
+        body_parts.append(body)
+
+        # For generators, add implicit return at end
+        if is_generator:
+            body_parts.append("    __mgen_result")
+
+        full_body = "\n".join(body_parts)
         self.current_function = None
         self.current_function_node = None
+        self._is_generator = False
 
-        return f"{func_signature} {{\n{body}\n}}"
+        return f"{func_signature} {{\n{full_body}\n}}"
+
+    def _get_generator_element_type_rust(self, node: ast.FunctionDef) -> str:
+        """Determine the Rust element type yielded by a generator."""
+        if node.returns:
+            mapped = self._map_type_annotation(node.returns)
+            if mapped in ("i32", "f64", "bool", "String"):
+                return mapped
+        return "i32"
 
     def _convert_statements(self, statements: list[ast.stmt]) -> str:
         """Convert a list of statements."""
@@ -751,6 +787,8 @@ class MultiGenPythonToRustConverter:
             return self._convert_while(stmt)
         elif isinstance(stmt, ast.For):
             return self._convert_for(stmt)
+        elif isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Yield):
+            return self._convert_yield(stmt.value)
         elif isinstance(stmt, ast.Expr):
             return self._convert_expression_statement(stmt)
         elif isinstance(stmt, ast.Pass):
@@ -765,6 +803,14 @@ class MultiGenPythonToRustConverter:
             return self._convert_with(stmt)
         else:
             raise UnsupportedFeatureError(f"Statement type {type(stmt).__name__} is not supported in Rust backend")
+
+    def _convert_yield(self, node: ast.Yield) -> str:
+        """Convert yield to push on accumulator."""
+        if node.value is not None:
+            value = self._convert_expression(node.value)
+        else:
+            value = "0"
+        return f"    __mgen_result.push({value});"
 
     def _convert_assert(self, stmt: ast.Assert) -> str:
         """Convert Python assert statement to Rust assert!() macro.
