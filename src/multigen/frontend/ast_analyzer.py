@@ -362,7 +362,8 @@ class ASTAnalyzer(ast.NodeVisitor):
             self.result.conversion_confidence = max(0.7, 1.0 - (warning_count * 0.1))
 
         # Determine if code is convertible
-        if error_count > 0 or max_complexity == StaticComplexity.UNSUPPORTED:
+        # Only actual errors block conversion; high complexity is a warning, not a blocker
+        if error_count > 0:
             self.result.convertible = False
 
 

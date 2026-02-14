@@ -576,7 +576,7 @@ class MultiGenPythonToGoConverter:
         params_str = ", ".join(params)
 
         # Detect generator functions (contain yield)
-        is_generator = any(isinstance(n, ast.Yield) for n in ast.walk(node))
+        is_generator = any(isinstance(n, (ast.Yield, ast.YieldFrom)) for n in ast.walk(node))
 
         # Get return type
         # Special case: Go's main function must not have a return type
@@ -1028,6 +1028,8 @@ class MultiGenPythonToGoConverter:
             return self._convert_while(stmt)
         elif isinstance(stmt, ast.For):
             return self._convert_for(stmt)
+        elif isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.YieldFrom):
+            return self._convert_yield_from(stmt.value)
         elif isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Yield):
             return self._convert_yield(stmt.value)
         elif isinstance(stmt, ast.Expr):
@@ -1052,6 +1054,28 @@ class MultiGenPythonToGoConverter:
         else:
             value = "0"
         return f"    __mgen_result = append(__mgen_result, {value})"
+
+    def _convert_yield_from(self, node: ast.YieldFrom) -> str:
+        """Convert yield from to extend accumulator with iterable."""
+        # Handle range() specially
+        if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name):
+            if node.value.func.id == "range":
+                args = node.value.args
+                if len(args) == 1:
+                    end = self._convert_expression(args[0])
+                    return f"    for __mgen_yf := 0; __mgen_yf < {end}; __mgen_yf++ {{ __mgen_result = append(__mgen_result, __mgen_yf) }}"
+                elif len(args) == 2:
+                    start = self._convert_expression(args[0])
+                    end = self._convert_expression(args[1])
+                    return f"    for __mgen_yf := {start}; __mgen_yf < {end}; __mgen_yf++ {{ __mgen_result = append(__mgen_result, __mgen_yf) }}"
+                elif len(args) == 3:
+                    start = self._convert_expression(args[0])
+                    end = self._convert_expression(args[1])
+                    step = self._convert_expression(args[2])
+                    return f"    for __mgen_yf := {start}; __mgen_yf < {end}; __mgen_yf += {step} {{ __mgen_result = append(__mgen_result, __mgen_yf) }}"
+        # For function calls and variables, use variadic append
+        expr = self._convert_expression(node.value)
+        return f"    __mgen_result = append(__mgen_result, {expr}...)"
 
     def _get_generator_element_type_go(self, node: ast.FunctionDef) -> str:
         """Determine the Go element type yielded by a generator."""

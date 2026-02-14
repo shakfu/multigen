@@ -693,7 +693,7 @@ class MultiGenPythonToRustConverter:
                 return_type = ""
 
         # Detect generator functions (contain yield)
-        is_generator = any(isinstance(n, ast.Yield) for n in ast.walk(node))
+        is_generator = any(isinstance(n, (ast.Yield, ast.YieldFrom)) for n in ast.walk(node))
 
         # For generators, rewrite return type
         gen_element_type = "i32"  # default
@@ -787,6 +787,8 @@ class MultiGenPythonToRustConverter:
             return self._convert_while(stmt)
         elif isinstance(stmt, ast.For):
             return self._convert_for(stmt)
+        elif isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.YieldFrom):
+            return self._convert_yield_from(stmt.value)
         elif isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Yield):
             return self._convert_yield(stmt.value)
         elif isinstance(stmt, ast.Expr):
@@ -811,6 +813,31 @@ class MultiGenPythonToRustConverter:
         else:
             value = "0"
         return f"    __mgen_result.push({value});"
+
+    def _convert_yield_from(self, node: ast.YieldFrom) -> str:
+        """Convert yield from to extend accumulator with iterable."""
+        # Handle range() specially
+        if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name):
+            if node.value.func.id == "range":
+                args = node.value.args
+                if len(args) == 1:
+                    end = self._convert_expression(args[0])
+                    return f"    for __mgen_yf in 0..{end} {{ __mgen_result.push(__mgen_yf); }}"
+                elif len(args) == 2:
+                    start = self._convert_expression(args[0])
+                    end = self._convert_expression(args[1])
+                    return f"    for __mgen_yf in {start}..{end} {{ __mgen_result.push(__mgen_yf); }}"
+                elif len(args) == 3:
+                    start = self._convert_expression(args[0])
+                    end = self._convert_expression(args[1])
+                    step = self._convert_expression(args[2])
+                    return (
+                        f"    {{ let mut __mgen_yf = {start}; "
+                        f"while __mgen_yf < {end} {{ __mgen_result.push(__mgen_yf); __mgen_yf += {step}; }} }}"
+                    )
+        # For function calls and variables, use extend
+        expr = self._convert_expression(node.value)
+        return f"    __mgen_result.extend({expr});"
 
     def _convert_assert(self, stmt: ast.Assert) -> str:
         """Convert Python assert statement to Rust assert!() macro.

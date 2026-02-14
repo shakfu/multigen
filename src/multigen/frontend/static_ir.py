@@ -663,6 +663,23 @@ class IRYield(IRStatement):
         return visitor.visit_yield(self)
 
 
+class IRYieldFrom(IRStatement):
+    """IR representation of yield from (extend accumulator with iterable)."""
+
+    def __init__(self, iterable: IRExpression, location: Optional[IRLocation] = None):
+        super().__init__(location)
+        self.iterable = iterable
+        self.add_child(iterable)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize yield from to dictionary representation."""
+        return {"type": "yield_from", "iterable": self.iterable.to_dict()}
+
+    def accept(self, visitor: "IRVisitor") -> Any:
+        """Accept a visitor for traversal (visitor pattern)."""
+        return visitor.visit_yield_from(self)
+
+
 class IRIf(IRStatement):
     """IR representation of if statements."""
 
@@ -903,6 +920,11 @@ class IRVisitor(ABC):
         """Visit a yield statement node."""
         pass
 
+    @abstractmethod
+    def visit_yield_from(self, node: "IRYieldFrom") -> Any:
+        """Visit a yield from statement node."""
+        pass
+
 
 class IRBuilder:
     """Builder for constructing IR from Python AST."""
@@ -968,9 +990,9 @@ class IRBuilder:
         ir_func = IRFunction(node.name, return_type, self._get_location(node))
         self.current_function = ir_func
 
-        # Detect generator functions (contain yield)
+        # Detect generator functions (contain yield or yield from)
         for child_node in ast.walk(node):
-            if isinstance(child_node, ast.Yield):
+            if isinstance(child_node, (ast.Yield, ast.YieldFrom)):
                 ir_func.is_generator = True
                 break
 
@@ -1003,6 +1025,8 @@ class IRBuilder:
             return IRBreak(self._get_location(node))
         elif isinstance(node, ast.Continue):
             return IRContinue(self._get_location(node))
+        elif isinstance(node, ast.Expr) and isinstance(node.value, ast.YieldFrom):
+            return self._build_yield_from(node.value)
         elif isinstance(node, ast.Expr) and isinstance(node.value, ast.Yield):
             return self._build_yield(node.value)
         elif isinstance(node, ast.Expr):
@@ -1694,6 +1718,11 @@ class IRBuilder:
         else:
             value = IRLiteral(None, IRType(IRDataType.VOID))
         return IRYield(value, self._get_location(node))
+
+    def _build_yield_from(self, node: ast.YieldFrom) -> "IRYieldFrom":
+        """Build IR yield from statement from AST YieldFrom node."""
+        iterable = self._build_expression(node.value)
+        return IRYieldFrom(iterable, self._get_location(node))
 
     def _extract_ir_type(self, annotation: ast.expr) -> IRType:
         """Extract IR type from AST annotation."""

@@ -1,11 +1,12 @@
-"""Tests for generator/yield support (eager collection strategy).
+"""Tests for generator/yield and yield from support (eager collection strategy).
 
 Tests generator function conversion across all backends:
 - Generators are converted to functions that return a collected list
 - yield x becomes an append to an accumulator
+- yield from expr extends the accumulator with all elements
 - The function returns the accumulated list
 
-Scope: yield only. No yield from, .send(), .throw(), generator expressions.
+Scope: yield and yield from. No .send(), .throw(), generator expressions.
 """
 
 import pytest
@@ -60,15 +61,27 @@ class TestGeneratorValidation:
         result = self.validator.validate_code(SIMPLE_WHILE_GENERATOR)
         assert result.is_valid
 
-    def test_yield_from_rejected(self) -> None:
-        """yield from should be rejected."""
+    def test_yield_from_valid(self) -> None:
+        """yield from with function call/range/variable should be valid."""
         code = """
-def gen():
-    yield from range(10)
+def gen(n: int) -> int:
+    yield from range(n)
 """
         result = self.validator.validate_code(code)
-        assert not result.is_valid
-        assert any("Yield From" in v for v in result.violations)
+        assert result.is_valid
+
+    def test_yield_from_with_generator_call_valid(self) -> None:
+        """yield from calling another generator should be valid."""
+        code = """
+def inner(n: int) -> int:
+    for i in range(n):
+        yield i
+
+def outer(n: int) -> int:
+    yield from inner(n)
+"""
+        result = self.validator.validate_code(code)
+        assert result.is_valid
 
     def test_generator_expression_rejected(self) -> None:
         """Generator expressions should be rejected."""
@@ -361,3 +374,194 @@ def gen(n: int) -> int:
         func = ir_module.functions[0]
         yield_stmts = [s for s in func.body if isinstance(s, IRYield)]
         assert len(yield_stmts) == 1
+
+    def test_ir_yield_from_node(self) -> None:
+        """Test IRYieldFrom node creation and is_generator flag."""
+        from multigen.frontend.static_ir import IRYieldFrom, build_ir_from_code
+
+        code = """
+def gen(n: int) -> int:
+    yield from range(n)
+"""
+        ir_module = build_ir_from_code(code)
+        func = ir_module.functions[0]
+        assert func.is_generator is True
+        yield_from_stmts = [s for s in func.body if isinstance(s, IRYieldFrom)]
+        assert len(yield_from_stmts) == 1
+
+
+# --- yield from test snippets ---
+
+YIELD_FROM_RANGE = """
+def gen(n: int) -> int:
+    yield from range(n)
+"""
+
+YIELD_FROM_GENERATOR = """
+def inner(n: int) -> int:
+    for i in range(n):
+        yield i
+
+def outer(n: int) -> int:
+    yield from inner(n)
+"""
+
+YIELD_FROM_MIXED = """
+def gen(n: int) -> int:
+    yield 0
+    yield from range(n)
+    yield 99
+"""
+
+
+class TestCppYieldFrom:
+    """Test C++ yield from conversion."""
+
+    def setup_method(self) -> None:
+        self.converter = MultiGenPythonToCppConverter()
+
+    def test_yield_from_range(self) -> None:
+        """Test yield from range produces a counting loop."""
+        cpp = self.converter.convert_code(YIELD_FROM_RANGE)
+        assert "std::vector<int>" in cpp
+        assert "__mgen_result" in cpp
+        assert "__mgen_yf" in cpp
+        assert "push_back" in cpp
+
+    def test_yield_from_function_call(self) -> None:
+        """Test yield from function call uses for-each loop."""
+        cpp = self.converter.convert_code(YIELD_FROM_GENERATOR)
+        assert "push_back" in cpp
+        assert "__mgen_yf" in cpp
+
+    def test_yield_from_mixed(self) -> None:
+        """Test mixed yield and yield from."""
+        cpp = self.converter.convert_code(YIELD_FROM_MIXED)
+        assert "push_back" in cpp
+        assert "__mgen_yf" in cpp
+        assert "__mgen_result" in cpp
+
+
+class TestCYieldFrom:
+    """Test C yield from conversion."""
+
+    def setup_method(self) -> None:
+        self.converter = MultiGenPythonToCConverter()
+
+    def test_yield_from_range(self) -> None:
+        """Test yield from range produces a counting loop."""
+        c = self.converter.convert_code(YIELD_FROM_RANGE)
+        assert "vec_int" in c
+        assert "__mgen_result" in c
+        assert "__mgen_yf" in c
+        assert "vec_int_push" in c
+
+    def test_yield_from_function_call(self) -> None:
+        """Test yield from function call loops over result."""
+        c = self.converter.convert_code(YIELD_FROM_GENERATOR)
+        assert "vec_int_push" in c
+
+    def test_yield_from_mixed(self) -> None:
+        """Test mixed yield and yield from."""
+        c = self.converter.convert_code(YIELD_FROM_MIXED)
+        assert "vec_int_push" in c
+        assert "__mgen_result" in c
+
+
+class TestRustYieldFrom:
+    """Test Rust yield from conversion."""
+
+    def setup_method(self) -> None:
+        self.converter = MultiGenPythonToRustConverter()
+
+    def test_yield_from_range(self) -> None:
+        """Test yield from range produces a range loop."""
+        rust = self.converter.convert_code(YIELD_FROM_RANGE)
+        assert "Vec<i32>" in rust
+        assert "__mgen_result" in rust
+        assert "__mgen_yf" in rust
+        assert ".push(" in rust
+
+    def test_yield_from_function_call(self) -> None:
+        """Test yield from function call uses extend."""
+        rust = self.converter.convert_code(YIELD_FROM_GENERATOR)
+        assert ".extend(" in rust or ".push(" in rust
+
+    def test_yield_from_mixed(self) -> None:
+        """Test mixed yield and yield from."""
+        rust = self.converter.convert_code(YIELD_FROM_MIXED)
+        assert ".push(" in rust
+        assert "__mgen_result" in rust
+
+
+class TestGoYieldFrom:
+    """Test Go yield from conversion."""
+
+    def setup_method(self) -> None:
+        self.converter = MultiGenPythonToGoConverter()
+
+    def test_yield_from_range(self) -> None:
+        """Test yield from range produces a counting loop."""
+        go = self.converter.convert_code(YIELD_FROM_RANGE)
+        assert "[]int" in go
+        assert "__mgen_result" in go
+        assert "__mgen_yf" in go
+        assert "append(" in go
+
+    def test_yield_from_function_call(self) -> None:
+        """Test yield from function call uses variadic append."""
+        go = self.converter.convert_code(YIELD_FROM_GENERATOR)
+        assert "append(" in go
+
+    def test_yield_from_mixed(self) -> None:
+        """Test mixed yield and yield from."""
+        go = self.converter.convert_code(YIELD_FROM_MIXED)
+        assert "append(" in go
+        assert "__mgen_result" in go
+
+
+class TestHaskellYieldFrom:
+    """Test Haskell yield from conversion."""
+
+    def setup_method(self) -> None:
+        self.converter = MultiGenPythonToHaskellConverter()
+
+    def test_yield_from_range(self) -> None:
+        """Test yield from range produces list."""
+        hs = self.converter.convert_code(YIELD_FROM_RANGE)
+        assert "[Int]" in hs
+
+    def test_yield_from_function_call(self) -> None:
+        """Test yield from function call."""
+        hs = self.converter.convert_code(YIELD_FROM_GENERATOR)
+        assert "[Int]" in hs
+
+    def test_yield_from_mixed(self) -> None:
+        """Test mixed yield and yield from produces concatenation."""
+        hs = self.converter.convert_code(YIELD_FROM_MIXED)
+        assert "[Int]" in hs
+        assert "++" in hs
+
+
+class TestOCamlYieldFrom:
+    """Test OCaml yield from conversion."""
+
+    def setup_method(self) -> None:
+        self.converter = MultiGenPythonToOCamlConverter()
+
+    def test_yield_from_range(self) -> None:
+        """Test yield from range produces loop."""
+        ocaml = self.converter.convert_code(YIELD_FROM_RANGE)
+        assert "__mgen_result" in ocaml
+        assert "__mgen_yf" in ocaml
+
+    def test_yield_from_function_call(self) -> None:
+        """Test yield from function call uses List.iter."""
+        ocaml = self.converter.convert_code(YIELD_FROM_GENERATOR)
+        assert "__mgen_result" in ocaml
+
+    def test_yield_from_mixed(self) -> None:
+        """Test mixed yield and yield from."""
+        ocaml = self.converter.convert_code(YIELD_FROM_MIXED)
+        assert "__mgen_result" in ocaml
+        assert "List.rev" in ocaml

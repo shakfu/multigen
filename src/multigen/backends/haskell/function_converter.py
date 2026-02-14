@@ -65,7 +65,7 @@ def convert_function_with_visitor(converter: "MultiGenPythonToHaskellConverter",
         )
 
     # Detect generator functions (contain yield)
-    is_generator = any(isinstance(n, ast.Yield) for n in ast.walk(node))
+    is_generator = any(isinstance(n, (ast.Yield, ast.YieldFrom)) for n in ast.walk(node))
 
     # Handle main function specially
     if node.name == "main":
@@ -426,13 +426,15 @@ def _convert_generator_body(
     elif loop_stmt is not None and isinstance(loop_stmt, ast.For):
         return _convert_for_generator(converter, init_stmts, loop_stmt, params)
 
-    # Fallback: collect all yield expressions into a list literal
-    yield_exprs = []
+    # Fallback: collect all yield/yield from expressions into a list
+    yield_parts = []
     for stmt in filtered_body:
         if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Yield) and stmt.value.value:
-            yield_exprs.append(converter._convert_expression(stmt.value.value))
-    if yield_exprs:
-        return "[" + ", ".join(yield_exprs) + "]"
+            yield_parts.append("[" + converter._convert_expression(stmt.value.value) + "]")
+        elif isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.YieldFrom):
+            yield_parts.append(converter._convert_expression(stmt.value.value))
+    if yield_parts:
+        return " ++ ".join(yield_parts)
     return "[]"
 
 

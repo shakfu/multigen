@@ -36,6 +36,7 @@ from ...frontend.static_ir import (
     IRWhile,
     IRWith,
     IRYield,
+    IRYieldFrom,
 )
 from .runtime_decls import LLVMRuntimeDeclarations
 
@@ -2294,6 +2295,22 @@ class IRToLLVMConverter(IRVisitor):
         # TODO: Implement proper generator support with vec_int_push runtime calls
         # For now, evaluate the value expression (for side effects) but discard result
         node.value.accept(self)
+
+    def visit_yield_from(self, node: IRYieldFrom) -> None:
+        """Visit a yield from statement node (generator).
+
+        Stub implementation consistent with visit_yield.
+        Evaluates the iterable expression for side effects only.
+
+        Args:
+            node: IR yield from statement to convert
+        """
+        if self.builder is None:
+            raise RuntimeError("Builder not initialized - must be inside a function")
+
+        # TODO: Implement proper generator support with vec extension runtime calls
+        # For now, evaluate the iterable expression (for side effects) but discard result
+        node.iterable.accept(self)
 
     def _convert_type(self, ir_type: IRType) -> ir.Type:
         """Map IRType to llvmlite type.

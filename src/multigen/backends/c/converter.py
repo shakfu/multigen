@@ -604,7 +604,7 @@ class MultiGenPythonToCConverter:
         self._temp_var_counters = {}
 
         # Detect generator functions (contain yield)
-        is_generator = any(isinstance(n, ast.Yield) for n in ast.walk(node))
+        is_generator = any(isinstance(n, (ast.Yield, ast.YieldFrom)) for n in ast.walk(node))
 
         # Build parameter list
         params = []
@@ -719,6 +719,8 @@ class MultiGenPythonToCConverter:
             return self._convert_while(stmt)
         elif isinstance(stmt, ast.For):
             return self._convert_for(stmt)
+        elif isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.YieldFrom):
+            return self._convert_yield_from(stmt.value)
         elif isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Yield):
             return self._convert_yield(stmt.value)
         elif isinstance(stmt, ast.Expr):
@@ -746,6 +748,33 @@ class MultiGenPythonToCConverter:
         else:
             value = "0"
         return f"{gen_vec_type}_push(&__mgen_result, {value});"
+
+    def _convert_yield_from(self, node: ast.YieldFrom) -> str:
+        """Convert yield from to extend accumulator with iterable."""
+        gen_vec_type = getattr(self, "_current_gen_vec_type", "vec_int")
+        # Handle range() specially - generate a counting loop
+        if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name):
+            if node.value.func.id == "range":
+                args = node.value.args
+                if len(args) == 1:
+                    end = self._convert_expression(args[0])
+                    return f"for (int __mgen_yf = 0; __mgen_yf < {end}; __mgen_yf++) {{ {gen_vec_type}_push(&__mgen_result, __mgen_yf); }}"
+                elif len(args) == 2:
+                    start = self._convert_expression(args[0])
+                    end = self._convert_expression(args[1])
+                    return f"for (int __mgen_yf = {start}; __mgen_yf < {end}; __mgen_yf++) {{ {gen_vec_type}_push(&__mgen_result, __mgen_yf); }}"
+                elif len(args) == 3:
+                    start = self._convert_expression(args[0])
+                    end = self._convert_expression(args[1])
+                    step = self._convert_expression(args[2])
+                    return f"for (int __mgen_yf = {start}; __mgen_yf < {end}; __mgen_yf += {step}) {{ {gen_vec_type}_push(&__mgen_result, __mgen_yf); }}"
+        # For function calls and variables, loop over and push each element
+        expr = self._convert_expression(node.value)
+        return (
+            f"{{ {gen_vec_type} __mgen_tmp = {expr}; "
+            f"for (int __mgen_yf = 0; __mgen_yf < {gen_vec_type}_size(&__mgen_tmp); __mgen_yf++) {{ "
+            f"{gen_vec_type}_push(&__mgen_result, {gen_vec_type}_get(&__mgen_tmp, __mgen_yf)); }} }}"
+        )
 
     def _convert_return(self, stmt: ast.Return) -> str:
         """Convert return statement.
@@ -1386,15 +1415,19 @@ class MultiGenPythonToCConverter:
 
             # Use the appropriate size function based on container type
             # Check for multigen custom types first (before generic STC types)
+            # Helper: determine address-of prefix based on whether container_name
+            # is already a pointer expression (e.g., from subscript access)
+            addr = "" if "(" in container_name else "&"
+
             if container_type == "multigen_str_int_map_t*":
                 return f"multigen_str_int_map_size({container_name})"
             elif container_type and container_type.startswith("map_"):
                 # STC map types
-                return f"{container_type}_size(&{container_name})"
+                return f"{container_type}_size({addr}{container_name})"
             elif container_type and container_type.startswith("set_"):
-                return f"{container_type}_size(&{container_name})"
+                return f"{container_type}_size({addr}{container_name})"
             elif container_type and container_type.startswith("vec_"):
-                return f"{container_type}_size(&{container_name})"
+                return f"{container_type}_size({addr}{container_name})"
             elif container_type and "multigen_string_array" in container_type:
                 return f"multigen_string_array_size({container_name})"
             elif container_type and container_type in ("char*", "const char*", "string"):
@@ -1403,7 +1436,7 @@ class MultiGenPythonToCConverter:
                 return f"strlen({container_name})"
             else:
                 # Default to vec_int for backward compatibility
-                return f"vec_int_size(&{container_name})"
+                return f"vec_int_size({addr}{container_name})"
         elif func_name == "bool":
             return f"multigen_bool_int({args[0]})"
         elif func_name == "abs":

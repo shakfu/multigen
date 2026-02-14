@@ -353,23 +353,30 @@ class StaticPythonSubsetValidator:
             name="Generator Functions",
             tier=SubsetTier.TIER_2_STRUCTURED,
             status=FeatureStatus.PARTIALLY_SUPPORTED,
-            description="Generator functions with yield (eager collection to list)",
+            description="Generator functions with yield/yield from (eager collection to list)",
             ast_nodes=[ast.Yield],
             validator=self._validate_yield,
-            constraints=["No yield from", "No .send() or .throw()", "No generator expressions"],
+            constraints=["No .send() or .throw()", "No generator expressions"],
             c_mapping="Function returning list/vector with accumulation pattern",
             examples={
                 "valid": "def gen(n: int) -> int:\n    i: int = 0\n    while i < n:\n        yield i\n        i += 1",
-                "invalid": "def gen():\n    yield from other_gen()",
+                "invalid": "g = (x for x in range(10))  # Generator expressions not supported",
             },
         )
 
         rules["yield_from"] = FeatureRule(
             name="Yield From",
-            tier=SubsetTier.TIER_4_UNSUPPORTED,
-            status=FeatureStatus.NOT_SUPPORTED,
-            description="yield from is not supported",
+            tier=SubsetTier.TIER_2_STRUCTURED,
+            status=FeatureStatus.PARTIALLY_SUPPORTED,
+            description="yield from for extending accumulator with iterable (eager collection)",
             ast_nodes=[ast.YieldFrom],
+            validator=self._validate_yield_from,
+            constraints=["Function calls, range(), and variables only", "No .send() or .throw()"],
+            c_mapping="Extend accumulator with all elements from iterable",
+            examples={
+                "valid": "def gen(n: int) -> int:\n    yield from range(n)",
+                "invalid": "def gen():\n    yield from (x for x in range(10))",
+            },
         )
 
         rules["generator_expressions"] = FeatureRule(
@@ -755,6 +762,23 @@ class StaticPythonSubsetValidator:
         """Validate yield statement constraints."""
         if isinstance(node, ast.Yield):
             return True
+        return True
+
+    def _validate_yield_from(self, node: ast.AST) -> bool:
+        """Validate yield from statement constraints."""
+        if isinstance(node, ast.YieldFrom):
+            # Allow function calls, range(), and variable references
+            value = node.value
+            if isinstance(value, ast.Call):
+                return True
+            elif isinstance(value, ast.Name):
+                return True
+            else:
+                self.last_validation_error = (
+                    f"yield from only supports function calls, range(), and variables "
+                    f"at line {node.lineno if hasattr(node, 'lineno') else '?'}"
+                )
+                return False
         return True
 
     def _determine_conversion_strategy(self, result: ValidationResult) -> str:

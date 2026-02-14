@@ -97,6 +97,8 @@ class MultiGenPythonToOCamlConverter:
             return self._convert_annotated_assignment(node)
         elif isinstance(node, ast.AugAssign):
             return self._convert_augmented_assignment(node)
+        elif isinstance(node, ast.Expr) and isinstance(node.value, ast.YieldFrom):
+            return self._convert_yield_from_statement(node.value)
         elif isinstance(node, ast.Expr) and isinstance(node.value, ast.Yield):
             return self._convert_yield_statement(node.value)
         elif isinstance(node, ast.Expr):
@@ -439,7 +441,7 @@ class MultiGenPythonToOCamlConverter:
         func_name = self._to_ocaml_var_name(node.name)
 
         # Detect generator functions (contain yield)
-        is_generator = any(isinstance(n, ast.Yield) for n in ast.walk(node))
+        is_generator = any(isinstance(n, (ast.Yield, ast.YieldFrom)) for n in ast.walk(node))
         if is_generator:
             return self._convert_generator_function(node, params, return_type)
 
@@ -594,6 +596,33 @@ class MultiGenPythonToOCamlConverter:
         else:
             value = "0"
         return f"__mgen_result := {value} :: !__mgen_result"
+
+    def _convert_yield_from_statement(self, node: ast.YieldFrom) -> str:
+        """Convert yield from to extend accumulator with iterable."""
+        # Handle range() specially
+        if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name):
+            if node.value.func.id == "range":
+                args = node.value.args
+                if len(args) == 1:
+                    end = self._convert_expression(args[0])
+                    return f"for __mgen_yf = 0 to {end} - 1 do __mgen_result := __mgen_yf :: !__mgen_result done"
+                elif len(args) == 2:
+                    start = self._convert_expression(args[0])
+                    end = self._convert_expression(args[1])
+                    return f"for __mgen_yf = {start} to {end} - 1 do __mgen_result := __mgen_yf :: !__mgen_result done"
+                elif len(args) == 3:
+                    start = self._convert_expression(args[0])
+                    end = self._convert_expression(args[1])
+                    step = self._convert_expression(args[2])
+                    return (
+                        f"let __mgen_yf = ref {start} in "
+                        f"while !__mgen_yf < {end} do "
+                        f"__mgen_result := !__mgen_yf :: !__mgen_result; "
+                        f"__mgen_yf := !__mgen_yf + {step} done"
+                    )
+        # For function calls and variables, iterate and prepend each element
+        expr = self._convert_expression(node.value)
+        return f"List.iter (fun __mgen_yf -> __mgen_result := __mgen_yf :: !__mgen_result) {expr}"
 
     def _convert_class_def(self, node: ast.ClassDef) -> list[str]:
         """Convert Python class to OCaml record type and functions."""

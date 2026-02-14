@@ -435,6 +435,10 @@ main = printValue "Generated Haskell code executed successfully"'''
             else:
                 return "-- Complex annotated assignment"
 
+        elif isinstance(node, ast.Expr) and isinstance(node.value, ast.YieldFrom):
+            # Yield from is handled at the function level for generators
+            return self._convert_expression(node.value.value)
+
         elif isinstance(node, ast.Expr) and isinstance(node.value, ast.Yield):
             # Yield is handled at the function level for generators
             if node.value.value:

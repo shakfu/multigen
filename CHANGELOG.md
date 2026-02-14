@@ -17,6 +17,89 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [0.1.x]
 
+## [0.1.115] - 2026-02-14
+
+**`yield from` Support Across All Backends (Eager Collection Extension)**
+
+### Added
+
+- **`yield from` support for all 7 backends** - Extends accumulator with all elements from iterable
+  - **C++**: Range-based for loop with `push_back()`, or counting loop for `range()`
+  - **C**: Counting loop with `vec_int_push()`, or loop over temp vec for function calls/variables
+  - **Rust**: `for .. in` range loop, or `.extend()` for function calls/variables
+  - **Go**: C-style for loop, or variadic `append(result, expr...)` for function calls/variables
+  - **Haskell**: `++` list concatenation in fallback generator body
+  - **OCaml**: `for` loop prepending to ref, or `List.iter` for function calls/variables
+  - **LLVM**: Stub implementation (evaluates iterable expression; consistent with yield stub)
+
+- **Static IR support** for yield from
+  - New `IRYieldFrom` class in `frontend/static_ir.py` with `iterable: IRExpression` field
+  - Added `visit_yield_from()` abstract method to `IRVisitor` interface
+  - `IRBuilder` handles `ast.YieldFrom` in `_build_statement` and `_build_yield_from`
+  - Generator detection updated to scan for both `ast.Yield` and `ast.YieldFrom`
+
+- **Validator updates** for yield from
+  - `yield_from` rule upgraded from `NOT_SUPPORTED`/`TIER_4` to `PARTIALLY_SUPPORTED`/`TIER_2`
+  - New `_validate_yield_from` validator (allows function calls, range(), and variables)
+  - Removed "No yield from" constraint from generators rule
+
+- **`range()` special-casing** across all backends
+  - `yield from range(n)` generates a counting loop (not a list allocation)
+  - 1-arg, 2-arg, and 3-arg `range()` variants supported in all 7 backends
+  - Function calls and variables use extend/iterate pattern directly
+
+- **20 new tests** in `tests/test_generators.py`
+  - `TestGeneratorValidation`: yield_from_valid, yield_from_with_generator_call_valid
+  - `TestCppYieldFrom` (3 tests): range, function call, mixed yield + yield from
+  - `TestCYieldFrom` (3 tests): range, function call, mixed
+  - `TestRustYieldFrom` (3 tests): range, function call, mixed
+  - `TestGoYieldFrom` (3 tests): range, function call, mixed
+  - `TestHaskellYieldFrom` (3 tests): range, function call, mixed with `++`
+  - `TestOCamlYieldFrom` (3 tests): range, function call, mixed
+  - `TestIRGenerators`: ir_yield_from_node (IRYieldFrom creation and is_generator flag)
+
+### Fixed
+
+- **AST analyzer complexity gate**: High complexity score (`UNSUPPORTED`) no longer blocks conversion -- only actual errors prevent translation. Triple-nested loops (e.g., matrix multiplication) now translate successfully.
+- **C backend rvalue address-of bug**: `len()` on nested container expressions (e.g., `len(matrix[i])`) no longer generates invalid `&func_call_expr`. Detects function call expressions and skips `&` prefix.
+- **Batch build**: 26/26 translations, 26/26 builds (was 25/26 + 25/26). `nested_dict_list.py` moved to `tests/translation/known_limitations/` (genuine type system limitation: `dict[str, list[int]]` not yet supported).
+
+### Changed
+
+- **Test count**: 1249 -> 1269 (20 new tests)
+- **Validator**: yield_from moved from Tier 4 (Unsupported) to Tier 2 (Structured)
+- **Generator detection**: All 7 backends updated to detect `ast.YieldFrom` alongside `ast.Yield`
+- **Batch build status**: 26/26 translations, 26/26 builds (zero failures)
+
+### Technical Details
+
+`yield from` is the natural complement to `yield` in the eager collection strategy:
+- `yield x` appends one element to the accumulator
+- `yield from expr` extends the accumulator with all elements from the expression
+
+```python
+# Input Python
+def gen(n: int) -> int:
+    yield 0
+    yield from range(n)
+    yield 99
+
+# Output C++ (example)
+std::vector<int> gen(int n) {
+    std::vector<int> __mgen_result;
+    __mgen_result.push_back(0);
+    for (int __mgen_yf = 0; __mgen_yf < n; __mgen_yf++) { __mgen_result.push_back(__mgen_yf); }
+    __mgen_result.push_back(99);
+    return __mgen_result;
+}
+```
+
+Supported expressions: `yield from func()`, `yield from range(...)`, `yield from variable`.
+
+**Not supported** (Phase 2): `.send()`, `.throw()`, generator expressions, lazy evaluation.
+
+---
+
 ## [0.1.114] - 2026-02-14
 
 **Generator/Yield Support Across All Backends (Eager Collection Strategy)**
@@ -91,7 +174,7 @@ std::vector<int> count_up(int n) {
 The `__mgen_result` accumulator name is chosen to avoid collision with user variables. Each backend
 uses its idiomatic collection type and append operation.
 
-**Not supported** (Phase 2): `yield from`, `.send()`, `.throw()`, generator expressions, lazy evaluation.
+**Not supported** (Phase 2): `.send()`, `.throw()`, generator expressions, lazy evaluation.
 
 ---
 
