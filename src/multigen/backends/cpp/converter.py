@@ -27,6 +27,7 @@ from ..converter_utils import (
     get_standard_binary_operator,
     get_standard_comparison_operator,
     get_standard_unary_operator,
+    normalize_ast,
 )
 from ..errors import TypeMappingError, UnsupportedFeatureError
 from ..preferences import BackendPreferences
@@ -65,6 +66,7 @@ class MultiGenPythonToCppConverter:
         """Convert Python source code to C++ code."""
         try:
             tree = ast.parse(source_code)
+            tree = normalize_ast(tree)
             return self._convert_module(tree)
         except (UnsupportedFeatureError, TypeMappingError):
             # Re-raise our specific exceptions without wrapping

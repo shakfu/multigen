@@ -356,11 +356,11 @@ class StaticPythonSubsetValidator:
             description="Generator functions with yield/yield from (eager collection to list)",
             ast_nodes=[ast.Yield],
             validator=self._validate_yield,
-            constraints=["No .send() or .throw()", "No generator expressions"],
+            constraints=["No .send() or .throw()"],
             c_mapping="Function returning list/vector with accumulation pattern",
             examples={
                 "valid": "def gen(n: int) -> int:\n    i: int = 0\n    while i < n:\n        yield i\n        i += 1",
-                "invalid": "g = (x for x in range(10))  # Generator expressions not supported",
+                "invalid": "gen.send(42)  # .send() not supported",
             },
         )
 
@@ -381,10 +381,15 @@ class StaticPythonSubsetValidator:
 
         rules["generator_expressions"] = FeatureRule(
             name="Generator Expressions",
-            tier=SubsetTier.TIER_4_UNSUPPORTED,
-            status=FeatureStatus.NOT_SUPPORTED,
-            description="Generator expressions are not supported",
+            tier=SubsetTier.TIER_2_STRUCTURED,
+            status=FeatureStatus.FULLY_SUPPORTED,
+            description="Generator expressions normalized to list comprehensions (eager collection)",
             ast_nodes=[ast.GeneratorExp],
+            c_mapping="Normalized to list comprehension, then standard comprehension handling",
+            examples={
+                "valid": "total: int = sum(x * x for x in range(10))",
+                "invalid": "g = (x for x in range(10))  # Standalone genexpr as lazy iterator",
+            },
         )
 
         rules["generics"] = FeatureRule(

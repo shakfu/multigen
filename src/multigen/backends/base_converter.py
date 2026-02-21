@@ -10,6 +10,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional
 
 # Import error classes (backward compatibility)
+from .converter_utils import normalize_ast
 from .errors import TypeMappingError, UnsupportedFeatureError
 
 
@@ -62,6 +63,7 @@ class BaseConverter(ABC):
         """
         try:
             tree = ast.parse(source_code)
+            tree = normalize_ast(tree)
             return self._convert_module(tree)
         except UnsupportedFeatureError:
             raise

@@ -17,6 +17,53 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [Unreleased]
 
+## [0.1.115]
+
+### Added
+
+- **Generator expression support for all 7 backends** - `sum(x*x for x in range(n))` now works
+  - AST normalization approach: `GeneratorExp` nodes rewritten to `ListComp` before backend processing
+  - Single `_GeneratorExpNormalizer` (ast.NodeTransformer) in `converter_utils.py` handles all backends
+  - Semantically equivalent to list comprehensions under MGen's eager collection strategy
+  - Works with builtins: `sum(genexpr)`, `min(genexpr)`, `max(genexpr)`, `list(genexpr)`
+  - Filter conditions preserved: `sum(x for x in range(n) if x % 2 == 0)`
+
+- **15 new tests** in `tests/test_generators.py`
+  - `TestGeneratorExpressionValidation` (3 tests): sum, filter, standalone genexpr validation
+  - `TestGeneratorExpressionNormalization` (3 tests): genexpr->listcomp conversion, preservation of filters
+  - `TestCppGeneratorExpressions` (2 tests): sum and filter genexpr code generation
+  - `TestRustGeneratorExpressions` (2 tests): sum and filter genexpr code generation
+  - `TestGoGeneratorExpressions` (2 tests): sum and filter genexpr code generation
+  - `TestHaskellGeneratorExpressions` (2 tests): sum and filter genexpr code generation
+  - `TestOCamlGeneratorExpressions` (1 test): sum genexpr code generation (filter test included)
+
+### Changed
+
+- **Test count**: 1269 -> 1285 (16 new tests, 1 converted from rejection to acceptance)
+- **Validator**: `generator_expressions` rule moved from `TIER_4_UNSUPPORTED`/`NOT_SUPPORTED` to `TIER_2_STRUCTURED`/`FULLY_SUPPORTED`
+- **Validator**: Removed "No generator expressions" constraint from `generators` rule
+- **Static IR**: `IRBuilder` expression handler now accepts `ast.GeneratorExp` alongside `ast.ListComp` (defense-in-depth)
+- **Rust backend**: Removed explicit `GeneratorExp` -> `UnsupportedFeatureError` raise (unreachable after normalization)
+- **All 7 backend converters + base_converter**: Added `normalize_ast(tree)` call after `ast.parse()`
+
+### Technical Details
+
+Generator expressions have identical AST structure to list comprehensions (`.elt`, `.generators`),
+so the implementation normalizes them early rather than adding `isinstance` checks across 18+ files:
+
+```python
+# Input Python
+result = sum(x * x for x in range(n))
+
+# After AST normalization (GeneratorExp -> ListComp)
+result = sum([x * x for x in range(n)])
+
+# Output C++ (example)
+int result = multigen::sum(list_comprehension(Range(n), [](auto x) { return (x * x); }));
+```
+
+**Not supported**: Standalone generator expressions used as lazy iterators (e.g., `g = (x for x in items)` consumed incrementally). Under eager collection, the full list is materialized regardless.
+
 ## [0.1.114]
 
 ### Added

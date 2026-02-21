@@ -8,6 +8,43 @@ import ast
 from typing import Any, Optional
 
 # ============================================================================
+# AST Normalization (Generator Expressions -> List Comprehensions)
+# ============================================================================
+
+
+class _GeneratorExpNormalizer(ast.NodeTransformer):
+    """Rewrite GeneratorExp nodes to ListComp nodes.
+
+    Since MGen uses eager collection, generator expressions are semantically
+    equivalent to list comprehensions. This normalizer rewrites them early
+    so all existing comprehension handling works unchanged.
+    """
+
+    def visit_GeneratorExp(self, node: ast.GeneratorExp) -> ast.ListComp:
+        """Replace GeneratorExp with ListComp (identical structure)."""
+        self.generic_visit(node)
+        new_node = ast.ListComp(
+            elt=node.elt,
+            generators=node.generators,
+        )
+        return ast.copy_location(new_node, node)
+
+
+def normalize_ast(tree: ast.Module) -> ast.Module:
+    """Normalize AST by rewriting generator expressions to list comprehensions.
+
+    Args:
+        tree: Parsed AST module
+
+    Returns:
+        Transformed AST with GeneratorExp nodes replaced by ListComp
+    """
+    result = _GeneratorExpNormalizer().visit(tree)
+    assert isinstance(result, ast.Module)
+    return result
+
+
+# ============================================================================
 # Common AST Analysis Utilities
 # ============================================================================
 
@@ -19,10 +56,10 @@ def uses_comprehensions(node: ast.Module) -> bool:
         node: AST Module node
 
     Returns:
-        True if module contains list/dict/set comprehensions
+        True if module contains list/dict/set comprehensions or generator expressions
     """
     for child in ast.walk(node):
-        if isinstance(child, (ast.ListComp, ast.DictComp, ast.SetComp)):
+        if isinstance(child, (ast.ListComp, ast.DictComp, ast.SetComp, ast.GeneratorExp)):
             return True
     return False
 
@@ -170,7 +207,7 @@ def infer_type_from_ast_node(node: ast.expr) -> Optional[str]:
         return "dict"
     elif isinstance(node, ast.Set):
         return "set"
-    elif isinstance(node, ast.ListComp):
+    elif isinstance(node, (ast.ListComp, ast.GeneratorExp)):
         return "list"
     elif isinstance(node, ast.DictComp):
         return "dict"

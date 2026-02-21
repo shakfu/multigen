@@ -1231,8 +1231,8 @@ class IRBuilder:
             return self._build_list_literal(node)
         elif isinstance(node, ast.Dict):
             return self._build_dict_literal(node)
-        elif isinstance(node, ast.ListComp):
-            # List comprehension - store AST node for backend expansion
+        elif isinstance(node, (ast.ListComp, ast.GeneratorExp)):
+            # List comprehension (or normalized genexpr) - store AST node for backend expansion
             return IRComprehension(node, IRType(IRDataType.LIST), self._get_location(node))
         elif isinstance(node, ast.DictComp):
             # Dict comprehension - store AST node for backend expansion

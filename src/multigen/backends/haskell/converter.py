@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from ..converter_utils import (
     get_standard_binary_operator,
     get_standard_comparison_operator,
+    normalize_ast,
 )
 from ..errors import TypeMappingError, UnsupportedFeatureError
 from ..loop_conversion_strategies import LoopContext
@@ -126,6 +127,7 @@ class MultiGenPythonToHaskellConverter:
         """Convert Python code to Haskell."""
         try:
             tree = ast.parse(python_code)
+            tree = normalize_ast(tree)
             return self._convert_module(tree)
         except UnsupportedFeatureError:
             # Re-raise UnsupportedFeatureError without wrapping

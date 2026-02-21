@@ -259,17 +259,18 @@ def complex_processing(data: list, threshold: float) -> dict:
 
     def test_error_handling_for_unsupported_features(self):
         """Test that unsupported features raise appropriate errors."""
-        # Test generator expression (should be unsupported)
-        python_code_generator = """
-def test_generator():
-    return (x for x in range(5))
+        # Generator expressions are now supported (normalized to list comprehensions)
+        # Try/except is now supported (exception handling implemented)
+        # With statement is now supported (context managers implemented)
+
+        # Test that lambda functions raise error
+        python_code_lambda = """
+def test_func() -> int:
+    f = lambda x: x + 1
+    return f(1)
 """
         with pytest.raises(UnsupportedFeatureError):
-            self.converter.convert_code(python_code_generator)
-
-        # Note: Try/except is now supported (exception handling implemented)
-
-        # Note: With statement is now supported (context managers implemented)
+            self.converter.convert_code(python_code_lambda)
 
     def test_complete_program_generation(self):
         """Test complete program that would compile and run."""

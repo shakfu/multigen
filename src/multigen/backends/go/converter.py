@@ -7,6 +7,7 @@ from ..converter_utils import (
     get_augmented_assignment_operator,
     get_standard_binary_operator,
     get_standard_comparison_operator,
+    normalize_ast,
 )
 from ..errors import TypeMappingError, UnsupportedFeatureError
 from ..type_inference_strategies import InferenceContext
@@ -79,6 +80,7 @@ class MultiGenPythonToGoConverter:
         """Convert Python code to Go."""
         try:
             tree = ast.parse(python_code)
+            tree = normalize_ast(tree)
             return self._convert_module(tree)
         except Exception as e:
             raise TypeMappingError(f"Failed to convert Python code: {e}") from e

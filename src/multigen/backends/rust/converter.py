@@ -8,6 +8,7 @@ from ..converter_utils import (
     get_augmented_assignment_operator,
     get_standard_binary_operator,
     get_standard_comparison_operator,
+    normalize_ast,
 )
 from ..errors import TypeMappingError, UnsupportedFeatureError
 from ..type_inference_strategies import InferenceContext
@@ -85,6 +86,7 @@ class MultiGenPythonToRustConverter:
         """Convert Python code to Rust."""
         try:
             tree = ast.parse(python_code)
+            tree = normalize_ast(tree)
 
             # Run immutability analysis on the module (backend-agnostic)
             self.mutability_info = self.immutability_analyzer.analyze_module(tree)
@@ -1289,8 +1291,6 @@ class MultiGenPythonToRustConverter:
             return self._convert_subscript(expr)
         elif isinstance(expr, ast.JoinedStr):
             return self._convert_f_string(expr)
-        elif isinstance(expr, ast.GeneratorExp):
-            raise UnsupportedFeatureError("Generator expressions are not supported in Rust backend")
         else:
             raise UnsupportedFeatureError(f"Expression type {type(expr).__name__} is not supported in Rust backend")
 

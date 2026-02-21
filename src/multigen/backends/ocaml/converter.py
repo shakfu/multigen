@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 from ..converter_utils import (
     get_standard_binary_operator,
     get_standard_comparison_operator,
+    normalize_ast,
 )
 from ..errors import UnsupportedFeatureError
 from ..loop_conversion_strategies import LoopContext
@@ -47,6 +48,7 @@ class MultiGenPythonToOCamlConverter:
         """Convert Python source code to OCaml."""
         try:
             tree = ast.parse(python_code)
+            tree = normalize_ast(tree)
             return self._convert_module(tree)
         except SyntaxError as e:
             raise UnsupportedFeatureError(f"Python syntax error: {e}") from e

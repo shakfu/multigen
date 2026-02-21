@@ -83,16 +83,15 @@ def outer(n: int) -> int:
         result = self.validator.validate_code(code)
         assert result.is_valid
 
-    def test_generator_expression_rejected(self) -> None:
-        """Generator expressions should be rejected."""
+    def test_generator_expression_accepted(self) -> None:
+        """Generator expressions should be accepted (normalized to list comprehensions)."""
         code = """
 def use_gen() -> int:
     total: int = sum(x for x in range(10))
     return total
 """
         result = self.validator.validate_code(code)
-        assert not result.is_valid
-        assert any("Generator Expressions" in v for v in result.violations)
+        assert result.is_valid
 
     def test_generator_with_type_annotation_valid(self) -> None:
         """Generator with type annotation should be valid."""
@@ -565,3 +564,188 @@ class TestOCamlYieldFrom:
         ocaml = self.converter.convert_code(YIELD_FROM_MIXED)
         assert "__mgen_result" in ocaml
         assert "List.rev" in ocaml
+
+
+# --- Generator Expression test snippets ---
+
+# Use list comprehension-style assignment so all backends handle it uniformly
+GENEXPR_AS_LISTCOMP = """
+def make_doubles(n: int) -> list[int]:
+    result: list[int] = [x * 2 for x in range(n)]
+    return result
+"""
+
+# Generator expression inside sum() - works for backends with sum(listcomp) support
+GENEXPR_SUM = """
+def sum_squares(n: int) -> int:
+    result: int = sum(x * x for x in range(n))
+    return result
+"""
+
+GENEXPR_WITH_FILTER = """
+def sum_evens(n: int) -> int:
+    result: int = sum(x for x in range(n) if x % 2 == 0)
+    return result
+"""
+
+
+class TestGeneratorExpressionValidation:
+    """Test that generator expressions pass validation."""
+
+    def setup_method(self) -> None:
+        self.validator = StaticPythonSubsetValidator()
+
+    def test_genexpr_sum_valid(self) -> None:
+        """sum(x*x for x in range(n)) should be valid."""
+        result = self.validator.validate_code(GENEXPR_SUM)
+        assert result.is_valid
+
+    def test_genexpr_with_filter_valid(self) -> None:
+        """sum(x for x in range(n) if x % 2 == 0) should be valid."""
+        result = self.validator.validate_code(GENEXPR_WITH_FILTER)
+        assert result.is_valid
+
+    def test_genexpr_standalone_valid(self) -> None:
+        """Standalone genexpr in assignment should be valid."""
+        code = """
+def f(n: int) -> list[int]:
+    result: list[int] = [x for x in range(n)]
+    return result
+"""
+        result = self.validator.validate_code(code)
+        assert result.is_valid
+
+
+class TestGeneratorExpressionNormalization:
+    """Test that the AST normalizer correctly converts GeneratorExp to ListComp."""
+
+    def test_normalizer_converts_genexpr(self) -> None:
+        """Verify normalize_ast replaces GeneratorExp with ListComp."""
+        import ast
+
+        from multigen.backends.converter_utils import normalize_ast
+
+        code = "result = sum(x * x for x in range(10))"
+        tree = ast.parse(code)
+        # Before normalization, should have GeneratorExp
+        genexprs = [n for n in ast.walk(tree) if isinstance(n, ast.GeneratorExp)]
+        assert len(genexprs) == 1
+
+        tree = normalize_ast(tree)
+        # After normalization, no GeneratorExp, one ListComp instead
+        genexprs = [n for n in ast.walk(tree) if isinstance(n, ast.GeneratorExp)]
+        listcomps = [n for n in ast.walk(tree) if isinstance(n, ast.ListComp)]
+        assert len(genexprs) == 0
+        assert len(listcomps) == 1
+
+    def test_normalizer_preserves_listcomp(self) -> None:
+        """Verify normalize_ast does not modify existing ListComp nodes."""
+        import ast
+
+        from multigen.backends.converter_utils import normalize_ast
+
+        code = "result = [x * x for x in range(10)]"
+        tree = ast.parse(code)
+        tree = normalize_ast(tree)
+        listcomps = [n for n in ast.walk(tree) if isinstance(n, ast.ListComp)]
+        assert len(listcomps) == 1
+
+    def test_normalizer_with_filter(self) -> None:
+        """Verify normalization preserves filter conditions."""
+        import ast
+
+        from multigen.backends.converter_utils import normalize_ast
+
+        code = "result = sum(x for x in range(10) if x % 2 == 0)"
+        tree = ast.parse(code)
+        tree = normalize_ast(tree)
+        listcomps = [n for n in ast.walk(tree) if isinstance(n, ast.ListComp)]
+        assert len(listcomps) == 1
+        # Filter (if clause) should be preserved
+        assert len(listcomps[0].generators[0].ifs) == 1
+
+
+class TestCppGeneratorExpressions:
+    """Test C++ generator expression conversion (normalized to list comprehensions)."""
+
+    def setup_method(self) -> None:
+        self.converter = MultiGenPythonToCppConverter()
+
+    def test_genexpr_sum(self) -> None:
+        """Test sum(x*x for x in range(n)) generates comprehension code."""
+        cpp = self.converter.convert_code(GENEXPR_SUM)
+        assert "sum_squares" in cpp
+        assert "list_comprehension" in cpp or "for" in cpp
+
+    def test_genexpr_with_filter(self) -> None:
+        """Test generator expression with filter condition."""
+        cpp = self.converter.convert_code(GENEXPR_WITH_FILTER)
+        assert "sum_evens" in cpp
+
+
+class TestRustGeneratorExpressions:
+    """Test Rust generator expression conversion."""
+
+    def setup_method(self) -> None:
+        self.converter = MultiGenPythonToRustConverter()
+
+    def test_genexpr_sum(self) -> None:
+        """Test sum(x*x for x in range(n)) generates comprehension code."""
+        rust = self.converter.convert_code(GENEXPR_SUM)
+        assert "sum_squares" in rust
+
+    def test_genexpr_with_filter(self) -> None:
+        """Test generator expression with filter condition."""
+        rust = self.converter.convert_code(GENEXPR_WITH_FILTER)
+        assert "sum_evens" in rust
+
+
+class TestGoGeneratorExpressions:
+    """Test Go generator expression conversion."""
+
+    def setup_method(self) -> None:
+        self.converter = MultiGenPythonToGoConverter()
+
+    def test_genexpr_sum(self) -> None:
+        """Test sum(x*x for x in range(n)) generates code."""
+        go = self.converter.convert_code(GENEXPR_SUM)
+        assert "SumSquares" in go or "sumSquares" in go or "sum_squares" in go
+
+    def test_genexpr_with_filter(self) -> None:
+        """Test generator expression with filter condition."""
+        go = self.converter.convert_code(GENEXPR_WITH_FILTER)
+        assert "SumEvens" in go or "sumEvens" in go or "sum_evens" in go
+
+
+class TestHaskellGeneratorExpressions:
+    """Test Haskell generator expression conversion."""
+
+    def setup_method(self) -> None:
+        self.converter = MultiGenPythonToHaskellConverter()
+
+    def test_genexpr_sum(self) -> None:
+        """Test sum(x*x for x in range(n)) generates Haskell code."""
+        hs = self.converter.convert_code(GENEXPR_SUM)
+        assert "sumSquares" in hs
+
+    def test_genexpr_with_filter(self) -> None:
+        """Test generator expression with filter condition."""
+        hs = self.converter.convert_code(GENEXPR_WITH_FILTER)
+        assert "sumEvens" in hs
+
+
+class TestOCamlGeneratorExpressions:
+    """Test OCaml generator expression conversion."""
+
+    def setup_method(self) -> None:
+        self.converter = MultiGenPythonToOCamlConverter()
+
+    def test_genexpr_sum(self) -> None:
+        """Test sum(x*x for x in range(n)) generates OCaml code."""
+        ocaml = self.converter.convert_code(GENEXPR_SUM)
+        assert "sum_squares" in ocaml
+
+    def test_genexpr_with_filter(self) -> None:
+        """Test generator expression with filter condition."""
+        ocaml = self.converter.convert_code(GENEXPR_WITH_FILTER)
+        assert "sum_evens" in ocaml
