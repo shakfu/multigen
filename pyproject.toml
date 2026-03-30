@@ -67,7 +67,7 @@ llvm = [
 
 [project.urls]
 Homepage = "https://github.com/shakfu/multigen"
-Documentation = "https://multigen.readthedocs.io"
+Documentation = "https://shakfu.github.io/multigen/"
 Repository = "https://github.com/shakfu/multigen"
 "Bug Tracker" = "https://github.com/shakfu/multigen/issues"
 

@@ -1,5 +1,7 @@
 # MultiGen: Multi-Language Code Generator
 
+[Documentation](https://shakfu.github.io/multigen/)
+
 MultiGen is a Python-to-multiple-languages code generator that translates Python code to C, C++, Rust, Go, Haskell, OCaml, and LLVM IR while preserving semantics and performance characteristics.
 
 ## Overview

@@ -1,6 +1,6 @@
 site_name: MultiGen Documentation
 site_description: Multi-Language Code Generator - Python to C, C++, Rust, Go, Haskell, OCaml, LLVM
-site_url: https://multigen.readthedocs.io
+site_url: https://shakfu.github.io/multigen/
 repo_url: https://github.com/shakfu/multigen
 repo_name: shakfu/multigen
 
