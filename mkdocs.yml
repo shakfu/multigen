@@ -1,0 +1,87 @@
+site_name: MultiGen Documentation
+site_description: Multi-Language Code Generator - Python to C, C++, Rust, Go, Haskell, OCaml, LLVM
+site_url: https://multigen.readthedocs.io
+repo_url: https://github.com/shakfu/multigen
+repo_name: shakfu/multigen
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - content.code.copy
+    - search.suggest
+  palette:
+    - scheme: default
+      primary: blue grey
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue grey
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            show_source: true
+            show_root_heading: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+  - tables
+
+nav:
+  - Home: index.md
+  - User Guide:
+    - Installation: guide/installation.md
+    - Quick Start: guide/quickstart.md
+    - Backend Guide: guide/backends.md
+    - Formal Verification: guide/verification.md
+  - Reference:
+    - Supported Syntax: supported_syntax.md
+    - Backend Comparison: backend_comparison.md
+    - Backend Selection Guide: backend_selection_guide.md
+    - Haskell Limitations: haskell_backend_limitations.md
+    - Use Cases: use_cases.md
+    - Assert Implementation: assert_implementation.md
+    - Translation Tests: translation_test.md
+  - API Reference:
+    - Pipeline: api/pipeline.md
+    - Backends: api/backends.md
+    - Frontend: api/frontend.md
+    - Verification: api/verification.md
+  - Development:
+    - Architecture: dev-guide/architecture.md
+    - Contributing: dev-guide/contributing.md
+    - Testing: dev-guide/testing.md
+  - Technical Notes:
+    - LLVM Backend Guide: dev/llvm_backend_guide.md
+    - LLVM Roadmap: dev/LLVM_BACKEND_ROADMAP.md
+    - LLVM JIT: dev/llvm_jit.md
+    - LLVM JIT Summary: dev/llvm_jit_summary.md
+    - LLVM Performance: dev/llvm_performance_analysis.md
+    - LLVM Memory Safety: dev/llvm_memory_safety_report.md
+    - LLVM Memory Testing: dev/llvm_memory_testing.md
+    - Memory Testing Summary: dev/memory_testing_summary.md
+    - IR to LLVM IR: dev/ir_to_llvm_ir.md
+    - CGen Integration Status: dev/cgen-mgen-integration-status.md
+    - WebAssembly Investigation: dev/wasm_investigation_report.md
+    - Z3 Analysis: dev/was-z3-worth-it.md

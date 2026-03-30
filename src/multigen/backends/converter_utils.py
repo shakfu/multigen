@@ -413,3 +413,46 @@ def get_augmented_assignment_operator(op: ast.operator) -> Optional[str]:
         Augmented assignment operator (+=, -=, etc.) or None
     """
     return AUGMENTED_ASSIGNMENT_OPERATORS.get(type(op))
+
+
+# ============================================================================
+# F-String Format Spec Utilities
+# ============================================================================
+
+
+def extract_format_spec(node: ast.FormattedValue) -> Optional[str]:
+    """Extract the format specification string from a FormattedValue node.
+
+    Args:
+        node: AST FormattedValue node (from f-string)
+
+    Returns:
+        Format spec string (e.g., ".2f", "d", "x") or None if no spec
+    """
+    if node.format_spec is None:
+        return None
+    if not isinstance(node.format_spec, ast.JoinedStr):
+        return None
+    parts: list[str] = []
+    for value in node.format_spec.values:
+        if isinstance(value, ast.Constant) and isinstance(value.value, str):
+            parts.append(value.value)
+        else:
+            return None  # Dynamic format spec not supported
+    return "".join(parts) if parts else None
+
+
+def format_spec_to_printf(spec: str) -> str:
+    """Convert Python format spec to C printf-style format string.
+
+    Args:
+        spec: Python format spec (e.g., ".2f", "d", "x", ".4e")
+
+    Returns:
+        Printf-style format string (e.g., "%.2f", "%d", "%x", "%.4e")
+    """
+    if not spec:
+        return "%s"
+    # Python format specs map fairly directly to printf
+    # .2f -> %.2f, d -> %d, x -> %x, .4e -> %.4e, etc.
+    return f"%{spec}"

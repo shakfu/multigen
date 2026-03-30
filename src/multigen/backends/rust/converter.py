@@ -5,6 +5,7 @@ from typing import Any, Optional
 
 from ...frontend.immutability_analyzer import ImmutabilityAnalyzer, MutabilityClass
 from ..converter_utils import (
+    extract_format_spec,
     get_augmented_assignment_operator,
     get_standard_binary_operator,
     get_standard_comparison_operator,
@@ -906,6 +907,15 @@ class MultiGenPythonToRustConverter:
                 for line in body_line.split("\n"):
                     lines.append(f"    {line}")
 
+        # else clause: runs if no exception (appended to try body)
+        if stmt.orelse:
+            lines.append("        // else (no exception)")
+            for s in stmt.orelse:
+                body_line = self._convert_statement(s)
+                if body_line:
+                    for line in body_line.split("\n"):
+                        lines.append(f"    {line}")
+
         lines.append("    })) {")
         lines.append("        Ok(v) => v,")
         lines.append("        Err(e) => {")
@@ -959,6 +969,15 @@ class MultiGenPythonToRustConverter:
 
         lines.append("        }")
         lines.append("    }")
+
+        # Convert finally clause if present
+        if stmt.finalbody:
+            lines.append("    // finally")
+            for s in stmt.finalbody:
+                body_line = self._convert_statement(s)
+                if body_line:
+                    for line in body_line.split("\n"):
+                        lines.append(f"    {line}")
 
         return "\n".join(lines)
 
@@ -1440,7 +1459,10 @@ class MultiGenPythonToRustConverter:
         return f"[{', '.join(elements)}].iter().cloned().collect::<std::collections::HashSet<_>>()"
 
     def _convert_subscript(self, expr: ast.Subscript) -> str:
-        """Convert subscript operations (indexing)."""
+        """Convert subscript operations (indexing and slicing)."""
+        if isinstance(expr.slice, ast.Slice):
+            return self._convert_slice(expr)
+
         value = self._convert_expression(expr.value)
         slice_expr = self._convert_expression(expr.slice)
 
@@ -1463,6 +1485,39 @@ class MultiGenPythonToRustConverter:
         # For complex expressions or unknown types, assume Vec (safer default)
         return f"{value}[{slice_expr} as usize]"
 
+    def _convert_slice(self, expr: ast.Subscript) -> str:
+        """Convert slice operation to Rust Vec or String slicing.
+
+        Examples:
+            list[1:3] -> list[1..3].to_vec()
+            str[1:3]  -> str[1..3].to_string()
+            str[1:]   -> str[1..].to_string()
+        """
+        slice_obj = expr.slice
+        assert isinstance(slice_obj, ast.Slice), "Expected ast.Slice"
+
+        obj = self._convert_expression(expr.value)
+        start = self._convert_expression(slice_obj.lower) if slice_obj.lower else ""
+        stop = self._convert_expression(slice_obj.upper) if slice_obj.upper else ""
+
+        # Detect string type for .to_string() vs .to_vec()
+        is_string = False
+        if isinstance(expr.value, ast.Name):
+            var_type = self.variable_types.get(expr.value.id, "")
+            if "String" in var_type or var_type == "str":
+                is_string = True
+
+        suffix = ".to_string()" if is_string else ".to_vec()"
+
+        if start and stop:
+            return f"{obj}[{start}..{stop}]{suffix}"
+        elif start:
+            return f"{obj}[{start}..]{suffix}"
+        elif stop:
+            return f"{obj}[..{stop}]{suffix}"
+        else:
+            return f"{obj}[..]{suffix}"
+
     def _convert_f_string(self, expr: ast.JoinedStr) -> str:
         """Convert f-string to Rust format! macro.
 
@@ -1481,9 +1536,15 @@ class MultiGenPythonToRustConverter:
                     literal = value.value.replace("{", "{{").replace("}", "}}")
                     format_parts.append(literal)
             elif isinstance(value, ast.FormattedValue):
-                # Expression to be formatted
-                format_parts.append("{}")
                 expr_code = self._convert_expression(value.value)
+                spec = extract_format_spec(value)
+                if spec:
+                    # Convert Python format spec to Rust format spec
+                    # .2f -> :.2, x -> :x, d -> (no spec needed), .4e -> :.4e
+                    rust_spec = self._python_spec_to_rust(spec)
+                    format_parts.append("{" + rust_spec + "}")
+                else:
+                    format_parts.append("{}")
                 args.append(expr_code)
 
         format_string = "".join(format_parts)
@@ -1495,6 +1556,26 @@ class MultiGenPythonToRustConverter:
             # Use format! macro
             args_str = ", ".join(args)
             return f'format!("{format_string}", {args_str})'
+
+    def _python_spec_to_rust(self, spec: str) -> str:
+        """Convert Python format spec to Rust format spec."""
+        # d (integer) -> no spec needed in Rust (default for integers)
+        if spec == "d":
+            return ""
+        # .Nf -> :.N (Rust infers float from the value)
+        if spec.endswith("f") and "." in spec:
+            # .2f -> :.2
+            precision = spec[:-1]  # Remove trailing 'f'
+            return f":{precision}"
+        # x, X, o, b, e, E -> :x, :X, :o, :b, :e, :E
+        if spec in ("x", "X", "o", "b", "e", "E"):
+            return f":{spec}"
+        # .Ne, .NE -> :.Ne, :.NE
+        if (spec.endswith("e") or spec.endswith("E")) and "." in spec:
+            return f":{spec}"
+        # % -> not directly supported in Rust, use manual multiply
+        # For now, pass through
+        return f":{spec}"
 
     def _convert_call(self, expr: ast.Call) -> str:
         """Convert function calls."""

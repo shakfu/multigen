@@ -132,6 +132,13 @@ Optimization: -O0 (none), -O1 (basic), -O2 (moderate, default), -O3 (aggressive)
         )
         build_parser.add_argument("--progress", action="store_true", help="Show progress indicators during build")
 
+        # Check command
+        check_parser = subparsers.add_parser(
+            "check", help="Validate Python file(s) against the supported subset (no conversion)"
+        )
+        check_parser.add_argument("input_files", nargs="+", help="Python file(s) to validate")
+        check_parser.add_argument("--report", action="store_true", help="Show full feature support report")
+
         # Clean command
         subparsers.add_parser("clean", help="Clean build directory")
 
@@ -866,6 +873,45 @@ Optimization: -O0 (none), -O1 (basic), -O2 (moderate, default), -O3 (aggressive)
 
         return 0 if failed_translations == 0 else 1
 
+    def check_command(self, args: argparse.Namespace) -> int:
+        """Execute check command -- validate files without converting."""
+        from ..frontend.subset_validator import StaticPythonSubsetValidator
+
+        validator = StaticPythonSubsetValidator()
+
+        # Full report mode
+        if args.report:
+            self.log.info(validator.generate_subset_report())
+            return 0
+
+        input_files = [Path(f) for f in args.input_files]
+        all_valid = True
+
+        for input_path in input_files:
+            if not input_path.exists():
+                self.log.error(f"File not found: {input_path}")
+                all_valid = False
+                continue
+
+            result = validator.validate_file(str(input_path))
+
+            if result.is_valid:
+                strategy = result.conversion_strategy or "unknown"
+                self.log.info(f"{input_path}: valid (tier {result.tier.value}, {strategy})")
+                if result.warnings:
+                    for warning in result.warnings:
+                        self.log.warning(f"  {warning}")
+            else:
+                all_valid = False
+                self.log.error(f"{input_path}: invalid")
+                for violation in result.violations:
+                    self.log.error(f"  - {violation}")
+                if result.warnings:
+                    for warning in result.warnings:
+                        self.log.warning(f"  {warning}")
+
+        return 0 if all_valid else 1
+
     def backends_command(self, args: argparse.Namespace) -> int:
         """Execute backends command."""
         available_backends = registry.list_backends()
@@ -911,6 +957,8 @@ Optimization: -O0 (none), -O1 (basic), -O2 (moderate, default), -O3 (aggressive)
             return self.clean_command(args)
         elif args.command == "batch":
             return self.batch_command(args)
+        elif args.command == "check":
+            return self.check_command(args)
         elif args.command == "backends":
             return self.backends_command(args)
         else:

@@ -218,8 +218,6 @@ def sum_recursive(arr: list) -> int:
 ## See Also
 
 - [Backend Selection Guide](backend_selection_guide.md) - Choosing the right backend
-- [Haskell Build Fix](haskell_build_fix.md) - Build troubleshooting
-- [Test File](../tests/test_backend_haskell_functional_quicksort.py) - Working examples
 
 ---
 

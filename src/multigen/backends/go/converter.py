@@ -4,6 +4,8 @@ import ast
 from typing import Any, Optional
 
 from ..converter_utils import (
+    extract_format_spec,
+    format_spec_to_printf,
     get_augmented_assignment_operator,
     get_standard_binary_operator,
     get_standard_comparison_operator,
@@ -1205,6 +1207,25 @@ class MultiGenPythonToGoConverter:
                 for line in body_line.split("\n"):
                     lines.append(f"    {line}")
 
+        # else clause: runs if no exception (appended to try body)
+        if stmt.orelse:
+            lines.append("        // else (no exception)")
+            for s in stmt.orelse:
+                body_line = self._convert_statement(s)
+                if body_line:
+                    for line in body_line.split("\n"):
+                        lines.append(f"        {line}")
+
+        # Convert finally clause if present -- use defer for cleanup
+        if stmt.finalbody:
+            lines.append("        defer func() {")
+            for s in stmt.finalbody:
+                body_line = self._convert_statement(s)
+                if body_line:
+                    for line in body_line.split("\n"):
+                        lines.append(f"            {line}")
+            lines.append("        }()")
+
         lines.append("    }()")
 
         return "\n".join(lines)
@@ -2019,12 +2040,28 @@ class MultiGenPythonToGoConverter:
         value_expr = self._convert_expression(expr.value)
 
         if isinstance(expr.slice, ast.Slice):
-            # Handle slicing
-            raise UnsupportedFeatureError("Slice operations not supported in Go backend")
+            return self._convert_slice(expr)
         else:
             # Simple subscript
             index_expr = self._convert_expression(expr.slice)
             return f"{value_expr}[{index_expr}]"
+
+    def _convert_slice(self, expr: ast.Subscript) -> str:
+        """Convert slice operation to Go slice expression.
+
+        Examples:
+            list[1:3] -> list[1:3]
+            list[1:]  -> list[1:]
+            list[:2]  -> list[:2]
+        """
+        slice_obj = expr.slice
+        assert isinstance(slice_obj, ast.Slice), "Expected ast.Slice"
+
+        obj = self._convert_expression(expr.value)
+        start = self._convert_expression(slice_obj.lower) if slice_obj.lower else ""
+        stop = self._convert_expression(slice_obj.upper) if slice_obj.upper else ""
+
+        return f"{obj}[{start}:{stop}]"
 
     def _convert_f_string(self, expr: ast.JoinedStr) -> str:
         """Convert f-string to Go fmt.Sprintf.
@@ -2044,9 +2081,14 @@ class MultiGenPythonToGoConverter:
                     literal = value.value.replace("%", "%%")
                     format_parts.append(literal)
             elif isinstance(value, ast.FormattedValue):
-                # Expression to be formatted - use %v (value in default format)
-                format_parts.append("%v")
                 expr_code = self._convert_expression(value.value)
+                spec = extract_format_spec(value)
+                if spec:
+                    # Convert Python format spec to Go fmt verb
+                    go_fmt = format_spec_to_printf(spec)
+                    format_parts.append(go_fmt)
+                else:
+                    format_parts.append("%v")
                 args.append(expr_code)
 
         format_string = "".join(format_parts)

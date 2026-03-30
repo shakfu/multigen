@@ -23,6 +23,8 @@ import ast
 from typing import Any
 
 from ..converter_utils import (
+    extract_format_spec,
+    format_spec_to_printf,
     get_augmented_assignment_operator,
     get_standard_binary_operator,
     get_standard_comparison_operator,
@@ -2260,6 +2262,14 @@ class MultiGenPythonToCConverter:
             if body_line:
                 lines.append(f"    {body_line}")
 
+        # else clause: runs if no exception (appended to try body)
+        if stmt.orelse:
+            lines.append("    // else (no exception)")
+            for s in stmt.orelse:
+                body_line = self._convert_statement(s)
+                if body_line:
+                    lines.append(f"    {body_line}")
+
         # Convert exception handlers
         for handler in stmt.handlers:
             if handler.type is None:
@@ -2282,6 +2292,14 @@ class MultiGenPythonToCConverter:
                     lines.append(f"    {body_line}")
 
         lines.append("} MGEN_END_TRY;")
+
+        # Convert finally clause if present
+        if stmt.finalbody:
+            lines.append("// finally")
+            for s in stmt.finalbody:
+                body_line = self._convert_statement(s)
+                if body_line:
+                    lines.append(body_line)
 
         return "\n".join(lines)
 
@@ -2453,11 +2471,20 @@ class MultiGenPythonToCConverter:
             elif var_name in self.inferred_types:
                 c_type = self.inferred_types[var_name].c_type
 
-        if not c_type or not c_type.startswith("vec_"):
-            raise UnsupportedFeatureError(f"Slicing only supported for vec_* containers, got {c_type}")
-
         # Extract start, stop, step
         start = self._convert_expression(slice_obj.lower) if slice_obj.lower else "0"
+
+        # String slicing uses mgen_substring helper
+        if c_type in ("char*", "const char*"):
+            if slice_obj.upper:
+                stop = self._convert_expression(slice_obj.upper)
+                return f"mgen_substring({obj}, {start}, {stop} - {start})"
+            else:
+                return f"mgen_substring({obj}, {start}, strlen({obj}) - {start})"
+
+        if not c_type or not c_type.startswith("vec_"):
+            raise UnsupportedFeatureError(f"Slicing only supported for vec_* containers and strings, got {c_type}")
+
         stop = self._convert_expression(slice_obj.upper) if slice_obj.upper else f"{c_type}_size(&{obj})"
         step = self._convert_expression(slice_obj.step) if slice_obj.step else "1"
 
@@ -2465,9 +2492,6 @@ class MultiGenPythonToCConverter:
         slice_var = f"slice_result_{id(expr)}"
 
         # Generate C code for slicing using a compound statement
-        # This creates a new vector and copies elements in the range
-        c_type[4:]  # Remove "vec_" prefix to get element type
-
         slice_code = f"""({{
         {c_type} {slice_var} = {{0}};
         for (int _i = {start}; _i < {stop}; _i += {step}) {{
@@ -2501,11 +2525,18 @@ class MultiGenPythonToCConverter:
                 if isinstance(value.value, str):
                     format_parts.append(value.value)
             elif isinstance(value, ast.FormattedValue):
-                # Expression - add placeholder
-                format_parts.append("%s")
                 expr_code = self._convert_expression(value.value)
-                # Wrap in appropriate conversion based on type
-                args.append(self._to_c_string_expr(expr_code, value.value))
+                spec = extract_format_spec(value)
+                if spec:
+                    # Use printf-style format spec directly
+                    printf_fmt = format_spec_to_printf(spec)
+                    format_parts.append(printf_fmt)
+                    args.append(expr_code)
+                else:
+                    # Expression - add placeholder
+                    format_parts.append("%s")
+                    # Wrap in appropriate conversion based on type
+                    args.append(self._to_c_string_expr(expr_code, value.value))
 
         format_string = "".join(format_parts)
 

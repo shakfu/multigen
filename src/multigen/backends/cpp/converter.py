@@ -24,6 +24,8 @@ from typing import Any, Optional, Union
 
 from ..base import AbstractEmitter
 from ..converter_utils import (
+    extract_format_spec,
+    format_spec_to_printf,
     get_standard_binary_operator,
     get_standard_comparison_operator,
     get_standard_unary_operator,
@@ -1007,6 +1009,16 @@ class MultiGenPythonToCppConverter:
                     if line.strip():
                         lines.append(f"    {line}")
 
+        # else clause: runs if no exception (appended to try body)
+        if stmt.orelse:
+            lines.append("            // else (no exception)")
+            for s in stmt.orelse:
+                converted = self._convert_statement(s)
+                if converted.strip():
+                    for line in converted.split("\n"):
+                        if line.strip():
+                            lines.append(f"    {line}")
+
         lines.append("        }")
 
         # Convert exception handlers
@@ -1041,6 +1053,16 @@ class MultiGenPythonToCppConverter:
                             lines.append(f"    {line}")
 
             lines.append("        }")
+
+        # Convert finally clause if present
+        if stmt.finalbody:
+            lines.append("        // finally")
+            for s in stmt.finalbody:
+                converted = self._convert_statement(s)
+                if converted.strip():
+                    for line in converted.split("\n"):
+                        if line.strip():
+                            lines.append(f"    {line}")
 
         return "\n".join(lines)
 
@@ -1727,12 +1749,57 @@ class MultiGenPythonToCppConverter:
         value_expr = self._convert_expression(expr.value)
 
         if isinstance(expr.slice, ast.Slice):
-            # Handle slicing (not fully supported in C++, would need custom implementation)
-            raise UnsupportedFeatureError("Slice operations not supported in C++ backend")
+            return self._convert_slice(expr)
         else:
             # Simple subscript
             index_expr = self._convert_expression(expr.slice)
             return f"{value_expr}[{index_expr}]"
+
+    def _convert_slice(self, expr: ast.Subscript) -> str:
+        """Convert slice operation to C++ vector or string slice.
+
+        Examples:
+            list[1:3] -> vector<T>(list.begin() + 1, list.begin() + 3)
+            list[1:]  -> vector<T>(list.begin() + 1, list.end())
+            str[1:3]  -> str.substr(1, 2)
+            str[1:]   -> str.substr(1)
+        """
+        slice_obj = expr.slice
+        assert isinstance(slice_obj, ast.Slice), "Expected ast.Slice"
+
+        obj = self._convert_expression(expr.value)
+
+        # Determine the C++ type
+        cpp_type = None
+        if isinstance(expr.value, ast.Name):
+            var_name = expr.value.id
+            if var_name in self.variable_context:
+                cpp_type = self.variable_context[var_name]
+            elif var_name in self.container_variables:
+                cpp_type = self.container_variables[var_name].get("cpp_type", None)
+
+        start = self._convert_expression(slice_obj.lower) if slice_obj.lower else None
+        stop = self._convert_expression(slice_obj.upper) if slice_obj.upper else None
+
+        # String slicing uses substr
+        if cpp_type == "std::string":
+            if start and stop:
+                return f"{obj}.substr({start}, {stop} - {start})"
+            elif start:
+                return f"{obj}.substr({start})"
+            elif stop:
+                return f"{obj}.substr(0, {stop})"
+            else:
+                return f"{obj}.substr(0)"
+
+        # Vector slicing uses iterator constructor
+        begin = f"{obj}.begin() + {start}" if start else f"{obj}.begin()"
+        end = f"{obj}.begin() + {stop}" if stop else f"{obj}.end()"
+
+        if cpp_type:
+            return f"{cpp_type}({begin}, {end})"
+        else:
+            return f"decltype({obj})({begin}, {end})"
 
     def _convert_f_string(self, expr: ast.JoinedStr) -> str:
         """Convert f-string to C++ string concatenation.
@@ -1750,7 +1817,18 @@ class MultiGenPythonToCppConverter:
             elif isinstance(value, ast.FormattedValue):
                 # Expression to be converted to string
                 expr_code = self._convert_expression(value.value)
-                parts.append(self._to_string_cpp(expr_code, value.value))
+                spec = extract_format_spec(value)
+                if spec:
+                    # Use snprintf for formatted output
+                    self.includes_needed.add("<cstdio>")
+                    printf_fmt = format_spec_to_printf(spec)
+                    parts.append(
+                        f"([&]() {{ char buf[64]; "
+                        f'std::snprintf(buf, sizeof(buf), "{printf_fmt}", {expr_code}); '
+                        f"return std::string(buf); }}())"
+                    )
+                else:
+                    parts.append(self._to_string_cpp(expr_code, value.value))
 
         if len(parts) == 0:
             return '""'

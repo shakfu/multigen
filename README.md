@@ -15,8 +15,8 @@ MultiGen extends the CGen (Python-to-C) project into a multi-language translatio
 - **Clean Architecture**: Extensible backend system with abstract interfaces for adding new target languages
 - **Type-Safe Generation**: Leverages Python type annotations for accurate and safe code translation
 - **Runtime Libraries**: Enhanced C backend with 50KB+ runtime libraries providing Python-like semantics
-- **CLI Interface**: Simple command-line tool with preference customization for conversion and building
-- **Production-Ready**: 1183 passing tests ensuring translation accuracy and code quality
+- **CLI Interface**: Simple command-line tool with conversion, building, validation (`mgen check`), and batch processing
+- **Production-Ready**: 1353 passing tests ensuring translation accuracy and code quality
 - **LLVM Backend**: Native compilation via LLVM IR with O0-O3 optimization levels
 
 ## Supported Languages
@@ -609,6 +609,16 @@ List available language backends:
 multigen backends
 ```
 
+### Check
+
+Validate Python files against the supported subset without converting:
+
+```bash
+multigen check my_script.py              # Validate a file
+multigen check --report my_script.py     # Full feature support report
+multigen check file1.py file2.py         # Validate multiple files
+```
+
 ### Clean
 
 Clean build artifacts:
@@ -622,9 +632,9 @@ multigen clean
 ### Running Tests
 
 ```bash
-make test           # Run all 1183 tests
+make test           # Run all 1353 tests
 make lint           # Run code linting with ruff
-make type-check     # Run type checking with mypy
+make typecheck      # Run type checking with mypy
 ```
 
 ### Test Organization
@@ -689,6 +699,11 @@ All backends support core Python features:
 - **Control Structures**: if/elif/else, while loops, for loops with range()
 - **Built-in Functions**: `abs()`, `bool()`, `len()`, `min()`, `max()`, `sum()`
 - **Type Inference**: Automatic type detection from annotations and assignments
+- **Slicing**: List slicing (`arr[1:3]`, `arr[1:]`, `arr[:2]`) and string slicing (`s[1:3]`)
+- **F-String Format Specs**: `f"{x:.2f}"`, `f"{n:x}"`, `f"{n:d}"` with precision and radix formatting
+- **Exception Handling**: `try/except/else/finally`, `raise`, 6 exception types
+- **Context Managers**: `with open(...) as f:` for file I/O
+- **Generators**: `yield`, `yield from`, generator expressions (eager collection)
 
 ### Container Support by Language
 
@@ -703,10 +718,10 @@ All backends support core Python features:
 
 MultiGen maintains test coverage ensuring translation accuracy:
 
-- **1183 total tests** across all components and backends
+- **1353 total tests** across all components and backends
 - **49/49 benchmarks passing** (100%) across all 7 backends
 - Comprehensive backend coverage testing all major Python features
-- Test categories: basics, OOP, comprehensions, string methods, augmented assignment, control flow, integration
+- Test categories: basics, OOP, comprehensions, string methods, augmented assignment, control flow, integration, exception handling, context managers, generators, slicing, f-string format specs
 - All tests passing with zero regressions (100%)
 
 ## Development Roadmap
@@ -720,12 +735,16 @@ MultiGen maintains test coverage ensuring translation accuracy:
 - Advanced Python language features: comprehensions, string methods, augmented assignment
 - Complete STC library integration (864KB Smart Template Container library)
 - Architecture consolidation with unified C backend module
-- Professional test organization with 821 tests in focused, single-responsibility files
+- Professional test organization with 1353 tests in focused, single-responsibility files
 - Universal preference system with language-specific customization
 - Production-ready code generation with clean, efficient output
 - 7 production-ready backends (C++, C, Rust, Go, Haskell, OCaml, LLVM) with 100% benchmark success
-- Exception handling (try/except/raise) across all backends
+- Exception handling (try/except/else/finally/raise) across all backends
 - Context managers (with statement) across all backends
+- Generator/yield support (eager collection) across all backends
+- List and string slicing across 6/7 backends
+- F-string format specifications across all backends
+- `mgen check` CLI command for validation without conversion
 
 ### Future Development
 

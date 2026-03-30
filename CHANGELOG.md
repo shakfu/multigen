@@ -17,6 +17,96 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [Unreleased]
 
+## [0.1.116]
+
+### Added
+
+- **`mgen check` CLI command** -- Validates Python files against the supported subset without converting
+  - `mgen check file.py` reports valid/invalid with tier level and violation details
+  - `mgen check --report file.py` outputs the full feature support report
+  - Wires up the existing `SubsetValidator` to a standalone CLI subcommand
+  - Supports multiple input files in a single invocation
+
+- **List slicing across all text-based backends** (6/7 backends)
+  - `arr[1:3]`, `arr[1:]`, `arr[:2]` now work in C++, Go, Rust, OCaml (C and Haskell already supported)
+  - **C++**: `vector<T>(v.begin() + start, v.begin() + stop)` iterator-pair constructor
+  - **Go**: Native slice syntax `v[start:stop]`
+  - **Rust**: `v[start..stop].to_vec()` range indexing
+  - **OCaml**: `Array.sub v start length`
+  - **C**: Loop-based slicing (existing, regression tested)
+  - **Haskell**: `drop`/`take` (existing, regression tested)
+  - LLVM not yet supported (requires IR-level changes)
+
+- **F-string format specifications** (all 7 backends)
+  - Numeric precision: `f"{x:.2f}"`, `f"{x:.4e}"`
+  - Integer formatting: `f"{n:d}"`, `f"{n:x}"`, `f"{n:X}"`, `f"{n:o}"`
+  - Shared utilities: `extract_format_spec()` and `format_spec_to_printf()` in `converter_utils.py`
+  - **C/C++**: printf-style `%.2f` / `snprintf` formatting
+  - **Go**: Printf verbs in `fmt.Sprintf` (`%.2f`, `%x`)
+  - **Rust**: `format!` macro with `:{spec}` syntax (`:.2`, `:x`)
+  - **Haskell**: `Text.Printf.printf` with printf-style format strings
+  - **OCaml**: `Printf.sprintf` with printf-style format strings
+  - Conversion flags (`!r`, `!s`, `!a`) remain unsupported
+
+- **`finally` clause for try/except** (all 7 backends)
+  - `try/except/finally` blocks now accepted by the validator
+  - **C++**: Finally body emitted sequentially after try/catch block
+  - **C**: Finally body emitted after `MGEN_END_TRY` macro
+  - **Go**: `defer func(){}()` block for cleanup semantics
+  - **Rust**: Finally body emitted after `catch_unwind` match block
+  - **Haskell**: Finally body emitted after `catch` expression
+  - **OCaml**: Finally body emitted after `try/with` expression
+
+- **`else` clause for try/except** (all 7 backends)
+  - `try/except/else` blocks now accepted by the validator
+  - Else body appended to end of try body (runs only when no exception raised)
+  - All 7 backends: C++, C, Go, Rust, Haskell, OCaml emit else body with comment marker
+  - Combined `try/except/else/finally` fully supported
+
+- **String slicing** (6/7 backends)
+  - `s[1:3]`, `s[1:]`, `s[:2]` on string variables now work
+  - **C++**: `s.substr(start, length)` -- detects `std::string` type from variable context
+  - **Rust**: `s[start..stop].to_string()` -- detects `String` type from variable types
+  - **OCaml**: `String.sub s start length` -- detects `str` type from parameter/variable tracking
+  - **Go**: Native `s[start:stop]` -- works identically to list slicing
+  - **Haskell**: `drop`/`take` -- strings are `[Char]`, same as list slicing
+  - **C**: `mgen_substring(s, start, length)` -- detects `char*` type
+  - LLVM not yet supported (requires IR-level changes)
+
+- **68 new tests** in `tests/test_check_slice_fspec_finally.py`
+  - `TestCheckCommand` (5 tests): CLI parser, valid/invalid/missing file handling, multi-file
+  - `TestSlice*` (14 tests): Validation + list slicing code generation for 6 backends
+  - `TestFStringFormatSpec*` (17 tests): Validation + code generation for all 7 backends
+  - `TestFinally*` (9 tests): Validation + code generation for all 7 backends
+  - `TestStringSlice*` (9 tests): String slicing for C++, Go, Rust, OCaml, Haskell
+  - `TestElse*` (10 tests): Validation + else clause code generation for all 7 backends
+  - `TestElseValidation` (3 tests): else valid, else+finally valid, chaining still rejected
+
+### Changed
+
+- **Test count**: 1285 -> 1353 (68 new tests, 2 updated from rejection to acceptance)
+- **Validator**: F-string `format_spec` no longer rejected; validated against supported spec patterns
+- **Validator**: `finally` and `else` clauses no longer rejected; exception handling now fully supported
+- **Validator**: Exception handling constraints updated: `["No exception chaining (raise ... from ...)"]`
+- **Validator**: Added `_extract_format_spec_string()` and `_is_supported_format_spec()` helper methods
+- **CLI**: New `check` subcommand added alongside `convert`, `build`, `batch`, `clean`, `backends`
+- **OCaml backend**: Function parameter types now tracked in `self.variables` for type-aware slicing
+
+- **Documentation migrated from Sphinx to MkDocs** (Material theme)
+  - All 11 RST files converted to Markdown with updated content
+  - `mkdocs.yml` with Material theme, mkdocstrings for API docs, full nav
+  - 19 existing reference/technical docs integrated into nav
+  - `make docs` / `make docs-serve` / `make docs-deploy` targets updated
+  - `pyproject.toml` dependencies: sphinx -> mkdocs/mkdocs-material/mkdocstrings
+  - `site/` added to `.gitignore`
+  - Old `docs/sphinx/` directory removed
+
+### Removed
+
+- **17 stale/historical doc files** cleaned up from `docs/` and `docs/dev/`
+  - 6 stale: failure_analysis_report, production_roadmap, c_backend_plan, c_backend_improvement_plan, cgen_analysis_summary, cgen_mgen_comparison
+  - 11 historical: cpp/go/haskell/ocaml/rust_build_fix, next_steps, tier2_fixes_summary, immutablity-analysis, cli-redesign, diy-compiler, llvm_backend_complete
+
 ## [0.1.115]
 
 ### Added

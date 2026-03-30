@@ -303,8 +303,8 @@ def multi_handler(x: int) -> int:
         result = self.validator.validate_code(code)
         assert result.is_valid
 
-    def test_else_clause_rejected(self) -> None:
-        """Test that try/except/else is rejected."""
+    def test_else_clause_accepted(self) -> None:
+        """Test that try/except/else is accepted."""
         code = """
 def with_else() -> int:
     try:
@@ -315,11 +315,10 @@ def with_else() -> int:
         return 0
 """
         result = self.validator.validate_code(code)
-        assert not result.is_valid
-        assert any("else" in v.lower() for v in result.violations)
+        assert result.is_valid
 
-    def test_finally_clause_rejected(self) -> None:
-        """Test that try/except/finally is rejected."""
+    def test_finally_clause_accepted(self) -> None:
+        """Test that try/except/finally is accepted."""
         code = """
 def with_finally() -> int:
     try:
@@ -330,8 +329,7 @@ def with_finally() -> int:
         print(0)
 """
         result = self.validator.validate_code(code)
-        assert not result.is_valid
-        assert any("finally" in v.lower() for v in result.violations)
+        assert result.is_valid
 
     def test_exception_chaining_rejected(self) -> None:
         """Test that exception chaining (raise ... from ...) is rejected."""
