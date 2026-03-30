@@ -1,0 +1,2856 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Multi-Language Code Generator - Python to C, C++, Rust, Go, Haskell, OCaml, LLVM">
+      
+      
+      
+        <link rel="canonical" href="https://multigen.readthedocs.io/backend_selection_guide/">
+      
+      
+        <link rel="prev" href="../backend_comparison/">
+      
+      
+        <link rel="next" href="../haskell_backend_limitations/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Backend Selection Guide - MultiGen Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#backend-selection-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="MultiGen Documentation" class="md-header__button md-logo" aria-label="MultiGen Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            MultiGen Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Backend Selection Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/shakfu/multigen" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    shakfu/multigen
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="MultiGen Documentation" class="md-nav__button md-logo" aria-label="MultiGen Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    MultiGen Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/shakfu/multigen" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    shakfu/multigen
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guide/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guide/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guide/backends/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backend Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guide/verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Formal Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../supported_syntax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supported Syntax
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backend_comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backend Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backend Selection Guide
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backend Selection Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-decision-tree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Decision Tree
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#production-ready-backends-77-benchmarks-x" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Production-Ready Backends (7/7 Benchmarks [x])
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Production-Ready Backends (7/7 Benchmarks [x])">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#c-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C++ Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c-backend_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rust-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rust Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#go-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Go Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ocaml-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OCaml Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#llvm-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LLVM Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functionally-complete-backend-67-benchmarks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functionally Complete Backend (6/7 Benchmarks)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Functionally Complete Backend (6/7 Benchmarks)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#haskell-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Haskell Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backend-comparison-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backend Comparison Matrix
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommendation-by-use-case" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommendation by Use Case
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recommendation by Use Case">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#embedded-systems-iot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Embedded Systems / IoT
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#web-services-apis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web Services / APIs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-critical-applications" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance-Critical Applications
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cli-tools-devops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI Tools / DevOps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cross-platform-multi-target" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cross-Platform / Multi-Target
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#academic-research" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Academic / Research
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integration-with-existing-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration with Existing Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#webassembly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WebAssembly
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-benchmarks-all-77-backends" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Benchmarks (All 7/7 Backends)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Benchmarks (All 7/7 Backends)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fibonacci-recursive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fibonacci (Recursive)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#matrix-multiplication-2d-arrays" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Matrix Multiplication (2D Arrays)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quicksort-lists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quicksort (Lists)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#string-operations-wordcount" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        String Operations (Wordcount)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Quick Start Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#c-small-binary-fast-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C++ - Small Binary, Fast Execution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#llvm-maximum-performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LLVM - Maximum Performance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#go-fast-iteration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Go - Fast Iteration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rust-memory-safety" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rust - Memory Safety
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#migration-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migration Path
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#getting-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting Help
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../haskell_backend_limitations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Haskell Limitations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../use_cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../assert_implementation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assert Implementation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../translation_test/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Translation Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/backends/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backends
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/frontend/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Frontend
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Development
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dev-guide/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dev-guide/contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dev-guide/testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Technical Notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dev/llvm_backend_guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LLVM Backend Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dev/LLVM_BACKEND_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LLVM Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dev/llvm_jit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LLVM JIT
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dev/llvm_jit_summary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LLVM JIT Summary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dev/llvm_performance_analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LLVM Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dev/llvm_memory_safety_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LLVM Memory Safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dev/llvm_memory_testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LLVM Memory Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dev/memory_testing_summary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Memory Testing Summary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dev/ir_to_llvm_ir/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IR to LLVM IR
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dev/cgen-mgen-integration-status/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CGen Integration Status
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dev/wasm_investigation_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WebAssembly Investigation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dev/was-z3-worth-it/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Z3 Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-decision-tree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Decision Tree
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#production-ready-backends-77-benchmarks-x" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Production-Ready Backends (7/7 Benchmarks [x])
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Production-Ready Backends (7/7 Benchmarks [x])">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#c-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C++ Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c-backend_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rust-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rust Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#go-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Go Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ocaml-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OCaml Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#llvm-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LLVM Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functionally-complete-backend-67-benchmarks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functionally Complete Backend (6/7 Benchmarks)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Functionally Complete Backend (6/7 Benchmarks)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#haskell-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Haskell Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backend-comparison-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backend Comparison Matrix
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommendation-by-use-case" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommendation by Use Case
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recommendation by Use Case">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#embedded-systems-iot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Embedded Systems / IoT
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#web-services-apis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web Services / APIs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-critical-applications" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance-Critical Applications
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cli-tools-devops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI Tools / DevOps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cross-platform-multi-target" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cross-Platform / Multi-Target
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#academic-research" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Academic / Research
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integration-with-existing-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration with Existing Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#webassembly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WebAssembly
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-benchmarks-all-77-backends" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Benchmarks (All 7/7 Backends)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Benchmarks (All 7/7 Backends)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fibonacci-recursive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fibonacci (Recursive)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#matrix-multiplication-2d-arrays" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Matrix Multiplication (2D Arrays)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quicksort-lists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quicksort (Lists)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#string-operations-wordcount" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        String Operations (Wordcount)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Quick Start Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#c-small-binary-fast-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C++ - Small Binary, Fast Execution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#llvm-maximum-performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LLVM - Maximum Performance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#go-fast-iteration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Go - Fast Iteration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rust-memory-safety" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rust - Memory Safety
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#migration-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migration Path
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#getting-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting Help
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="backend-selection-guide">Backend Selection Guide<a class="headerlink" href="#backend-selection-guide" title="Permanent link">&para;</a></h1>
+<p><strong>Last Updated</strong>: October 18, 2025
+<strong>Version</strong>: v0.1.98
+<strong>MultiGen Backends</strong>: 7 (6 production-ready, 1 functionally complete)</p>
+<hr />
+<h2 id="quick-decision-tree">Quick Decision Tree<a class="headerlink" href="#quick-decision-tree" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>┌─ Need WebAssembly or multi-platform?
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>│  └─ Use LLVM (compiles to any target via LLVM)
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>│
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>├─ Integrating with existing codebase?
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│  ├─ C++ project? → Use C++
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│  ├─ C project? → Use C
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>│  ├─ Rust project? → Use Rust
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│  ├─ Go project? → Use Go
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>│  ├─ Haskell project? → Use Haskell
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>│  └─ OCaml project? → Use OCaml
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>│
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>├─ Maximum performance critical?
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>│  └─ Use LLVM (O3 optimization, 36% faster than O0)
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>│     or C++ (STL optimizations, small binaries)
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>│
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>├─ Smallest binary size?
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>│  └─ Use C++ (36KB) or C (82KB)
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>│
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>├─ Fastest compilation?
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>│  └─ Use Go (63ms) or LLVM (varies by optimization)
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>│
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>└─ Learning functional programming?
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>   └─ Use Haskell or OCaml
+</code></pre></div>
+<hr />
+<h2 id="production-ready-backends-77-benchmarks-x">Production-Ready Backends (7/7 Benchmarks [x])<a class="headerlink" href="#production-ready-backends-77-benchmarks-x" title="Permanent link">&para;</a></h2>
+<h3 id="c-backend">C++ Backend<a class="headerlink" href="#c-backend" title="Permanent link">&para;</a></h3>
+<p><strong>Best for</strong>: Integration with existing C++ codebases, small binaries, STL ecosystem</p>
+<p><strong>Strengths</strong>:</p>
+<ul>
+<li>[x] <strong>Smallest binaries</strong> (36KB for typical programs)</li>
+<li>[x] <strong>Advanced type inference</strong> (multi-pass, handles complex patterns)</li>
+<li>[x] <strong>STL integration</strong> (std::vector, std::unordered_map, std::unordered_set)</li>
+<li>[x] <strong>Lambda comprehensions</strong> (efficient list/dict comprehensions)</li>
+<li>[x] <strong>Nested containers</strong> (2D arrays, complex data structures)</li>
+<li>[x] <strong>Header-only runtime</strong> (357 lines, minimal overhead)</li>
+</ul>
+<p><strong>Performance</strong>:</p>
+<ul>
+<li>Compile time: 422ms</li>
+<li>Execute time: 236ms</li>
+<li>Binary size: 36KB</li>
+</ul>
+<p><strong>Use Cases</strong>:</p>
+<ul>
+<li>Integrating Python algorithms into C++ applications</li>
+<li>Performance-critical embedded systems with size constraints</li>
+<li>Projects already using C++ STL</li>
+<li>Quick prototyping with minimal runtime dependencies</li>
+</ul>
+<p><strong>Example</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>multigen<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>cpp<span class="w"> </span>algorithm.py
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>./build/algorithm
+</code></pre></div>
+<hr />
+<h3 id="c-backend_1">C Backend<a class="headerlink" href="#c-backend_1" title="Permanent link">&para;</a></h3>
+<p><strong>Best for</strong>: Maximum portability, embedded systems, minimal dependencies</p>
+<p><strong>Strengths</strong>:</p>
+<ul>
+<li>[x] <strong>Pure C99</strong> (works on any platform with C compiler)</li>
+<li>[x] <strong>Template-based containers</strong> (9 types from 6 generic templates)</li>
+<li>[x] <strong>STC library integration</strong> (high-performance containers)</li>
+<li>[x] <strong>2D arrays and nested types</strong> (comprehensive support)</li>
+<li>[x] <strong>Zero external dependencies</strong> (self-contained runtime)</li>
+<li>[x] <strong>File I/O and module imports</strong> (complete feature parity)</li>
+</ul>
+<p><strong>Performance</strong>:</p>
+<ul>
+<li>Compile time: 658ms</li>
+<li>Execute time: 238ms</li>
+<li>Binary size: 82KB</li>
+</ul>
+<p><strong>Runtime</strong>: ~2,500 lines (16 files)</p>
+<p><strong>Use Cases</strong>:</p>
+<ul>
+<li>Embedded systems (IoT, microcontrollers)</li>
+<li>Legacy system integration</li>
+<li>Maximum portability across platforms</li>
+<li>Systems without C++ compiler</li>
+</ul>
+<p><strong>Example</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>multigen<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>c<span class="w"> </span>data_processing.py
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>./build/data_processing
+</code></pre></div>
+<hr />
+<h3 id="rust-backend">Rust Backend<a class="headerlink" href="#rust-backend" title="Permanent link">&para;</a></h3>
+<p><strong>Best for</strong>: Memory safety guarantees, systems programming, production services</p>
+<p><strong>Strengths</strong>:</p>
+<ul>
+<li>[x] <strong>Ownership-aware generation</strong> (automatic cloning/dereferencing)</li>
+<li>[x] <strong>Advanced HashMap inference</strong> (detects reassignment patterns)</li>
+<li>[x] <strong>Memory safety</strong> (compile-time borrow checking)</li>
+<li>[x] <strong>String handling</strong> (strategic cloning for parameters)</li>
+<li>[x] <strong>Production-ready</strong> (304-line runtime, pure std library)</li>
+</ul>
+<p><strong>Performance</strong>:</p>
+<ul>
+<li>Compile time: ~500ms (cargo build)</li>
+<li>Execute time: ~200ms</li>
+<li>Binary size: ~2-3MB (includes Rust std library)</li>
+</ul>
+<p><strong>Use Cases</strong>:</p>
+<ul>
+<li>Production web services with safety requirements</li>
+<li>CLI tools distributed as single binaries</li>
+<li>Systems programming with Python ergonomics</li>
+<li>Projects requiring strong safety guarantees</li>
+</ul>
+<p><strong>Example</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>multigen<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>rust<span class="w"> </span>web_service.py
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>./build/web_service
+</code></pre></div>
+<hr />
+<h3 id="go-backend">Go Backend<a class="headerlink" href="#go-backend" title="Permanent link">&para;</a></h3>
+<p><strong>Best for</strong>: Fast compilation, concurrent services, distributed systems</p>
+<p><strong>Strengths</strong>:</p>
+<ul>
+<li>[x] <strong>Fastest compilation</strong> (63ms, ~10x faster than others)</li>
+<li>[x] <strong>Reflection-based comprehensions</strong> (flexible, idiomatic)</li>
+<li>[x] <strong>Goroutine-friendly</strong> (works with Go concurrency)</li>
+<li>[x] <strong>Pure std library</strong> (413 lines, zero dependencies)</li>
+<li>[x] <strong>Large binaries but self-contained</strong> (includes Go runtime)</li>
+</ul>
+<p><strong>Performance</strong>:</p>
+<ul>
+<li>Compile time: 63ms <strong>FASTEST</strong></li>
+<li>Execute time: 42ms</li>
+<li>Binary size: 2365KB (includes Go runtime)</li>
+</ul>
+<p><strong>Use Cases</strong>:</p>
+<ul>
+<li>Microservices and distributed systems</li>
+<li>DevOps tooling (fast iteration cycles)</li>
+<li>Network services with concurrent requests</li>
+<li>Quick prototyping with instant compilation</li>
+</ul>
+<p><strong>Example</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>multigen<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>go<span class="w"> </span>microservice.py
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>./build/microservice
+</code></pre></div>
+<hr />
+<h3 id="ocaml-backend">OCaml Backend<a class="headerlink" href="#ocaml-backend" title="Permanent link">&para;</a></h3>
+<p><strong>Best for</strong>: Functional programming, type safety, academic projects</p>
+<p><strong>Strengths</strong>:</p>
+<ul>
+<li>[x] <strong>Functional paradigm</strong> (pure functions with mutable refs where needed)</li>
+<li>[x] <strong>Type-aware generation</strong> (Python types → accurate OCaml constructs)</li>
+<li>[x] <strong>Smart scoping</strong> (sophisticated mutation detection)</li>
+<li>[x] <strong>Pure std library</strong> (Printf, List, Hashtbl - 216 lines)</li>
+<li>[x] <strong>Ref-based state</strong> (handles Python's mutability in functional style)</li>
+</ul>
+<p><strong>Performance</strong>:</p>
+<ul>
+<li>Compile time: 209ms</li>
+<li>Execute time: 167ms</li>
+<li>Binary size: 771KB</li>
+</ul>
+<p><strong>Use Cases</strong>:</p>
+<ul>
+<li>Academic research (functional programming studies)</li>
+<li>Type-safe transformations of Python code</li>
+<li>Learning functional programming concepts</li>
+<li>Formal verification projects</li>
+</ul>
+<p><strong>Example</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>multigen<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>ocaml<span class="w"> </span>research.py
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>./build/research
+</code></pre></div>
+<hr />
+<h3 id="llvm-backend">LLVM Backend<a class="headerlink" href="#llvm-backend" title="Permanent link">&para;</a></h3>
+<p><strong>Best for</strong>: Cross-platform, optimization, WebAssembly, maximum performance</p>
+<p><strong>Strengths</strong>:</p>
+<ul>
+<li>[x] <strong>Multi-target</strong> (x86-64, ARM, RISC-V, WebAssembly via LLVM)</li>
+<li>[x] <strong>Industry-standard optimization</strong> (O0-O3, 60+ LLVM passes)</li>
+<li>[x] <strong>36.5% performance gain</strong> (O3 vs O0 on benchmarks)</li>
+<li>[x] <strong>Memory-safe</strong> (ASAN-verified, 0 leaks)</li>
+<li>[x] <strong>Native compilation</strong> (LLVM IR → object → executable via llvmlite)</li>
+<li>[x] <strong>Future-proof</strong> (GPU kernels, custom passes, PGO/LTO possible)</li>
+</ul>
+<p><strong>Performance</strong> (O2, default):</p>
+<ul>
+<li>Compile time: ~800ms (IR generation + LLVM optimization)</li>
+<li>Execute time: 54ms (O3: 36% faster than O0)</li>
+<li>Binary size: ~37KB (all optimization levels)</li>
+</ul>
+<p><strong>Optimization Levels</strong>:</p>
+<ul>
+<li><code>-O0</code> / <code>-O none</code>: No optimization (fastest compile, debugging)</li>
+<li><code>-O1</code> / <code>-O basic</code>: Basic optimization (70% IR reduction)</li>
+<li><code>-O2</code> / <code>-O moderate</code>: Default (balanced performance/compile time)</li>
+<li><code>-O3</code> / <code>-O aggressive</code>: Maximum performance (36.5% faster execution)</li>
+</ul>
+<p><strong>Runtime</strong>: ~8,300 lines (comprehensive C runtime library)</p>
+<p><strong>Use Cases</strong>:</p>
+<ul>
+<li><strong>WebAssembly compilation</strong> (Python → WASM)</li>
+<li><strong>Cross-compilation</strong> (compile on x86, run on ARM)</li>
+<li><strong>Performance-critical</strong> (leverage LLVM optimization passes)</li>
+<li><strong>Multi-platform tools</strong> (single backend for all targets)</li>
+<li><strong>Future GPU/embedded targets</strong> (via LLVM infrastructure)</li>
+</ul>
+<p><strong>Example</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># Default (O2)</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>multigen<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>llvm<span class="w"> </span>algorithm.py
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># Maximum performance</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>multigen<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>llvm<span class="w"> </span>-O3<span class="w"> </span>algorithm.py
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="c1"># Debug build</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>multigen<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>llvm<span class="w"> </span>-O0<span class="w"> </span>algorithm.py
+</code></pre></div>
+<hr />
+<h2 id="functionally-complete-backend-67-benchmarks">Functionally Complete Backend (6/7 Benchmarks)<a class="headerlink" href="#functionally-complete-backend-67-benchmarks" title="Permanent link">&para;</a></h2>
+<h3 id="haskell-backend">Haskell Backend<a class="headerlink" href="#haskell-backend" title="Permanent link">&para;</a></h3>
+<p><strong>Best for</strong>: Pure functional programming, type safety, academic use</p>
+<p><strong>Strengths</strong>:</p>
+<ul>
+<li>[x] <strong>Pure functional</strong> (Data.Map, Data.Set, foldl/foldM)</li>
+<li>[x] <strong>Type-safe</strong> (strong Haskell type system)</li>
+<li>[x] <strong>Visitor pattern</strong> (separates main/IO from pure functions)</li>
+<li>[x] <strong>Comprehensive features</strong> (all Python constructs work)</li>
+<li>[!] <strong>In-place mutations not supported</strong> (6/7 benchmarks, see note below)</li>
+</ul>
+<p><strong>Performance</strong>:</p>
+<ul>
+<li>Compile time: 513ms</li>
+<li>Execute time: 275ms</li>
+<li>Binary size: 19734KB (includes GHC runtime)</li>
+</ul>
+<p><strong>Use Cases</strong>:</p>
+<ul>
+<li>Functional programming education</li>
+<li>Type-safe algorithm implementations</li>
+<li>Academic research</li>
+<li>Learning Haskell through Python</li>
+</ul>
+<p><strong>Known Limitation</strong>: The quicksort benchmark uses in-place array mutations
+(<code>arr[i] = arr[j]</code>), which cannot be translated to pure Haskell. Use functional
+patterns instead (list comprehensions, recursive decomposition). See
+<a href="../haskell_backend_limitations/">Haskell Backend Limitations</a> for details and
+working examples.</p>
+<p><strong>Example</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>multigen<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>haskell<span class="w"> </span>algorithm.py
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>./build/algorithm
+</code></pre></div>
+<hr />
+<h2 id="backend-comparison-matrix">Backend Comparison Matrix<a class="headerlink" href="#backend-comparison-matrix" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>C++</th>
+<th>C</th>
+<th>Rust</th>
+<th>Go</th>
+<th>OCaml</th>
+<th>LLVM</th>
+<th>Haskell</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Production Ready</strong></td>
+<td>[x]</td>
+<td>[x]</td>
+<td>[x]</td>
+<td>[x]</td>
+<td>[x]</td>
+<td>[x]</td>
+<td>[!] 6/7</td>
+</tr>
+<tr>
+<td><strong>Compile Speed</strong></td>
+<td>Medium</td>
+<td>Slow</td>
+<td>Slow</td>
+<td>Fast</td>
+<td>Fast</td>
+<td>Medium</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td><strong>Binary Size</strong></td>
+<td>[+]Tiny</td>
+<td>Small</td>
+<td>Large</td>
+<td>Large</td>
+<td>Medium</td>
+<td>Tiny</td>
+<td>Large</td>
+</tr>
+<tr>
+<td><strong>Optimization</strong></td>
+<td>High</td>
+<td>High</td>
+<td>High</td>
+<td>Medium</td>
+<td>Medium</td>
+<td>[+]Highest</td>
+<td>Low</td>
+</tr>
+<tr>
+<td><strong>Memory Safety</strong></td>
+<td>Manual</td>
+<td>Manual</td>
+<td>[+]Auto</td>
+<td>GC</td>
+<td>GC</td>
+<td>Manual*</td>
+<td>GC</td>
+</tr>
+<tr>
+<td><strong>Cross-Platform</strong></td>
+<td>Good</td>
+<td>[+]Best</td>
+<td>Good</td>
+<td>Good</td>
+<td>Good</td>
+<td>[+]Best</td>
+<td>Good</td>
+</tr>
+<tr>
+<td><strong>Concurrency</strong></td>
+<td>Manual</td>
+<td>Manual</td>
+<td>Native</td>
+<td>[+]Native</td>
+<td>Limited</td>
+<td>Manual</td>
+<td>Limited</td>
+</tr>
+<tr>
+<td><strong>WebAssembly</strong></td>
+<td>Via Emscripten</td>
+<td>Via Emscripten</td>
+<td>[x] Native</td>
+<td>[x] TinyGo</td>
+<td>Via js_of_ocaml</td>
+<td>[x] Native</td>
+<td>Via GHCJS</td>
+</tr>
+</tbody>
+</table>
+<p>* <em>LLVM backend runtime is ASAN-verified memory-safe (0 leaks, 0 errors)</em></p>
+<hr />
+<h2 id="recommendation-by-use-case">Recommendation by Use Case<a class="headerlink" href="#recommendation-by-use-case" title="Permanent link">&para;</a></h2>
+<h3 id="embedded-systems-iot">Embedded Systems / IoT<a class="headerlink" href="#embedded-systems-iot" title="Permanent link">&para;</a></h3>
+<p><strong>Recommended</strong>: C backend</p>
+<ul>
+<li>Minimal dependencies, C99 portable, small binaries</li>
+</ul>
+<h3 id="web-services-apis">Web Services / APIs<a class="headerlink" href="#web-services-apis" title="Permanent link">&para;</a></h3>
+<p><strong>Recommended</strong>: Rust or Go</p>
+<ul>
+<li>Rust: Safety guarantees</li>
+<li>Go: Fast compilation, built-in concurrency</li>
+</ul>
+<h3 id="performance-critical-applications">Performance-Critical Applications<a class="headerlink" href="#performance-critical-applications" title="Permanent link">&para;</a></h3>
+<p><strong>Recommended</strong>: LLVM (with <code>-O3</code>) or C++</p>
+<ul>
+<li>LLVM: 36% faster with O3 optimization</li>
+<li>C++: STL optimizations, smallest binaries</li>
+</ul>
+<h3 id="cli-tools-devops">CLI Tools / DevOps<a class="headerlink" href="#cli-tools-devops" title="Permanent link">&para;</a></h3>
+<p><strong>Recommended</strong>: Go or Rust</p>
+<ul>
+<li>Go: Instant compilation (63ms)</li>
+<li>Rust: Single binary with dependencies</li>
+</ul>
+<h3 id="cross-platform-multi-target">Cross-Platform / Multi-Target<a class="headerlink" href="#cross-platform-multi-target" title="Permanent link">&para;</a></h3>
+<p><strong>Recommended</strong>: LLVM</p>
+<ul>
+<li>Compile once, target any platform (x86-64, ARM, RISC-V, WASM)</li>
+</ul>
+<h3 id="academic-research">Academic / Research<a class="headerlink" href="#academic-research" title="Permanent link">&para;</a></h3>
+<p><strong>Recommended</strong>: Haskell or OCaml</p>
+<ul>
+<li>Pure functional paradigm</li>
+<li>Type safety guarantees</li>
+</ul>
+<h3 id="integration-with-existing-code">Integration with Existing Code<a class="headerlink" href="#integration-with-existing-code" title="Permanent link">&para;</a></h3>
+<p><strong>Recommended</strong>: Backend matching your codebase language</p>
+<ul>
+<li>C++ → C++, Rust → Rust, etc.</li>
+</ul>
+<h3 id="webassembly">WebAssembly<a class="headerlink" href="#webassembly" title="Permanent link">&para;</a></h3>
+<p><strong>Recommended</strong>: LLVM backend</p>
+<ul>
+<li>Direct LLVM IR → WebAssembly compilation</li>
+<li>616-byte WASM objects (80% smaller than native)</li>
+</ul>
+<hr />
+<h2 id="performance-benchmarks-all-77-backends">Performance Benchmarks (All 7/7 Backends)<a class="headerlink" href="#performance-benchmarks-all-77-backends" title="Permanent link">&para;</a></h2>
+<h3 id="fibonacci-recursive">Fibonacci (Recursive)<a class="headerlink" href="#fibonacci-recursive" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Fastest Execution</strong>: Go (42ms)</li>
+<li><strong>Smallest Binary</strong>: C++ (36KB)</li>
+<li><strong>Fastest Compile</strong>: Go (63ms)</li>
+</ul>
+<h3 id="matrix-multiplication-2d-arrays">Matrix Multiplication (2D Arrays)<a class="headerlink" href="#matrix-multiplication-2d-arrays" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Best Optimization</strong>: LLVM O3 (36% faster than O0)</li>
+<li><strong>Most Portable</strong>: C (pure C99)</li>
+</ul>
+<h3 id="quicksort-lists">Quicksort (Lists)<a class="headerlink" href="#quicksort-lists" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Most Idiomatic</strong>: Haskell (pure functional)</li>
+<li><strong>Best Performance</strong>: LLVM O3 or C++</li>
+</ul>
+<h3 id="string-operations-wordcount">String Operations (Wordcount)<a class="headerlink" href="#string-operations-wordcount" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Complete</strong>: All 6 production backends</li>
+<li><strong>Pending</strong>: Haskell optimization</li>
+</ul>
+<hr />
+<h2 id="quick-start-examples">Quick Start Examples<a class="headerlink" href="#quick-start-examples" title="Permanent link">&para;</a></h2>
+<h3 id="c-small-binary-fast-execution">C++ - Small Binary, Fast Execution<a class="headerlink" href="#c-small-binary-fast-execution" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># Install</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>pip<span class="w"> </span>install<span class="w"> </span>multigen
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1"># Build</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>multigen<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>cpp<span class="w"> </span>algorithm.py
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="c1"># Run</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>./build/algorithm
+</code></pre></div>
+<h3 id="llvm-maximum-performance">LLVM - Maximum Performance<a class="headerlink" href="#llvm-maximum-performance" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># Default (O2)</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>multigen<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>llvm<span class="w"> </span>algorithm.py
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1"># Maximum optimization</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>multigen<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>llvm<span class="w"> </span>-O3<span class="w"> </span>algorithm.py
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="c1"># Profile</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="nb">time</span><span class="w"> </span>./build/algorithm
+</code></pre></div>
+<h3 id="go-fast-iteration">Go - Fast Iteration<a class="headerlink" href="#go-fast-iteration" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># Instant compilation</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>multigen<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>go<span class="w"> </span>service.py
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="c1"># Run</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>./build/service
+</code></pre></div>
+<h3 id="rust-memory-safety">Rust - Memory Safety<a class="headerlink" href="#rust-memory-safety" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Build with safety checks</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>multigen<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>rust<span class="w"> </span>app.py
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="c1"># Run</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>./build/app
+</code></pre></div>
+<hr />
+<h2 id="migration-path">Migration Path<a class="headerlink" href="#migration-path" title="Permanent link">&para;</a></h2>
+<p>If you're unsure which backend to choose:</p>
+<ol>
+<li><strong>Start with C++</strong> - Good balance of performance, size, and compatibility</li>
+<li><strong>Profile your code</strong> - Identify performance bottlenecks</li>
+<li><strong>Switch to LLVM with O3</strong> - If you need maximum performance</li>
+<li><strong>Switch to Go</strong> - If compile time is critical</li>
+<li><strong>Switch to Rust</strong> - If you need safety guarantees</li>
+<li><strong>Use language-specific backend</strong> - When integrating with existing code</li>
+</ol>
+<hr />
+<h2 id="getting-help">Getting Help<a class="headerlink" href="#getting-help" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Documentation</strong>: See <code>docs/backend_comparison.md</code> for technical details</li>
+<li><strong>LLVM Guide</strong>: See <code>docs/dev/llvm_backend_guide.md</code> for LLVM-specific features</li>
+<li><strong>Issues</strong>: Report at <a href="https://github.com/anthropics/multigen/issues">https://github.com/anthropics/multigen/issues</a></li>
+<li><strong>Examples</strong>: Check <code>tests/benchmarks/</code> for real-world code</li>
+</ul>
+<hr />
+<h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
+<p><strong>For most users</strong>: Start with <strong>C++</strong> (balanced) or <strong>LLVM</strong> (maximum performance/flexibility)</p>
+<p><strong>For production</strong>: Use <strong>Rust</strong> (safety) or <strong>Go</strong> (speed)</p>
+<p><strong>For embedded</strong>: Use <strong>C</strong> (portability)</p>
+<p><strong>For research</strong>: Use <strong>Haskell</strong> or <strong>OCaml</strong> (functional paradigm)</p>
+<p>All backends are actively maintained and production-ready (except Haskell which is functionally complete).</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "content.code.copy", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

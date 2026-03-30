@@ -1,0 +1,3185 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Multi-Language Code Generator - Python to C, C++, Rust, Go, Haskell, OCaml, LLVM">
+      
+      
+      
+        <link rel="canonical" href="https://multigen.readthedocs.io/dev/wasm_investigation_report/">
+      
+      
+        <link rel="prev" href="../cgen-mgen-integration-status/">
+      
+      
+        <link rel="next" href="../was-z3-worth-it/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>WebAssembly Investigation - MultiGen Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#webassembly-target-investigation-report" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="MultiGen Documentation" class="md-header__button md-logo" aria-label="MultiGen Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            MultiGen Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              WebAssembly Investigation
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/shakfu/multigen" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    shakfu/multigen
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="MultiGen Documentation" class="md-nav__button md-logo" aria-label="MultiGen Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    MultiGen Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/shakfu/multigen" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    shakfu/multigen
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/backends/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backend Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Formal Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../supported_syntax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supported Syntax
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../backend_comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backend Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../backend_selection_guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backend Selection Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../haskell_backend_limitations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Haskell Limitations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../use_cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../assert_implementation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assert Implementation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../translation_test/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Translation Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/backends/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backends
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/frontend/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Frontend
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Development
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Technical Notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../llvm_backend_guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LLVM Backend Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LLVM_BACKEND_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LLVM Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../llvm_jit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LLVM JIT
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../llvm_jit_summary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LLVM JIT Summary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../llvm_performance_analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LLVM Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../llvm_memory_safety_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LLVM Memory Safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../llvm_memory_testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LLVM Memory Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../memory_testing_summary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Memory Testing Summary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ir_to_llvm_ir/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IR to LLVM IR
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cgen-mgen-integration-status/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CGen Integration Status
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WebAssembly Investigation
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WebAssembly Investigation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#executive-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Executive Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#investigation-methodology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Investigation Methodology
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Investigation Methodology">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-llvm-webassembly-support-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. LLVM WebAssembly Support Verification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-basic-webassembly-compilation-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Basic WebAssembly Compilation Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-multigen-generated-ir-compilation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. MultiGen-Generated IR Compilation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-webassembly-output-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. WebAssembly Output Analysis
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#technical-challenges-identified" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Technical Challenges Identified
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Technical Challenges Identified">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#challenge-1-runtime-library-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Challenge 1: Runtime Library Integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#challenge-2-linking-webassembly-modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Challenge 2: Linking WebAssembly Modules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#challenge-3-system-calls-and-io" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Challenge 3: System Calls and I/O
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#proposed-implementation-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proposed Implementation Strategy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Proposed Implementation Strategy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-pure-functions-no-runtime-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 1: Pure Functions (No Runtime Dependencies)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2-javascript-runtime-bridge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2: JavaScript Runtime Bridge
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3-wasi-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 3: WASI Support
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-4-emscripten-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 4: Emscripten Integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#proof-of-concept-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proof of Concept Results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Proof of Concept Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#test-case-fibonacci-benchmark" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Case: Fibonacci Benchmark
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#webassembly-output-characteristics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WebAssembly Output Characteristics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="WebAssembly Output Characteristics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#code-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code Size
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-characteristics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Characteristics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runtime-overhead" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Overhead
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ecosystem-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ecosystem Integration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Ecosystem Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#browser-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Browser Support
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runtime-environments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Environments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tooling-ecosystem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tooling Ecosystem
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended Next Steps
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recommended Next Steps">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#immediate-v0185" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Immediate (v0.1.85)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#short-term-v020" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Short-term (v0.2.0)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#medium-term-v030" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Medium-term (v0.3.0)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#long-term-v040" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Long-term (v0.4.0+)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#comparison-with-other-backends" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparison with Other Backends
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#risk-assessment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Risk Assessment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Risk Assessment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#technical-risks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Technical Risks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-risks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation Risks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conclusion
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-a-code-samples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix A: Code Samples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Appendix A: Code Samples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a1-webassembly-compilation-script" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A.1 WebAssembly Compilation Script
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a2-javascript-runtime-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A.2 JavaScript Runtime Template
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a3-wasm-linking-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A.3 WASM Linking Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-b-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix B: References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../was-z3-worth-it/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Z3 Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#executive-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Executive Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#investigation-methodology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Investigation Methodology
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Investigation Methodology">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-llvm-webassembly-support-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. LLVM WebAssembly Support Verification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-basic-webassembly-compilation-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Basic WebAssembly Compilation Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-multigen-generated-ir-compilation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. MultiGen-Generated IR Compilation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-webassembly-output-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. WebAssembly Output Analysis
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#technical-challenges-identified" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Technical Challenges Identified
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Technical Challenges Identified">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#challenge-1-runtime-library-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Challenge 1: Runtime Library Integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#challenge-2-linking-webassembly-modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Challenge 2: Linking WebAssembly Modules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#challenge-3-system-calls-and-io" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Challenge 3: System Calls and I/O
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#proposed-implementation-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proposed Implementation Strategy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Proposed Implementation Strategy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-pure-functions-no-runtime-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 1: Pure Functions (No Runtime Dependencies)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2-javascript-runtime-bridge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2: JavaScript Runtime Bridge
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3-wasi-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 3: WASI Support
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-4-emscripten-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 4: Emscripten Integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#proof-of-concept-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proof of Concept Results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Proof of Concept Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#test-case-fibonacci-benchmark" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Case: Fibonacci Benchmark
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#webassembly-output-characteristics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WebAssembly Output Characteristics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="WebAssembly Output Characteristics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#code-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code Size
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-characteristics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Characteristics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runtime-overhead" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Overhead
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ecosystem-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ecosystem Integration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Ecosystem Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#browser-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Browser Support
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runtime-environments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Environments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tooling-ecosystem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tooling Ecosystem
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended Next Steps
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recommended Next Steps">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#immediate-v0185" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Immediate (v0.1.85)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#short-term-v020" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Short-term (v0.2.0)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#medium-term-v030" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Medium-term (v0.3.0)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#long-term-v040" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Long-term (v0.4.0+)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#comparison-with-other-backends" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparison with Other Backends
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#risk-assessment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Risk Assessment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Risk Assessment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#technical-risks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Technical Risks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-risks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation Risks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conclusion
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-a-code-samples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix A: Code Samples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Appendix A: Code Samples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a1-webassembly-compilation-script" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A.1 WebAssembly Compilation Script
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a2-javascript-runtime-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A.2 JavaScript Runtime Template
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a3-wasm-linking-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A.3 WASM Linking Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-b-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix B: References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="webassembly-target-investigation-report">WebAssembly Target Investigation Report<a class="headerlink" href="#webassembly-target-investigation-report" title="Permanent link">&para;</a></h1>
+<p><strong>Date</strong>: October 16, 2025
+<strong>Status</strong>: Feasibility Confirmed - Implementation Roadmap Defined
+<strong>Version</strong>: v0.1.85-dev</p>
+<h2 id="executive-summary">Executive Summary<a class="headerlink" href="#executive-summary" title="Permanent link">&para;</a></h2>
+<p>MultiGen can successfully generate LLVM IR that compiles to WebAssembly. This investigation confirms that <strong>WebAssembly is a viable eighth backend target</strong> for MultiGen, enabling Python-to-WASM compilation via the existing LLVM infrastructure.</p>
+<p><strong>Key Findings:</strong></p>
+<ul>
+<li>[x] LLVM 21.1.3 (Homebrew) has full WebAssembly support (wasm32, wasm64)</li>
+<li>[x] llvmlite can target WebAssembly and generate object files</li>
+<li>[x] MultiGen-generated LLVM IR compiles successfully to WebAssembly objects</li>
+<li>[x] Pure functions (no runtime dependencies) work out-of-the-box</li>
+<li>[!] Runtime library integration requires additional work</li>
+<li>[!] Linking step needs external tooling (wasm-ld, Emscripten, or WASI SDK)</li>
+</ul>
+<h2 id="investigation-methodology">Investigation Methodology<a class="headerlink" href="#investigation-methodology" title="Permanent link">&para;</a></h2>
+<h3 id="1-llvm-webassembly-support-verification">1. LLVM WebAssembly Support Verification<a class="headerlink" href="#1-llvm-webassembly-support-verification" title="Permanent link">&para;</a></h3>
+<p>Confirmed that LLVM and llvmlite support multiple WebAssembly targets:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">llvmlite</span><span class="w"> </span><span class="kn">import</span> <span class="n">binding</span> <span class="k">as</span> <span class="n">llvm</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">llvm</span><span class="o">.</span><span class="n">initialize_all_targets</span><span class="p">()</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">targets</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="s1">&#39;wasm32-unknown-unknown&#39;</span><span class="p">,</span>  <span class="c1"># Standard WebAssembly 32-bit</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="s1">&#39;wasm64-unknown-unknown&#39;</span><span class="p">,</span>  <span class="c1"># WebAssembly 64-bit</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="s1">&#39;wasm32-unknown-emscripten&#39;</span><span class="p">,</span>  <span class="c1"># Emscripten toolchain</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="s1">&#39;wasm32-wasi&#39;</span>  <span class="c1"># WASI (WebAssembly System Interface)</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="p">]</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="k">for</span> <span class="n">triple</span> <span class="ow">in</span> <span class="n">targets</span><span class="p">:</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="n">target</span> <span class="o">=</span> <span class="n">llvm</span><span class="o">.</span><span class="n">Target</span><span class="o">.</span><span class="n">from_triple</span><span class="p">(</span><span class="n">triple</span><span class="p">)</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">triple</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1"> - </span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">description</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Result:</strong> All four targets are available and functional.</p>
+<h3 id="2-basic-webassembly-compilation-test">2. Basic WebAssembly Compilation Test<a class="headerlink" href="#2-basic-webassembly-compilation-test" title="Permanent link">&para;</a></h3>
+<p>Created minimal LLVM IR and compiled to WebAssembly:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">target</span><span class="w"> </span><span class="k">triple</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&quot;wasm32-unknown-unknown&quot;</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="k">define</span><span class="w"> </span><span class="kt">i32</span><span class="w"> </span><span class="vg">@add</span><span class="p">(</span><span class="kt">i32</span><span class="w"> </span><span class="nv">%a</span><span class="p">,</span><span class="w"> </span><span class="kt">i32</span><span class="w"> </span><span class="nv">%b</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nl">entry:</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nv">%result</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">add</span><span class="w"> </span><span class="kt">i32</span><span class="w"> </span><span class="nv">%a</span><span class="p">,</span><span class="w"> </span><span class="nv">%b</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="k">ret</span><span class="w"> </span><span class="kt">i32</span><span class="w"> </span><span class="nv">%result</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="p">}</span>
+</code></pre></div>
+<p><strong>Compilation:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">target</span> <span class="o">=</span> <span class="n">llvm</span><span class="o">.</span><span class="n">Target</span><span class="o">.</span><span class="n">from_triple</span><span class="p">(</span><span class="s2">&quot;wasm32-unknown-unknown&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">target_machine</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">create_target_machine</span><span class="p">(</span><span class="n">opt</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">obj_code</span> <span class="o">=</span> <span class="n">target_machine</span><span class="o">.</span><span class="n">emit_object</span><span class="p">(</span><span class="n">llvm_module</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Result:</strong> [x] Successfully generated 257-byte WebAssembly object file</p>
+<h3 id="3-multigen-generated-ir-compilation">3. MultiGen-Generated IR Compilation<a class="headerlink" href="#3-multigen-generated-ir-compilation" title="Permanent link">&para;</a></h3>
+<p>Compiled actual MultiGen LLVM IR (fibonacci.py) to WebAssembly:</p>
+<p><strong>Source Python:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">fibonacci</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>        <span class="k">return</span> <span class="n">n</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="k">return</span> <span class="n">fibonacci</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">fibonacci</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="k">return</span> <span class="n">fibonacci</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>MultiGen Pipeline:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>uv<span class="w"> </span>run<span class="w"> </span>multigen<span class="w"> </span>build<span class="w"> </span>fibonacci.py<span class="w"> </span>-t<span class="w"> </span>llvm
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="c1"># Generates build/src/fibonacci.ll</span>
+</code></pre></div>
+<p><strong>WebAssembly Compilation:</strong></p>
+<ul>
+<li>Original IR: 5,363 bytes (includes all runtime declarations)</li>
+<li>Extracted pure functions: 1,037 bytes</li>
+<li>Generated WASM object: 616 bytes</li>
+<li>WebAssembly text (WAT): 2,510 bytes</li>
+</ul>
+<p><strong>Result:</strong> [x] Successfully compiled MultiGen IR to WebAssembly</p>
+<h3 id="4-webassembly-output-analysis">4. WebAssembly Output Analysis<a class="headerlink" href="#4-webassembly-output-analysis" title="Permanent link">&para;</a></h3>
+<p>Generated WebAssembly text format shows proper code generation:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="err">.func</span><span class="k">type</span> <span class="err">fibonacci</span> <span class="p">(</span><span class="kt">i64</span><span class="p">)</span> <span class="err">-&gt;</span> <span class="p">(</span><span class="kt">i64</span><span class="p">)</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="err">.func</span><span class="k">type</span> <span class="err">main</span> <span class="p">()</span> <span class="err">-&gt;</span> <span class="p">(</span><span class="kt">i64</span><span class="p">)</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="err">fibonacci:</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="err">.func</span><span class="k">type</span> <span class="err">fibonacci</span> <span class="p">(</span><span class="kt">i64</span><span class="p">)</span> <span class="err">-&gt;</span> <span class="p">(</span><span class="kt">i64</span><span class="p">)</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="err">.</span><span class="k">local</span> <span class="kt">i32</span><span class="err">,</span> <span class="kt">i64</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    <span class="nb">global.get</span> <span class="err">__stack_pointer</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="nb">i32.const</span> <span class="mi">16</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    <span class="nb">i32.sub</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    <span class="nb">local.tee</span> <span class="mi">1</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    <span class="nb">global.set</span> <span class="err">__stack_pointer</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    <span class="err">;</span> <span class="err">...</span> <span class="err">rest</span> <span class="err">of</span> <span class="err">function</span>
+</code></pre></div>
+<p><strong>Analysis:</strong></p>
+<ul>
+<li>Proper function signatures</li>
+<li>Stack management via <code>__stack_pointer</code> global</li>
+<li>Efficient use of WebAssembly locals</li>
+<li>Tail call optimization opportunities</li>
+</ul>
+<h2 id="technical-challenges-identified">Technical Challenges Identified<a class="headerlink" href="#technical-challenges-identified" title="Permanent link">&para;</a></h2>
+<h3 id="challenge-1-runtime-library-integration">Challenge 1: Runtime Library Integration<a class="headerlink" href="#challenge-1-runtime-library-integration" title="Permanent link">&para;</a></h3>
+<p><strong>Problem:</strong> MultiGen LLVM IR includes declarations for runtime libraries:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">declare</span><span class="w"> </span><span class="k">void</span><span class="w"> </span><span class="vg">@vec_int_init_ptr</span><span class="p">(</span><span class="nv">%struct.vec_int</span><span class="p">*</span><span class="w"> </span><span class="nv">%&quot;.1&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="k">declare</span><span class="w"> </span><span class="k">void</span><span class="w"> </span><span class="vg">@vec_int_push</span><span class="p">(</span><span class="nv">%struct.vec_int</span><span class="p">*</span><span class="w"> </span><span class="nv">%&quot;.1&quot;</span><span class="p">,</span><span class="w"> </span><span class="kt">i64</span><span class="w"> </span><span class="nv">%&quot;.2&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="k">declare</span><span class="w"> </span><span class="kt">i64</span><span class="w"> </span><span class="vg">@vec_int_at</span><span class="p">(</span><span class="nv">%struct.vec_int</span><span class="p">*</span><span class="w"> </span><span class="nv">%&quot;.1&quot;</span><span class="p">,</span><span class="w"> </span><span class="kt">i64</span><span class="w"> </span><span class="nv">%&quot;.2&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c">; ... 60+ more runtime function declarations</span>
+</code></pre></div>
+<p><strong>Current Status:</strong> These are compiled as C code and linked with clang.</p>
+<p><strong>WebAssembly Impact:</strong></p>
+<ul>
+<li>Need to compile C runtime to WebAssembly</li>
+<li>Link WebAssembly object files together</li>
+<li>Or: rewrite runtime in pure LLVM IR (no C dependencies)</li>
+</ul>
+<p><strong>Solutions:</strong></p>
+<ol>
+<li><strong>Compile C runtime to WASM</strong> (using Emscripten or WASI SDK)</li>
+<li><strong>Implement runtime in LLVM IR</strong> (generate IR directly, no C)</li>
+<li><strong>Use JavaScript bindings</strong> (import runtime functions from JS)</li>
+<li><strong>Subset approach</strong> (support pure functions first, containers later)</li>
+</ol>
+<h3 id="challenge-2-linking-webassembly-modules">Challenge 2: Linking WebAssembly Modules<a class="headerlink" href="#challenge-2-linking-webassembly-modules" title="Permanent link">&para;</a></h3>
+<p><strong>Problem:</strong> llvmlite generates WebAssembly <em>object files</em>, not complete modules.</p>
+<p><strong>Missing Pieces:</strong></p>
+<ul>
+<li>Function exports (so JavaScript can call them)</li>
+<li>Import resolution (for runtime functions)</li>
+<li>Memory initialization</li>
+<li>Start function</li>
+</ul>
+<p><strong>Current Tools:</strong></p>
+<ul>
+<li><code>llc</code> (LLVM): Generates <code>.wasm</code> object files [x]</li>
+<li><code>wasm-ld</code> (LLVM): Links WASM objects → runnable module [X] (not installed)</li>
+<li><code>emcc</code> (Emscripten): Complete LLVM→WASM toolchain [X] (not installed)</li>
+<li><code>wasi-sdk</code>: Standalone WASM compilation [X] (not installed)</li>
+</ul>
+<p><strong>Solution Options:</strong></p>
+<ol>
+<li><strong>Add wasm-ld dependency</strong> (<code>brew install llvm</code> includes it on some platforms)</li>
+<li><strong>Use Emscripten</strong> (full JavaScript integration)</li>
+<li><strong>Generate complete modules in Python</strong> (using llvmlite + manual WASM generation)</li>
+<li><strong>WASI SDK</strong> (for standalone WASM without JavaScript)</li>
+</ol>
+<h3 id="challenge-3-system-calls-and-io">Challenge 3: System Calls and I/O<a class="headerlink" href="#challenge-3-system-calls-and-io" title="Permanent link">&para;</a></h3>
+<p><strong>Problem:</strong> WebAssembly has no built-in I/O (no <code>printf</code>, <code>fopen</code>, etc.)</p>
+<p><strong>MultiGen Uses:</strong></p>
+<ul>
+<li><code>printf</code> for print() statements</li>
+<li>File I/O operations</li>
+<li>Standard library functions</li>
+</ul>
+<p><strong>Solutions:</strong></p>
+<ol>
+<li><strong>WASI (WebAssembly System Interface)</strong> - Standardized syscall interface</li>
+<li><strong>JavaScript imports</strong> - Import console.log, file APIs from JS</li>
+<li><strong>Emscripten</strong> - Provides libc emulation</li>
+<li><strong>Disable I/O</strong> - Support pure computation only (subset of MultiGen)</li>
+</ol>
+<h2 id="proposed-implementation-strategy">Proposed Implementation Strategy<a class="headerlink" href="#proposed-implementation-strategy" title="Permanent link">&para;</a></h2>
+<h3 id="phase-1-pure-functions-no-runtime-dependencies">Phase 1: Pure Functions (No Runtime Dependencies)<a class="headerlink" href="#phase-1-pure-functions-no-runtime-dependencies" title="Permanent link">&para;</a></h3>
+<p><strong>Scope:</strong> Support Python programs that don't use:</p>
+<ul>
+<li>Lists, dicts, sets (no containers)</li>
+<li>String operations (basic strings only)</li>
+<li>File I/O</li>
+<li>print() statements</li>
+</ul>
+<p><strong>Capabilities:</strong></p>
+<ul>
+<li>Arithmetic operations [x]</li>
+<li>Control flow (if/else, for/while) [x]</li>
+<li>Function calls and recursion [x]</li>
+<li>Integer/float types [x]</li>
+</ul>
+<p><strong>Implementation:</strong></p>
+<ol>
+<li>Add <code>wasm32</code> target to LLVM backend</li>
+<li>Filter out unused runtime declarations</li>
+<li>Generate minimal IR with proper WebAssembly triple</li>
+<li>Use llvmlite to emit WebAssembly objects</li>
+<li>Provide linking instructions for users</li>
+</ol>
+<p><strong>Deliverable:</strong> Python → WebAssembly for pure computational functions</p>
+<h3 id="phase-2-javascript-runtime-bridge">Phase 2: JavaScript Runtime Bridge<a class="headerlink" href="#phase-2-javascript-runtime-bridge" title="Permanent link">&para;</a></h3>
+<p><strong>Scope:</strong> Enable containers and I/O via JavaScript imports</p>
+<p><strong>Approach:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># Container operations become JavaScript imports</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nd">@wasm_import</span><span class="p">(</span><span class="s2">&quot;env&quot;</span><span class="p">,</span> <span class="s2">&quot;vec_int_push&quot;</span><span class="p">)</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">vec_int_push</span><span class="p">(</span><span class="n">vec</span><span class="p">:</span> <span class="n">pointer</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">i64</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">void</span>
+</code></pre></div>
+<p><strong>Implementation:</strong></p>
+<ol>
+<li>Generate import declarations in WASM</li>
+<li>Provide JavaScript runtime library</li>
+<li>Marshal data between WASM and JavaScript</li>
+<li>Support print() via console.log</li>
+</ol>
+<p><strong>Deliverable:</strong> Full MultiGen functionality in browser/Node.js</p>
+<h3 id="phase-3-wasi-support">Phase 3: WASI Support<a class="headerlink" href="#phase-3-wasi-support" title="Permanent link">&para;</a></h3>
+<p><strong>Scope:</strong> Standalone WASM with system interface</p>
+<p><strong>Approach:</strong></p>
+<ul>
+<li>Compile runtime C code to WASM using WASI SDK</li>
+<li>Link WASM object files with wasm-ld</li>
+<li>Run with wasmtime or other WASI runtimes</li>
+</ul>
+<p><strong>Implementation:</strong></p>
+<ol>
+<li>Add WASI SDK as optional dependency</li>
+<li>Cross-compile runtime libraries to WASM</li>
+<li>Implement WASI-based I/O (file operations, printf)</li>
+<li>Generate complete WASM modules</li>
+</ol>
+<p><strong>Deliverable:</strong> Standalone WebAssembly binaries (server-side, CLI tools)</p>
+<h3 id="phase-4-emscripten-integration">Phase 4: Emscripten Integration<a class="headerlink" href="#phase-4-emscripten-integration" title="Permanent link">&para;</a></h3>
+<p><strong>Scope:</strong> Full browser integration with Emscripten toolchain</p>
+<p><strong>Approach:</strong></p>
+<ul>
+<li>Use Emscripten as the LLVM→WASM compiler</li>
+<li>Leverage Emscripten's libc implementation</li>
+<li>Generate HTML+JS+WASM packages</li>
+</ul>
+<p><strong>Implementation:</strong></p>
+<ol>
+<li>Detect Emscripten installation</li>
+<li>Use <code>emcc</code> instead of <code>llc</code> for WebAssembly target</li>
+<li>Generate web-ready output (HTML scaffolding)</li>
+<li>Support Emscripten APIs (canvas, WebGL, etc.)</li>
+</ol>
+<p><strong>Deliverable:</strong> MultiGen → Web Applications</p>
+<h2 id="proof-of-concept-results">Proof of Concept Results<a class="headerlink" href="#proof-of-concept-results" title="Permanent link">&para;</a></h2>
+<h3 id="test-case-fibonacci-benchmark">Test Case: Fibonacci Benchmark<a class="headerlink" href="#test-case-fibonacci-benchmark" title="Permanent link">&para;</a></h3>
+<p><strong>Python Source:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">fibonacci</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate Fibonacci number recursively.&quot;&quot;&quot;</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>        <span class="k">return</span> <span class="n">n</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="k">return</span> <span class="n">fibonacci</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">fibonacci</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    <span class="k">return</span> <span class="n">fibonacci</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>MultiGen Compilation:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>uv<span class="w"> </span>run<span class="w"> </span>multigen<span class="w"> </span>build<span class="w"> </span>fibonacci.py<span class="w"> </span>-t<span class="w"> </span>llvm
+</code></pre></div>
+<p><strong>WebAssembly Generation:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">llvmlite</span><span class="w"> </span><span class="kn">import</span> <span class="n">binding</span> <span class="k">as</span> <span class="n">llvm</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="c1"># Extract pure functions from MultiGen IR</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="n">ir</span> <span class="o">=</span> <span class="n">extract_pure_functions</span><span class="p">(</span><span class="s2">&quot;build/src/fibonacci.ll&quot;</span><span class="p">)</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="c1"># Compile to WebAssembly</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="n">llvm_module</span> <span class="o">=</span> <span class="n">llvm</span><span class="o">.</span><span class="n">parse_assembly</span><span class="p">(</span><span class="n">ir</span><span class="p">)</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="n">target</span> <span class="o">=</span> <span class="n">llvm</span><span class="o">.</span><span class="n">Target</span><span class="o">.</span><span class="n">from_triple</span><span class="p">(</span><span class="s2">&quot;wasm32-unknown-unknown&quot;</span><span class="p">)</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="n">target_machine</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">create_target_machine</span><span class="p">(</span><span class="n">opt</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="n">wasm_obj</span> <span class="o">=</span> <span class="n">target_machine</span><span class="o">.</span><span class="n">emit_object</span><span class="p">(</span><span class="n">llvm_module</span><span class="p">)</span>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="c1"># Write to file</span>
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;fibonacci.wasm&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">write_bytes</span><span class="p">(</span><span class="n">wasm_obj</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Results:</strong></p>
+<ul>
+<li>[x] Python → LLVM IR: 5,363 bytes</li>
+<li>[x] LLVM IR → WASM object: 616 bytes</li>
+<li>[x] Module verifies successfully</li>
+<li>[x] Functions: <code>fibonacci(i64) -&gt; i64</code>, <code>main() -&gt; i64</code></li>
+</ul>
+<p><strong>Limitation:</strong> Generated object file needs linking to be runnable.</p>
+<h2 id="webassembly-output-characteristics">WebAssembly Output Characteristics<a class="headerlink" href="#webassembly-output-characteristics" title="Permanent link">&para;</a></h2>
+<h3 id="code-size">Code Size<a class="headerlink" href="#code-size" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Size</th>
+<th>Format</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Python</td>
+<td>181 bytes</td>
+<td><code>.py</code> source</td>
+</tr>
+<tr>
+<td>LLVM IR (full)</td>
+<td>5,363 bytes</td>
+<td><code>.ll</code> with runtime decls</td>
+</tr>
+<tr>
+<td>LLVM IR (pure)</td>
+<td>1,037 bytes</td>
+<td><code>.ll</code> functions only</td>
+</tr>
+<tr>
+<td>WebAssembly object</td>
+<td>616 bytes</td>
+<td><code>.wasm</code> object</td>
+</tr>
+<tr>
+<td>WebAssembly text</td>
+<td>2,510 bytes</td>
+<td><code>.wat</code> readable</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Optimization:</strong> Optimized IR could be even smaller with aggressive inlining.</p>
+<h3 id="performance-characteristics">Performance Characteristics<a class="headerlink" href="#performance-characteristics" title="Permanent link">&para;</a></h3>
+<p>WebAssembly features that benefit MultiGen:</p>
+<ol>
+<li><strong>i64 support</strong> - Native 64-bit integers (matches MultiGen's default int type)</li>
+<li><strong>Stack machine</strong> - Efficient for expression-heavy code</li>
+<li><strong>Fast function calls</strong> - Good for recursive algorithms</li>
+<li><strong>SIMD</strong> (future) - Potential for array operations</li>
+<li><strong>Threads</strong> (future) - Parallel computation</li>
+</ol>
+<h3 id="runtime-overhead">Runtime Overhead<a class="headerlink" href="#runtime-overhead" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Memory:</strong> WebAssembly uses linear memory (flat address space)</li>
+<li><strong>Globals:</strong> Stack pointer managed automatically</li>
+<li><strong>Functions:</strong> Direct calls (no v-tables for simple functions)</li>
+<li><strong>Optimization:</strong> LLVM O2/O3 passes work with WASM target</li>
+</ul>
+<h2 id="ecosystem-integration">Ecosystem Integration<a class="headerlink" href="#ecosystem-integration" title="Permanent link">&para;</a></h2>
+<h3 id="browser-support">Browser Support<a class="headerlink" href="#browser-support" title="Permanent link">&para;</a></h3>
+<p>All modern browsers support WebAssembly:</p>
+<ul>
+<li>Chrome/Edge (V8): Excellent</li>
+<li>Firefox (SpiderMonkey): Excellent</li>
+<li>Safari (JavaScriptCore): Excellent</li>
+<li>Mobile browsers: Good</li>
+</ul>
+<h3 id="runtime-environments">Runtime Environments<a class="headerlink" href="#runtime-environments" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Browsers:</strong> Chrome, Firefox, Safari, Edge</li>
+<li><strong>Node.js:</strong> v8.0+ (native WebAssembly support)</li>
+<li><strong>Deno:</strong> Built-in WASM support</li>
+<li><strong>wasmtime:</strong> Standalone WASI runtime</li>
+<li><strong>wasmer:</strong> Universal WASM runtime</li>
+<li><strong>wasm3:</strong> Embedded/IoT devices</li>
+</ul>
+<h3 id="tooling-ecosystem">Tooling Ecosystem<a class="headerlink" href="#tooling-ecosystem" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>wabt:</strong> WebAssembly Binary Toolkit (wasm-objdump, wasm-dis, wasm-validate)</li>
+<li><strong>Emscripten:</strong> LLVM→WASM compiler with full libc</li>
+<li><strong>wasi-sdk:</strong> Standalone WASM compilation</li>
+<li><strong>wasm-pack:</strong> Rust→WASM packaging (inspiration for MultiGen)</li>
+<li><strong>AssemblyScript:</strong> TypeScript→WASM (competing approach)</li>
+</ul>
+<h2 id="recommended-next-steps">Recommended Next Steps<a class="headerlink" href="#recommended-next-steps" title="Permanent link">&para;</a></h2>
+<h3 id="immediate-v0185">Immediate (v0.1.85)<a class="headerlink" href="#immediate-v0185" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Document findings</strong> [x] (this report)</li>
+<li><strong>Add wasm32 target flag</strong> to LLVM backend</li>
+<li><strong>Implement IR extraction</strong> for pure functions</li>
+<li><strong>Test compilation</strong> with more benchmarks</li>
+<li><strong>Write linking documentation</strong> for users</li>
+</ol>
+<h3 id="short-term-v020">Short-term (v0.2.0)<a class="headerlink" href="#short-term-v020" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Add wasm-ld integration</strong> (if available)</li>
+<li><strong>Implement Phase 1</strong> (pure functions)</li>
+<li><strong>Create JavaScript runtime</strong> for basic I/O</li>
+<li><strong>Add WebAssembly tests</strong> to test suite</li>
+<li><strong>Benchmark performance</strong> vs native/LLVM</li>
+</ol>
+<h3 id="medium-term-v030">Medium-term (v0.3.0)<a class="headerlink" href="#medium-term-v030" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Compile runtime to WASM</strong> (using WASI SDK or Emscripten)</li>
+<li><strong>Implement Phase 2</strong> (JavaScript bridge)</li>
+<li><strong>Add browser demo</strong> (fibonacci, quicksort, etc.)</li>
+<li><strong>Support print()</strong> via console.log</li>
+<li><strong>Add WASM examples</strong> to docs</li>
+</ol>
+<h3 id="long-term-v040">Long-term (v0.4.0+)<a class="headerlink" href="#long-term-v040" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Full WASI support</strong> (standalone WASM)</li>
+<li><strong>Emscripten integration</strong> (web apps)</li>
+<li><strong>WebAssembly SIMD</strong> (vectorization)</li>
+<li><strong>WebAssembly threads</strong> (parallelism)</li>
+<li><strong>GPU compute</strong> (WebGPU backend)</li>
+</ol>
+<h2 id="comparison-with-other-backends">Comparison with Other Backends<a class="headerlink" href="#comparison-with-other-backends" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>LLVM (native)</th>
+<th>WebAssembly</th>
+<th>C/C++</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Compilation target</td>
+<td>Machine code</td>
+<td>WASM object</td>
+<td>Machine code</td>
+</tr>
+<tr>
+<td>Platform support</td>
+<td>OS-specific</td>
+<td>Universal</td>
+<td>OS-specific</td>
+</tr>
+<tr>
+<td>Binary size</td>
+<td>~17 KB</td>
+<td>~616 bytes (obj)</td>
+<td>~36 KB</td>
+</tr>
+<tr>
+<td>Startup time</td>
+<td>Fast</td>
+<td>Instant (in-browser)</td>
+<td>Fast</td>
+</tr>
+<tr>
+<td>Runtime</td>
+<td>Native</td>
+<td>WASM VM</td>
+<td>Native</td>
+</tr>
+<tr>
+<td>Sandboxing</td>
+<td>None</td>
+<td>Full</td>
+<td>None</td>
+</tr>
+<tr>
+<td>Web deployment</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td>I/O</td>
+<td>Direct syscalls</td>
+<td>Via imports</td>
+<td>Direct syscalls</td>
+</tr>
+<tr>
+<td>Debugging</td>
+<td>gdb/lldb</td>
+<td>Browser DevTools</td>
+<td>gdb</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key Advantage:</strong> WebAssembly enables <strong>web deployment</strong> without transpiling.</p>
+<h2 id="risk-assessment">Risk Assessment<a class="headerlink" href="#risk-assessment" title="Permanent link">&para;</a></h2>
+<h3 id="technical-risks">Technical Risks<a class="headerlink" href="#technical-risks" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Likelihood</th>
+<th>Impact</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Runtime linking complexity</td>
+<td>High</td>
+<td>Medium</td>
+<td>Start with pure functions only</td>
+</tr>
+<tr>
+<td>Performance vs native</td>
+<td>Medium</td>
+<td>Low</td>
+<td>WASM is typically 50-80% of native</td>
+</tr>
+<tr>
+<td>Tooling dependencies</td>
+<td>Medium</td>
+<td>Medium</td>
+<td>Document alternative approaches</td>
+</tr>
+<tr>
+<td>API instability</td>
+<td>Low</td>
+<td>Low</td>
+<td>WASM spec is stable (v1 since 2017)</td>
+</tr>
+<tr>
+<td>Browser compatibility</td>
+<td>Low</td>
+<td>Low</td>
+<td>Universal support in modern browsers</td>
+</tr>
+</tbody>
+</table>
+<h3 id="implementation-risks">Implementation Risks<a class="headerlink" href="#implementation-risks" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Likelihood</th>
+<th>Impact</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Scope creep</td>
+<td>High</td>
+<td>Medium</td>
+<td>Phased approach (pure functions first)</td>
+</tr>
+<tr>
+<td>Maintenance burden</td>
+<td>Medium</td>
+<td>Medium</td>
+<td>Reuse LLVM backend infrastructure</td>
+</tr>
+<tr>
+<td>Testing complexity</td>
+<td>Medium</td>
+<td>Low</td>
+<td>Automated Node.js tests</td>
+</tr>
+<tr>
+<td>Documentation</td>
+<td>Medium</td>
+<td>Medium</td>
+<td>Provide clear examples</td>
+</tr>
+</tbody>
+</table>
+<h2 id="conclusion">Conclusion<a class="headerlink" href="#conclusion" title="Permanent link">&para;</a></h2>
+<p><strong>WebAssembly is a viable and valuable target for MultiGen.</strong></p>
+<p>The investigation confirms that:</p>
+<ol>
+<li><strong>Technical feasibility</strong>: MultiGen's LLVM backend can target WebAssembly with minimal changes</li>
+<li><strong>Ecosystem support</strong>: LLVM 21+ has mature WebAssembly support</li>
+<li><strong>Phased approach</strong>: Can start with pure functions, add features incrementally</li>
+<li><strong>Strategic value</strong>: Opens web deployment and universal platform support</li>
+<li><strong>Low risk</strong>: Builds on existing LLVM infrastructure</li>
+</ol>
+<p><strong>Recommended Action:</strong> Proceed with Phase 1 implementation (pure functions) in v0.1.85.</p>
+<p>This would make MultiGen the <strong>first Python-to-WebAssembly compiler via LLVM IR</strong> that supports multiple backends and maintains Python semantics.</p>
+<h2 id="appendix-a-code-samples">Appendix A: Code Samples<a class="headerlink" href="#appendix-a-code-samples" title="Permanent link">&para;</a></h2>
+<h3 id="a1-webassembly-compilation-script">A.1 WebAssembly Compilation Script<a class="headerlink" href="#a1-webassembly-compilation-script" title="Permanent link">&para;</a></h3>
+<p>See <code>/tmp/compile_to_wasm_v2.py</code> for complete implementation.</p>
+<p>Key steps:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># 1. Extract pure functions from MultiGen IR</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="n">wasm_ir</span> <span class="o">=</span> <span class="n">extract_pure_functions</span><span class="p">(</span><span class="n">multigen_ir</span><span class="p">)</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="c1"># 2. Set WebAssembly target triple</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="n">wasm_ir</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;target triple = &quot;wasm32-unknown-unknown&quot;</span><span class="se">\n</span><span class="si">{</span><span class="n">wasm_ir</span><span class="si">}</span><span class="s1">&#39;</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="c1"># 3. Compile to WebAssembly</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="n">llvm_module</span> <span class="o">=</span> <span class="n">llvm</span><span class="o">.</span><span class="n">parse_assembly</span><span class="p">(</span><span class="n">wasm_ir</span><span class="p">)</span>
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="n">target</span> <span class="o">=</span> <span class="n">llvm</span><span class="o">.</span><span class="n">Target</span><span class="o">.</span><span class="n">from_triple</span><span class="p">(</span><span class="s2">&quot;wasm32-unknown-unknown&quot;</span><span class="p">)</span>
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a><span class="n">target_machine</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">create_target_machine</span><span class="p">(</span><span class="n">opt</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="n">wasm_object</span> <span class="o">=</span> <span class="n">target_machine</span><span class="o">.</span><span class="n">emit_object</span><span class="p">(</span><span class="n">llvm_module</span><span class="p">)</span>
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a><span class="c1"># 4. Write output</span>
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;output.wasm&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">write_bytes</span><span class="p">(</span><span class="n">wasm_object</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="a2-javascript-runtime-template">A.2 JavaScript Runtime Template<a class="headerlink" href="#a2-javascript-runtime-template" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1">// Load and run WebAssembly module</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="k">async</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">runWasm</span><span class="p">(</span><span class="nx">wasmPath</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">wasmBuffer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">fs</span><span class="p">.</span><span class="nx">readFileSync</span><span class="p">(</span><span class="nx">wasmPath</span><span class="p">);</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">wasmModule</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">WebAssembly</span><span class="p">.</span><span class="nx">compile</span><span class="p">(</span><span class="nx">wasmBuffer</span><span class="p">);</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="w">    </span><span class="c1">// Provide imports (memory, stack pointer, etc.)</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">memory</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebAssembly</span><span class="p">.</span><span class="nx">Memory</span><span class="p">({</span><span class="w"> </span><span class="nx">initial</span><span class="o">:</span><span class="w"> </span><span class="mf">256</span><span class="w"> </span><span class="p">});</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">imports</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="w">        </span><span class="nx">env</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a><span class="w">            </span><span class="nx">__linear_memory</span><span class="o">:</span><span class="w"> </span><span class="nx">memory</span><span class="p">,</span>
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="w">            </span><span class="nx">__stack_pointer</span><span class="o">:</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebAssembly</span><span class="p">.</span><span class="nx">Global</span><span class="p">({</span><span class="w"> </span><span class="nx">value</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;i32&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">mutable</span><span class="o">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="mf">65536</span><span class="p">)</span>
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a><span class="w">    </span><span class="p">};</span>
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a><span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">instance</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">WebAssembly</span><span class="p">.</span><span class="nx">instantiate</span><span class="p">(</span><span class="nx">wasmModule</span><span class="p">,</span><span class="w"> </span><span class="nx">imports</span><span class="p">);</span>
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a><span class="w">    </span><span class="c1">// Call exported functions</span>
+<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a><span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">instance</span><span class="p">.</span><span class="nx">exports</span><span class="p">.</span><span class="nx">fibonacci</span><span class="p">(</span><span class="mf">10</span><span class="p">);</span>
+<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a><span class="w">    </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`fibonacci(10) = </span><span class="si">${</span><span class="nx">result</span><span class="si">}</span><span class="sb">`</span><span class="p">);</span>
+<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a><span class="p">}</span>
+</code></pre></div>
+<h3 id="a3-wasm-linking-example">A.3 WASM Linking Example<a class="headerlink" href="#a3-wasm-linking-example" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="c1"># Using wasm-ld (LLVM WebAssembly linker)</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>wasm-ld<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">    </span>fibonacci.o<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="w">    </span>runtime.o<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="w">    </span>--export<span class="o">=</span>fibonacci<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="w">    </span>--export<span class="o">=</span>main<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="w">    </span>-o<span class="w"> </span>fibonacci.wasm
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="c1"># Using Emscripten</span>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>emcc<span class="w"> </span>fibonacci.ll<span class="w"> </span>runtime.c<span class="w"> </span>-o<span class="w"> </span>fibonacci.html
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a><span class="c1"># Using WASI SDK</span>
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>/path/to/wasi-sdk/bin/clang<span class="w"> </span>fibonacci.ll<span class="w"> </span>-o<span class="w"> </span>fibonacci.wasm
+</code></pre></div>
+<h2 id="appendix-b-references">Appendix B: References<a class="headerlink" href="#appendix-b-references" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="https://webassembly.org/">WebAssembly Official Site</a></li>
+<li><a href="https://llvm.org/docs/WebAssembly.html">LLVM WebAssembly Backend</a></li>
+<li><a href="https://llvmlite.readthedocs.io/">llvmlite Documentation</a></li>
+<li><a href="https://wasi.dev/">WASI Specification</a></li>
+<li><a href="https://emscripten.org/">Emscripten</a></li>
+<li><a href="https://github.com/WebAssembly/wabt">wabt Tools</a></li>
+<li><a href="https://developer.mozilla.org/en-US/docs/WebAssembly">WebAssembly at MDN</a></li>
+</ul>
+<hr />
+<p><strong>Report prepared by:</strong> MultiGen Development Team
+<strong>Investigation period:</strong> October 16, 2025
+<strong>Next review:</strong> After Phase 1 implementation</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "content.code.copy", "search.suggest"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,3770 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Multi-Language Code Generator - Python to C, C++, Rust, Go, Haskell, OCaml, LLVM">
+      
+      
+      
+        <link rel="canonical" href="https://multigen.readthedocs.io/dev/ir_to_llvm_ir/">
+      
+      
+        <link rel="prev" href="../memory_testing_summary/">
+      
+      
+        <link rel="next" href="../cgen-mgen-integration-status/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>IR to LLVM IR - MultiGen Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#using-static_irpy-to-target-llvm-ir" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="MultiGen Documentation" class="md-header__button md-logo" aria-label="MultiGen Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            MultiGen Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              IR to LLVM IR
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/shakfu/multigen" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    shakfu/multigen
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="MultiGen Documentation" class="md-nav__button md-logo" aria-label="MultiGen Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    MultiGen Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/shakfu/multigen" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    shakfu/multigen
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/backends/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backend Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Formal Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../supported_syntax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supported Syntax
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../backend_comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backend Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../backend_selection_guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backend Selection Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../haskell_backend_limitations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Haskell Limitations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../use_cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../assert_implementation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assert Implementation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../translation_test/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Translation Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/backends/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backends
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/frontend/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Frontend
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Development
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Technical Notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../llvm_backend_guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LLVM Backend Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LLVM_BACKEND_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LLVM Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../llvm_jit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LLVM JIT
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../llvm_jit_summary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LLVM JIT Summary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../llvm_performance_analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LLVM Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../llvm_memory_safety_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LLVM Memory Safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../llvm_memory_testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LLVM Memory Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../memory_testing_summary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Memory Testing Summary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IR to LLVM IR
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IR to LLVM IR
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#executive-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Executive Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#current-state-assessment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current State Assessment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Current State Assessment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-have" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Have
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#existing-backends-performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Existing Backends Performance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#strategic-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strategic Analysis
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Strategic Analysis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-this-makes-sense" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why This Makes Sense
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why This Makes Sense">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-architectural-alignment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Architectural Alignment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-multiple-targets-from-one-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Multiple Targets from One Implementation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-llvm-optimization-advantage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. LLVM Optimization Advantage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-reduced-long-term-maintenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Reduced Long-term Maintenance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-could-be-challenging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why This Could Be Challenging
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why This Could Be Challenging">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-llvm-dependency-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. LLVM Dependency Size
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-python-llvm-impedance-mismatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Python-LLVM Impedance Mismatch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-learning-curve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Learning Curve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-development-timeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Development Timeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#technical-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Technical Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Technical Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#llvm-backend-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LLVM Backend Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Components
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-irtollvmconverter-visitor-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. IRToLLVMConverter (Visitor Pattern)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-llvm-backend-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. LLVM Backend Class
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-type-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Type Mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementation-roadmap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation Roadmap
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Implementation Roadmap">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-proof-of-concept-weeks-1-3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 1: Proof of Concept (Weeks 1-3)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2-language-features-weeks-4-8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2: Language Features (Weeks 4-8)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3-advanced-features-weeks-9-12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 3: Advanced Features (Weeks 9-12)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-4-optimization-polish-ongoing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 4: Optimization &amp; Polish (Ongoing)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#command-line" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command Line
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example Output
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-expectations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Expectations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Expectations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#compilation-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compilation Time
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#execution-performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Execution Performance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#binary-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Binary Size
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#comparison-llvm-vs-existing-backends" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparison: LLVM vs Existing Backends
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision Matrix
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Decision Matrix">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-use-llvm-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to Use LLVM Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#risk-assessment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Risk Assessment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Risk Assessment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#technical-risks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Technical Risks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#project-risks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Project Risks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resources-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resources &amp; References
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Resources &amp; References">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#llvm-learning-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LLVM Learning Resources
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multigen-relevant-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MultiGen Relevant Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#similar-projects" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Similar Projects
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#success-criteria" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Success Criteria
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Success Criteria">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#minimum-viable-product-mvp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Minimum Viable Product (MVP)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#feature-parity-with-c-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feature Parity with C Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#production-ready" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Production Ready
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Next Steps">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#immediate-this-week" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Immediate (This Week)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#short-term-this-month" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Short Term (This Month)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#medium-term-3-months" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Medium Term (3 Months)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#long-term-6-months" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Long Term (6+ Months)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conclusion
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cgen-mgen-integration-status/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CGen Integration Status
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wasm_investigation_report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WebAssembly Investigation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../was-z3-worth-it/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Z3 Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#executive-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Executive Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#current-state-assessment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current State Assessment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Current State Assessment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-have" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Have
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#existing-backends-performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Existing Backends Performance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#strategic-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strategic Analysis
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Strategic Analysis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-this-makes-sense" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why This Makes Sense
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why This Makes Sense">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-architectural-alignment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Architectural Alignment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-multiple-targets-from-one-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Multiple Targets from One Implementation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-llvm-optimization-advantage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. LLVM Optimization Advantage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-reduced-long-term-maintenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Reduced Long-term Maintenance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-could-be-challenging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why This Could Be Challenging
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why This Could Be Challenging">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-llvm-dependency-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. LLVM Dependency Size
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-python-llvm-impedance-mismatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Python-LLVM Impedance Mismatch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-learning-curve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Learning Curve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-development-timeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Development Timeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#technical-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Technical Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Technical Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#llvm-backend-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LLVM Backend Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Components
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-irtollvmconverter-visitor-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. IRToLLVMConverter (Visitor Pattern)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-llvm-backend-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. LLVM Backend Class
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-type-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Type Mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementation-roadmap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation Roadmap
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Implementation Roadmap">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-proof-of-concept-weeks-1-3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 1: Proof of Concept (Weeks 1-3)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2-language-features-weeks-4-8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2: Language Features (Weeks 4-8)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3-advanced-features-weeks-9-12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 3: Advanced Features (Weeks 9-12)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-4-optimization-polish-ongoing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 4: Optimization &amp; Polish (Ongoing)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#command-line" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command Line
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example Output
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-expectations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Expectations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Expectations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#compilation-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compilation Time
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#execution-performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Execution Performance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#binary-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Binary Size
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#comparison-llvm-vs-existing-backends" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparison: LLVM vs Existing Backends
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision Matrix
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Decision Matrix">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-use-llvm-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to Use LLVM Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#risk-assessment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Risk Assessment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Risk Assessment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#technical-risks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Technical Risks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#project-risks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Project Risks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resources-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resources &amp; References
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Resources &amp; References">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#llvm-learning-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LLVM Learning Resources
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multigen-relevant-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MultiGen Relevant Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#similar-projects" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Similar Projects
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#success-criteria" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Success Criteria
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Success Criteria">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#minimum-viable-product-mvp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Minimum Viable Product (MVP)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#feature-parity-with-c-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feature Parity with C Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#production-ready" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Production Ready
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Next Steps">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#immediate-this-week" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Immediate (This Week)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#short-term-this-month" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Short Term (This Month)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#medium-term-3-months" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Medium Term (3 Months)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#long-term-6-months" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Long Term (6+ Months)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conclusion
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="using-static_irpy-to-target-llvm-ir">Using static_ir.py to Target LLVM IR<a class="headerlink" href="#using-static_irpy-to-target-llvm-ir" title="Permanent link">&para;</a></h1>
+<p><strong>Analysis Date:</strong> October 2025
+<strong>Status:</strong> Planning / Proof of Concept Phase
+<strong>Estimated Effort:</strong> 2-3 months to feature parity</p>
+<h2 id="executive-summary">Executive Summary<a class="headerlink" href="#executive-summary" title="Permanent link">&para;</a></h2>
+<p>Using MultiGen's existing Static Python IR (<code>static_ir.py</code>) to target LLVM IR is <strong>strategically sound</strong> and architecturally aligned with the project. Recommendation: Implement as a <strong>7th backend</strong> alongside existing C/C++/Rust/Go/Haskell/OCaml backends, rather than replacing them.</p>
+<p><strong>Key Benefits:</strong></p>
+<ul>
+<li>[x] Leverages existing well-designed IR infrastructure</li>
+<li>[x] Industry-standard LLVM optimization pipeline</li>
+<li>[x] Multiple target architectures from single implementation</li>
+<li>[x] Potential for JIT compilation</li>
+<li>[x] Future-proof architecture</li>
+</ul>
+<p><strong>Key Challenges:</strong></p>
+<ul>
+<li>[X] Large dependency (~100MB+ LLVM)</li>
+<li>[X] Learning curve for LLVM IR generation</li>
+<li>[X] Python-LLVM impedance mismatch (GC, strings)</li>
+<li>[X] 2-3 month development timeline</li>
+</ul>
+<h2 id="current-state-assessment">Current State Assessment<a class="headerlink" href="#current-state-assessment" title="Permanent link">&para;</a></h2>
+<h3 id="what-we-have">What We Have<a class="headerlink" href="#what-we-have" title="Permanent link">&para;</a></h3>
+<p><strong>Static Python IR</strong> (<code>src/multigen/frontend/static_ir.py</code> - 922 lines)</p>
+<ul>
+<li>Well-designed visitor pattern architecture</li>
+<li>Type system mapping (Python → C types via <code>IRDataType</code>)</li>
+<li>Comprehensive IR nodes:</li>
+<li><code>IRModule</code>, <code>IRFunction</code>, <code>IRVariable</code></li>
+<li><code>IRStatement</code>, <code>IRExpression</code></li>
+<li><code>IRAssignment</code>, <code>IRBinaryOperation</code>, <code>IRLiteral</code></li>
+<li><code>IRIf</code>, <code>IRWhile</code>, <code>IRFor</code></li>
+<li><code>IRReturn</code>, <code>IRFunctionCall</code></li>
+<li>Location tracking for debugging</li>
+<li>Serialization via <code>to_dict()</code></li>
+<li><code>IRBuilder</code> for AST → IR conversion</li>
+</ul>
+<p><strong>Current Usage:</strong> Defined but <strong>not actively used</strong> in pipeline. Current flow:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Python AST → Backend-specific code generation (6 backends)
+</code></pre></div>
+<p><strong>Proposed Flow:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Python AST → Static IR → LLVM IR → Native binary/WebAssembly/etc.
+</code></pre></div>
+<h3 id="existing-backends-performance">Existing Backends Performance<a class="headerlink" href="#existing-backends-performance" title="Permanent link">&para;</a></h3>
+<p>For reference, current backend status (v0.1.52):</p>
+<ul>
+<li><strong>C++</strong>: 7/7 benchmarks (100%) - 422ms compile, 236ms execute, 36KB binary</li>
+<li><strong>C</strong>: 7/7 benchmarks (100%) - 658ms compile, 238ms execute, 82KB binary</li>
+<li><strong>Rust</strong>: 7/7 benchmarks (100%) - Production-ready</li>
+<li><strong>Go</strong>: 7/7 benchmarks (100%) - 63ms compile, 42ms execute, 2365KB binary</li>
+<li><strong>OCaml</strong>: 7/7 benchmarks (100%) - 209ms compile, 167ms execute, 771KB binary</li>
+<li><strong>Haskell</strong>: 6/7 benchmarks (86%) - Functionally complete</li>
+</ul>
+<h2 id="strategic-analysis">Strategic Analysis<a class="headerlink" href="#strategic-analysis" title="Permanent link">&para;</a></h2>
+<h3 id="why-this-makes-sense">Why This Makes Sense<a class="headerlink" href="#why-this-makes-sense" title="Permanent link">&para;</a></h3>
+<h4 id="1-architectural-alignment">1. Architectural Alignment<a class="headerlink" href="#1-architectural-alignment" title="Permanent link">&para;</a></h4>
+<p>MultiGen's Static IR was designed to bridge Python AST and code generation. LLVM IR serves the same purpose but with industrial-strength optimization and multiple backend targets.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>Current:  Python AST → [Static IR (unused)] → 6 separate backends
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>Proposed: Python AST → Static IR → LLVM IR → Multiple targets
+</code></pre></div>
+<h4 id="2-multiple-targets-from-one-implementation">2. Multiple Targets from One Implementation<a class="headerlink" href="#2-multiple-targets-from-one-implementation" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Python AST → Static IR → LLVM IR → {
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    - x86_64 native binary
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    - ARM native binary
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    - WebAssembly
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    - RISC-V
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    - Your existing C/C++/Rust backends (as alternative path)
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>}
+</code></pre></div>
+<h4 id="3-llvm-optimization-advantage">3. LLVM Optimization Advantage<a class="headerlink" href="#3-llvm-optimization-advantage" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Industry-proven optimization passes (inlining, dead code elimination, constant folding)</li>
+<li>Often produces code faster than hand-written C</li>
+<li>Continuous improvement from LLVM community</li>
+</ul>
+<h4 id="4-reduced-long-term-maintenance">4. Reduced Long-term Maintenance<a class="headerlink" href="#4-reduced-long-term-maintenance" title="Permanent link">&para;</a></h4>
+<ul>
+<li>One IR → many targets (vs maintaining 6+ separate backends)</li>
+<li>LLVM handles architecture-specific optimizations</li>
+<li>Focus effort on Python → IR quality, not code generation details</li>
+</ul>
+<h3 id="why-this-could-be-challenging">Why This Could Be Challenging<a class="headerlink" href="#why-this-could-be-challenging" title="Permanent link">&para;</a></h3>
+<h4 id="1-llvm-dependency-size">1. LLVM Dependency Size<a class="headerlink" href="#1-llvm-dependency-size" title="Permanent link">&para;</a></h4>
+<ul>
+<li>LLVM libraries: ~100MB+</li>
+<li>May not be suitable for minimal deployments</li>
+<li>Solution: Keep existing backends for lightweight use cases</li>
+</ul>
+<h4 id="2-python-llvm-impedance-mismatch">2. Python-LLVM Impedance Mismatch<a class="headerlink" href="#2-python-llvm-impedance-mismatch" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>Garbage Collection</strong>: Python has GC, LLVM doesn't (need runtime support)</li>
+<li><strong>Strings</strong>: Python strings are complex objects, LLVM has char arrays</li>
+<li><strong>Dynamic Features</strong>: Python's dynamism doesn't map cleanly to static LLVM</li>
+<li>Solution: Runtime library for Python semantics (similar to current C runtime)</li>
+</ul>
+<h4 id="3-learning-curve">3. Learning Curve<a class="headerlink" href="#3-learning-curve" title="Permanent link">&para;</a></h4>
+<ul>
+<li>LLVM IR is verbose and low-level</li>
+<li>Requires understanding SSA form, phi nodes, basic blocks</li>
+<li>Debugging LLVM IR is harder than C code</li>
+<li>Solution: Start small, iterate, comprehensive tests</li>
+</ul>
+<h4 id="4-development-timeline">4. Development Timeline<a class="headerlink" href="#4-development-timeline" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Estimated 2-3 months to reach feature parity with C backend</li>
+<li>Additional time for optimization tuning</li>
+<li>Ongoing maintenance as LLVM evolves</li>
+</ul>
+<h2 id="technical-architecture">Technical Architecture<a class="headerlink" href="#technical-architecture" title="Permanent link">&para;</a></h2>
+<h3 id="llvm-backend-structure">LLVM Backend Structure<a class="headerlink" href="#llvm-backend-structure" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>src/multigen/backends/llvm/
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>├── __init__.py
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>├── backend.py              # LLVMBackend(LanguageBackend)
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>├── ir_to_llvm.py          # IRModule → llvmlite IR conversion
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>├── emitter.py             # LLVM IR emission and formatting
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>├── builder.py             # Compilation, linking, execution
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>├── type_mapper.py         # IRType → llvmlite type conversion
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>├── containers.py          # Container implementations (via runtime)
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>└── runtime/               # C runtime for Python semantics
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    ├── multigen_llvm_runtime.c
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    ├── multigen_llvm_string.c
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    └── multigen_llvm_containers.c
+</code></pre></div>
+<h3 id="key-components">Key Components<a class="headerlink" href="#key-components" title="Permanent link">&para;</a></h3>
+<h4 id="1-irtollvmconverter-visitor-pattern">1. IRToLLVMConverter (Visitor Pattern)<a class="headerlink" href="#1-irtollvmconverter-visitor-pattern" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># src/multigen/backends/llvm/ir_to_llvm.py</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">llvmlite</span><span class="w"> </span><span class="kn">import</span> <span class="n">ir</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">...frontend.static_ir</span><span class="w"> </span><span class="kn">import</span> <span class="n">IRVisitor</span><span class="p">,</span> <span class="n">IRModule</span><span class="p">,</span> <span class="n">IRFunction</span><span class="p">,</span> <span class="n">IRDataType</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="k">class</span><span class="w"> </span><span class="nc">IRToLLVMConverter</span><span class="p">(</span><span class="n">IRVisitor</span><span class="p">):</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert MultiGen Static IR to LLVM IR using llvmlite.&quot;&quot;&quot;</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">module</span> <span class="o">=</span> <span class="n">ir</span><span class="o">.</span><span class="n">Module</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;multigen_module&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">func_symtab</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">var_symtab</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">visit_module</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">IRModule</span><span class="p">):</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert IR module to LLVM module.&quot;&quot;&quot;</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>        <span class="c1"># Generate type declarations first</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>        <span class="k">for</span> <span class="n">type_decl</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">type_declarations</span><span class="p">:</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>            <span class="n">type_decl</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>        <span class="c1"># Generate functions</span>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>        <span class="k">for</span> <span class="n">func</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">functions</span><span class="p">:</span>
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>            <span class="n">func</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">module</span>
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">visit_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">IRFunction</span><span class="p">):</span>
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert IR function to LLVM function.&quot;&quot;&quot;</span>
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>        <span class="c1"># Map IRType → llvmlite type</span>
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>        <span class="n">ret_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_convert_type</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">return_type</span><span class="p">)</span>
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>        <span class="n">param_types</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_convert_type</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">ir_type</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">parameters</span><span class="p">]</span>
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a>        <span class="c1"># Create LLVM function</span>
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a>        <span class="n">func_type</span> <span class="o">=</span> <span class="n">ir</span><span class="o">.</span><span class="n">FunctionType</span><span class="p">(</span><span class="n">ret_type</span><span class="p">,</span> <span class="n">param_types</span><span class="p">)</span>
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a>        <span class="n">func</span> <span class="o">=</span> <span class="n">ir</span><span class="o">.</span><span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">module</span><span class="p">,</span> <span class="n">func_type</span><span class="p">,</span> <span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a>
+<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a>        <span class="c1"># Store in symbol table</span>
+<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">func_symtab</span><span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">func</span>
+<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a>
+<a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a>        <span class="c1"># Create entry block</span>
+<a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a>        <span class="n">block</span> <span class="o">=</span> <span class="n">func</span><span class="o">.</span><span class="n">append_basic_block</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;entry&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-41" name="__codelineno-5-41" href="#__codelineno-5-41"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span> <span class="o">=</span> <span class="n">ir</span><span class="o">.</span><span class="n">IRBuilder</span><span class="p">(</span><span class="n">block</span><span class="p">)</span>
+<a id="__codelineno-5-42" name="__codelineno-5-42" href="#__codelineno-5-42"></a>
+<a id="__codelineno-5-43" name="__codelineno-5-43" href="#__codelineno-5-43"></a>        <span class="c1"># Map parameters to LLVM values</span>
+<a id="__codelineno-5-44" name="__codelineno-5-44" href="#__codelineno-5-44"></a>        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">parameters</span><span class="p">):</span>
+<a id="__codelineno-5-45" name="__codelineno-5-45" href="#__codelineno-5-45"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">var_symtab</span><span class="p">[</span><span class="n">param</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">func</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+<a id="__codelineno-5-46" name="__codelineno-5-46" href="#__codelineno-5-46"></a>
+<a id="__codelineno-5-47" name="__codelineno-5-47" href="#__codelineno-5-47"></a>        <span class="c1"># Generate function body</span>
+<a id="__codelineno-5-48" name="__codelineno-5-48" href="#__codelineno-5-48"></a>        <span class="k">for</span> <span class="n">stmt</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">body</span><span class="p">:</span>
+<a id="__codelineno-5-49" name="__codelineno-5-49" href="#__codelineno-5-49"></a>            <span class="n">stmt</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+<a id="__codelineno-5-50" name="__codelineno-5-50" href="#__codelineno-5-50"></a>
+<a id="__codelineno-5-51" name="__codelineno-5-51" href="#__codelineno-5-51"></a>        <span class="k">return</span> <span class="n">func</span>
+<a id="__codelineno-5-52" name="__codelineno-5-52" href="#__codelineno-5-52"></a>
+<a id="__codelineno-5-53" name="__codelineno-5-53" href="#__codelineno-5-53"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">visit_assignment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">IRAssignment</span><span class="p">):</span>
+<a id="__codelineno-5-54" name="__codelineno-5-54" href="#__codelineno-5-54"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert IR assignment to LLVM store.&quot;&quot;&quot;</span>
+<a id="__codelineno-5-55" name="__codelineno-5-55" href="#__codelineno-5-55"></a>        <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
+<a id="__codelineno-5-56" name="__codelineno-5-56" href="#__codelineno-5-56"></a>            <span class="n">value</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+<a id="__codelineno-5-57" name="__codelineno-5-57" href="#__codelineno-5-57"></a>            <span class="c1"># Allocate stack space for variable</span>
+<a id="__codelineno-5-58" name="__codelineno-5-58" href="#__codelineno-5-58"></a>            <span class="n">var_ptr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">alloca</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">node</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+<a id="__codelineno-5-59" name="__codelineno-5-59" href="#__codelineno-5-59"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">var_ptr</span><span class="p">)</span>
+<a id="__codelineno-5-60" name="__codelineno-5-60" href="#__codelineno-5-60"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">var_symtab</span><span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">var_ptr</span>
+<a id="__codelineno-5-61" name="__codelineno-5-61" href="#__codelineno-5-61"></a>
+<a id="__codelineno-5-62" name="__codelineno-5-62" href="#__codelineno-5-62"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">visit_binary_operation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">IRBinaryOperation</span><span class="p">):</span>
+<a id="__codelineno-5-63" name="__codelineno-5-63" href="#__codelineno-5-63"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert IR binary op to LLVM instruction.&quot;&quot;&quot;</span>
+<a id="__codelineno-5-64" name="__codelineno-5-64" href="#__codelineno-5-64"></a>        <span class="n">left</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">left</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+<a id="__codelineno-5-65" name="__codelineno-5-65" href="#__codelineno-5-65"></a>        <span class="n">right</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">right</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+<a id="__codelineno-5-66" name="__codelineno-5-66" href="#__codelineno-5-66"></a>
+<a id="__codelineno-5-67" name="__codelineno-5-67" href="#__codelineno-5-67"></a>        <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="s2">&quot;+&quot;</span><span class="p">:</span>
+<a id="__codelineno-5-68" name="__codelineno-5-68" href="#__codelineno-5-68"></a>            <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">result_type</span><span class="o">.</span><span class="n">base_type</span> <span class="o">==</span> <span class="n">IRDataType</span><span class="o">.</span><span class="n">INT</span><span class="p">:</span>
+<a id="__codelineno-5-69" name="__codelineno-5-69" href="#__codelineno-5-69"></a>                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;add_tmp&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-70" name="__codelineno-5-70" href="#__codelineno-5-70"></a>            <span class="k">elif</span> <span class="n">node</span><span class="o">.</span><span class="n">result_type</span><span class="o">.</span><span class="n">base_type</span> <span class="o">==</span> <span class="n">IRDataType</span><span class="o">.</span><span class="n">FLOAT</span><span class="p">:</span>
+<a id="__codelineno-5-71" name="__codelineno-5-71" href="#__codelineno-5-71"></a>                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">fadd</span><span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;fadd_tmp&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-72" name="__codelineno-5-72" href="#__codelineno-5-72"></a>        <span class="k">elif</span> <span class="n">node</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="s2">&quot;-&quot;</span><span class="p">:</span>
+<a id="__codelineno-5-73" name="__codelineno-5-73" href="#__codelineno-5-73"></a>            <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">result_type</span><span class="o">.</span><span class="n">base_type</span> <span class="o">==</span> <span class="n">IRDataType</span><span class="o">.</span><span class="n">INT</span><span class="p">:</span>
+<a id="__codelineno-5-74" name="__codelineno-5-74" href="#__codelineno-5-74"></a>                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;sub_tmp&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-75" name="__codelineno-5-75" href="#__codelineno-5-75"></a>            <span class="k">elif</span> <span class="n">node</span><span class="o">.</span><span class="n">result_type</span><span class="o">.</span><span class="n">base_type</span> <span class="o">==</span> <span class="n">IRDataType</span><span class="o">.</span><span class="n">FLOAT</span><span class="p">:</span>
+<a id="__codelineno-5-76" name="__codelineno-5-76" href="#__codelineno-5-76"></a>                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">fsub</span><span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;fsub_tmp&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-77" name="__codelineno-5-77" href="#__codelineno-5-77"></a>        <span class="c1"># ... other operators</span>
+<a id="__codelineno-5-78" name="__codelineno-5-78" href="#__codelineno-5-78"></a>
+<a id="__codelineno-5-79" name="__codelineno-5-79" href="#__codelineno-5-79"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">visit_literal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">IRLiteral</span><span class="p">):</span>
+<a id="__codelineno-5-80" name="__codelineno-5-80" href="#__codelineno-5-80"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert IR literal to LLVM constant.&quot;&quot;&quot;</span>
+<a id="__codelineno-5-81" name="__codelineno-5-81" href="#__codelineno-5-81"></a>        <span class="n">llvm_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_convert_type</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">result_type</span><span class="p">)</span>
+<a id="__codelineno-5-82" name="__codelineno-5-82" href="#__codelineno-5-82"></a>        <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">result_type</span><span class="o">.</span><span class="n">base_type</span> <span class="o">==</span> <span class="n">IRDataType</span><span class="o">.</span><span class="n">INT</span><span class="p">:</span>
+<a id="__codelineno-5-83" name="__codelineno-5-83" href="#__codelineno-5-83"></a>            <span class="k">return</span> <span class="n">ir</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="n">llvm_type</span><span class="p">,</span> <span class="n">node</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+<a id="__codelineno-5-84" name="__codelineno-5-84" href="#__codelineno-5-84"></a>        <span class="k">elif</span> <span class="n">node</span><span class="o">.</span><span class="n">result_type</span><span class="o">.</span><span class="n">base_type</span> <span class="o">==</span> <span class="n">IRDataType</span><span class="o">.</span><span class="n">FLOAT</span><span class="p">:</span>
+<a id="__codelineno-5-85" name="__codelineno-5-85" href="#__codelineno-5-85"></a>            <span class="k">return</span> <span class="n">ir</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="n">llvm_type</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">value</span><span class="p">))</span>
+<a id="__codelineno-5-86" name="__codelineno-5-86" href="#__codelineno-5-86"></a>        <span class="c1"># ... other types</span>
+<a id="__codelineno-5-87" name="__codelineno-5-87" href="#__codelineno-5-87"></a>
+<a id="__codelineno-5-88" name="__codelineno-5-88" href="#__codelineno-5-88"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">visit_variable_reference</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">IRVariableReference</span><span class="p">):</span>
+<a id="__codelineno-5-89" name="__codelineno-5-89" href="#__codelineno-5-89"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert IR variable reference to LLVM load.&quot;&quot;&quot;</span>
+<a id="__codelineno-5-90" name="__codelineno-5-90" href="#__codelineno-5-90"></a>        <span class="n">var_ptr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">var_symtab</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+<a id="__codelineno-5-91" name="__codelineno-5-91" href="#__codelineno-5-91"></a>        <span class="k">if</span> <span class="n">var_ptr</span><span class="p">:</span>
+<a id="__codelineno-5-92" name="__codelineno-5-92" href="#__codelineno-5-92"></a>            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">var_ptr</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">node</span><span class="o">.</span><span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+<a id="__codelineno-5-93" name="__codelineno-5-93" href="#__codelineno-5-93"></a>
+<a id="__codelineno-5-94" name="__codelineno-5-94" href="#__codelineno-5-94"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">visit_return</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">IRReturn</span><span class="p">):</span>
+<a id="__codelineno-5-95" name="__codelineno-5-95" href="#__codelineno-5-95"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert IR return to LLVM ret.&quot;&quot;&quot;</span>
+<a id="__codelineno-5-96" name="__codelineno-5-96" href="#__codelineno-5-96"></a>        <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
+<a id="__codelineno-5-97" name="__codelineno-5-97" href="#__codelineno-5-97"></a>            <span class="n">ret_val</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+<a id="__codelineno-5-98" name="__codelineno-5-98" href="#__codelineno-5-98"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">ret</span><span class="p">(</span><span class="n">ret_val</span><span class="p">)</span>
+<a id="__codelineno-5-99" name="__codelineno-5-99" href="#__codelineno-5-99"></a>        <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-5-100" name="__codelineno-5-100" href="#__codelineno-5-100"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">ret_void</span><span class="p">()</span>
+<a id="__codelineno-5-101" name="__codelineno-5-101" href="#__codelineno-5-101"></a>
+<a id="__codelineno-5-102" name="__codelineno-5-102" href="#__codelineno-5-102"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">visit_if</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">IRIf</span><span class="p">):</span>
+<a id="__codelineno-5-103" name="__codelineno-5-103" href="#__codelineno-5-103"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert IR if to LLVM basic blocks with phi nodes.&quot;&quot;&quot;</span>
+<a id="__codelineno-5-104" name="__codelineno-5-104" href="#__codelineno-5-104"></a>        <span class="c1"># Evaluate condition</span>
+<a id="__codelineno-5-105" name="__codelineno-5-105" href="#__codelineno-5-105"></a>        <span class="n">cond</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">condition</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+<a id="__codelineno-5-106" name="__codelineno-5-106" href="#__codelineno-5-106"></a>
+<a id="__codelineno-5-107" name="__codelineno-5-107" href="#__codelineno-5-107"></a>        <span class="c1"># Create basic blocks</span>
+<a id="__codelineno-5-108" name="__codelineno-5-108" href="#__codelineno-5-108"></a>        <span class="n">then_block</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">append_basic_block</span><span class="p">(</span><span class="s2">&quot;if.then&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-109" name="__codelineno-5-109" href="#__codelineno-5-109"></a>        <span class="n">else_block</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">append_basic_block</span><span class="p">(</span><span class="s2">&quot;if.else&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-110" name="__codelineno-5-110" href="#__codelineno-5-110"></a>        <span class="n">merge_block</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">append_basic_block</span><span class="p">(</span><span class="s2">&quot;if.merge&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-111" name="__codelineno-5-111" href="#__codelineno-5-111"></a>
+<a id="__codelineno-5-112" name="__codelineno-5-112" href="#__codelineno-5-112"></a>        <span class="c1"># Branch on condition</span>
+<a id="__codelineno-5-113" name="__codelineno-5-113" href="#__codelineno-5-113"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">cbranch</span><span class="p">(</span><span class="n">cond</span><span class="p">,</span> <span class="n">then_block</span><span class="p">,</span> <span class="n">else_block</span><span class="p">)</span>
+<a id="__codelineno-5-114" name="__codelineno-5-114" href="#__codelineno-5-114"></a>
+<a id="__codelineno-5-115" name="__codelineno-5-115" href="#__codelineno-5-115"></a>        <span class="c1"># Generate then block</span>
+<a id="__codelineno-5-116" name="__codelineno-5-116" href="#__codelineno-5-116"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">position_at_end</span><span class="p">(</span><span class="n">then_block</span><span class="p">)</span>
+<a id="__codelineno-5-117" name="__codelineno-5-117" href="#__codelineno-5-117"></a>        <span class="k">for</span> <span class="n">stmt</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">then_body</span><span class="p">:</span>
+<a id="__codelineno-5-118" name="__codelineno-5-118" href="#__codelineno-5-118"></a>            <span class="n">stmt</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+<a id="__codelineno-5-119" name="__codelineno-5-119" href="#__codelineno-5-119"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="n">merge_block</span><span class="p">)</span>
+<a id="__codelineno-5-120" name="__codelineno-5-120" href="#__codelineno-5-120"></a>
+<a id="__codelineno-5-121" name="__codelineno-5-121" href="#__codelineno-5-121"></a>        <span class="c1"># Generate else block</span>
+<a id="__codelineno-5-122" name="__codelineno-5-122" href="#__codelineno-5-122"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">position_at_end</span><span class="p">(</span><span class="n">else_block</span><span class="p">)</span>
+<a id="__codelineno-5-123" name="__codelineno-5-123" href="#__codelineno-5-123"></a>        <span class="k">for</span> <span class="n">stmt</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">else_body</span><span class="p">:</span>
+<a id="__codelineno-5-124" name="__codelineno-5-124" href="#__codelineno-5-124"></a>            <span class="n">stmt</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+<a id="__codelineno-5-125" name="__codelineno-5-125" href="#__codelineno-5-125"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="n">merge_block</span><span class="p">)</span>
+<a id="__codelineno-5-126" name="__codelineno-5-126" href="#__codelineno-5-126"></a>
+<a id="__codelineno-5-127" name="__codelineno-5-127" href="#__codelineno-5-127"></a>        <span class="c1"># Continue at merge point</span>
+<a id="__codelineno-5-128" name="__codelineno-5-128" href="#__codelineno-5-128"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">position_at_end</span><span class="p">(</span><span class="n">merge_block</span><span class="p">)</span>
+<a id="__codelineno-5-129" name="__codelineno-5-129" href="#__codelineno-5-129"></a>
+<a id="__codelineno-5-130" name="__codelineno-5-130" href="#__codelineno-5-130"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">visit_while</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">IRWhile</span><span class="p">):</span>
+<a id="__codelineno-5-131" name="__codelineno-5-131" href="#__codelineno-5-131"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert IR while to LLVM loop blocks.&quot;&quot;&quot;</span>
+<a id="__codelineno-5-132" name="__codelineno-5-132" href="#__codelineno-5-132"></a>        <span class="c1"># Create basic blocks</span>
+<a id="__codelineno-5-133" name="__codelineno-5-133" href="#__codelineno-5-133"></a>        <span class="n">cond_block</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">append_basic_block</span><span class="p">(</span><span class="s2">&quot;while.cond&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-134" name="__codelineno-5-134" href="#__codelineno-5-134"></a>        <span class="n">body_block</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">append_basic_block</span><span class="p">(</span><span class="s2">&quot;while.body&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-135" name="__codelineno-5-135" href="#__codelineno-5-135"></a>        <span class="n">exit_block</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">append_basic_block</span><span class="p">(</span><span class="s2">&quot;while.exit&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-136" name="__codelineno-5-136" href="#__codelineno-5-136"></a>
+<a id="__codelineno-5-137" name="__codelineno-5-137" href="#__codelineno-5-137"></a>        <span class="c1"># Jump to condition check</span>
+<a id="__codelineno-5-138" name="__codelineno-5-138" href="#__codelineno-5-138"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="n">cond_block</span><span class="p">)</span>
+<a id="__codelineno-5-139" name="__codelineno-5-139" href="#__codelineno-5-139"></a>
+<a id="__codelineno-5-140" name="__codelineno-5-140" href="#__codelineno-5-140"></a>        <span class="c1"># Generate condition block</span>
+<a id="__codelineno-5-141" name="__codelineno-5-141" href="#__codelineno-5-141"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">position_at_end</span><span class="p">(</span><span class="n">cond_block</span><span class="p">)</span>
+<a id="__codelineno-5-142" name="__codelineno-5-142" href="#__codelineno-5-142"></a>        <span class="n">cond</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">condition</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+<a id="__codelineno-5-143" name="__codelineno-5-143" href="#__codelineno-5-143"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">cbranch</span><span class="p">(</span><span class="n">cond</span><span class="p">,</span> <span class="n">body_block</span><span class="p">,</span> <span class="n">exit_block</span><span class="p">)</span>
+<a id="__codelineno-5-144" name="__codelineno-5-144" href="#__codelineno-5-144"></a>
+<a id="__codelineno-5-145" name="__codelineno-5-145" href="#__codelineno-5-145"></a>        <span class="c1"># Generate body block</span>
+<a id="__codelineno-5-146" name="__codelineno-5-146" href="#__codelineno-5-146"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">position_at_end</span><span class="p">(</span><span class="n">body_block</span><span class="p">)</span>
+<a id="__codelineno-5-147" name="__codelineno-5-147" href="#__codelineno-5-147"></a>        <span class="k">for</span> <span class="n">stmt</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">body</span><span class="p">:</span>
+<a id="__codelineno-5-148" name="__codelineno-5-148" href="#__codelineno-5-148"></a>            <span class="n">stmt</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+<a id="__codelineno-5-149" name="__codelineno-5-149" href="#__codelineno-5-149"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="n">cond_block</span><span class="p">)</span>  <span class="c1"># Loop back</span>
+<a id="__codelineno-5-150" name="__codelineno-5-150" href="#__codelineno-5-150"></a>
+<a id="__codelineno-5-151" name="__codelineno-5-151" href="#__codelineno-5-151"></a>        <span class="c1"># Continue after loop</span>
+<a id="__codelineno-5-152" name="__codelineno-5-152" href="#__codelineno-5-152"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">position_at_end</span><span class="p">(</span><span class="n">exit_block</span><span class="p">)</span>
+<a id="__codelineno-5-153" name="__codelineno-5-153" href="#__codelineno-5-153"></a>
+<a id="__codelineno-5-154" name="__codelineno-5-154" href="#__codelineno-5-154"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">visit_for</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">IRFor</span><span class="p">):</span>
+<a id="__codelineno-5-155" name="__codelineno-5-155" href="#__codelineno-5-155"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert IR for (range-based) to LLVM loop.&quot;&quot;&quot;</span>
+<a id="__codelineno-5-156" name="__codelineno-5-156" href="#__codelineno-5-156"></a>        <span class="c1"># Allocate loop variable</span>
+<a id="__codelineno-5-157" name="__codelineno-5-157" href="#__codelineno-5-157"></a>        <span class="n">loop_var_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_convert_type</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">variable</span><span class="o">.</span><span class="n">ir_type</span><span class="p">)</span>
+<a id="__codelineno-5-158" name="__codelineno-5-158" href="#__codelineno-5-158"></a>        <span class="n">loop_var_ptr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">alloca</span><span class="p">(</span><span class="n">loop_var_type</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">node</span><span class="o">.</span><span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+<a id="__codelineno-5-159" name="__codelineno-5-159" href="#__codelineno-5-159"></a>
+<a id="__codelineno-5-160" name="__codelineno-5-160" href="#__codelineno-5-160"></a>        <span class="c1"># Initialize loop variable</span>
+<a id="__codelineno-5-161" name="__codelineno-5-161" href="#__codelineno-5-161"></a>        <span class="n">start_val</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+<a id="__codelineno-5-162" name="__codelineno-5-162" href="#__codelineno-5-162"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">start_val</span><span class="p">,</span> <span class="n">loop_var_ptr</span><span class="p">)</span>
+<a id="__codelineno-5-163" name="__codelineno-5-163" href="#__codelineno-5-163"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">var_symtab</span><span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">loop_var_ptr</span>
+<a id="__codelineno-5-164" name="__codelineno-5-164" href="#__codelineno-5-164"></a>
+<a id="__codelineno-5-165" name="__codelineno-5-165" href="#__codelineno-5-165"></a>        <span class="c1"># Create basic blocks</span>
+<a id="__codelineno-5-166" name="__codelineno-5-166" href="#__codelineno-5-166"></a>        <span class="n">cond_block</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">append_basic_block</span><span class="p">(</span><span class="s2">&quot;for.cond&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-167" name="__codelineno-5-167" href="#__codelineno-5-167"></a>        <span class="n">body_block</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">append_basic_block</span><span class="p">(</span><span class="s2">&quot;for.body&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-168" name="__codelineno-5-168" href="#__codelineno-5-168"></a>        <span class="n">inc_block</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">append_basic_block</span><span class="p">(</span><span class="s2">&quot;for.inc&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-169" name="__codelineno-5-169" href="#__codelineno-5-169"></a>        <span class="n">exit_block</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">append_basic_block</span><span class="p">(</span><span class="s2">&quot;for.exit&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-170" name="__codelineno-5-170" href="#__codelineno-5-170"></a>
+<a id="__codelineno-5-171" name="__codelineno-5-171" href="#__codelineno-5-171"></a>        <span class="c1"># Jump to condition</span>
+<a id="__codelineno-5-172" name="__codelineno-5-172" href="#__codelineno-5-172"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="n">cond_block</span><span class="p">)</span>
+<a id="__codelineno-5-173" name="__codelineno-5-173" href="#__codelineno-5-173"></a>
+<a id="__codelineno-5-174" name="__codelineno-5-174" href="#__codelineno-5-174"></a>        <span class="c1"># Condition: loop_var &lt; end</span>
+<a id="__codelineno-5-175" name="__codelineno-5-175" href="#__codelineno-5-175"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">position_at_end</span><span class="p">(</span><span class="n">cond_block</span><span class="p">)</span>
+<a id="__codelineno-5-176" name="__codelineno-5-176" href="#__codelineno-5-176"></a>        <span class="n">loop_var_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">loop_var_ptr</span><span class="p">)</span>
+<a id="__codelineno-5-177" name="__codelineno-5-177" href="#__codelineno-5-177"></a>        <span class="n">end_val</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">end</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+<a id="__codelineno-5-178" name="__codelineno-5-178" href="#__codelineno-5-178"></a>        <span class="n">cond</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">icmp_signed</span><span class="p">(</span><span class="s2">&quot;&lt;&quot;</span><span class="p">,</span> <span class="n">loop_var_val</span><span class="p">,</span> <span class="n">end_val</span><span class="p">)</span>
+<a id="__codelineno-5-179" name="__codelineno-5-179" href="#__codelineno-5-179"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">cbranch</span><span class="p">(</span><span class="n">cond</span><span class="p">,</span> <span class="n">body_block</span><span class="p">,</span> <span class="n">exit_block</span><span class="p">)</span>
+<a id="__codelineno-5-180" name="__codelineno-5-180" href="#__codelineno-5-180"></a>
+<a id="__codelineno-5-181" name="__codelineno-5-181" href="#__codelineno-5-181"></a>        <span class="c1"># Body</span>
+<a id="__codelineno-5-182" name="__codelineno-5-182" href="#__codelineno-5-182"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">position_at_end</span><span class="p">(</span><span class="n">body_block</span><span class="p">)</span>
+<a id="__codelineno-5-183" name="__codelineno-5-183" href="#__codelineno-5-183"></a>        <span class="k">for</span> <span class="n">stmt</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">body</span><span class="p">:</span>
+<a id="__codelineno-5-184" name="__codelineno-5-184" href="#__codelineno-5-184"></a>            <span class="n">stmt</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+<a id="__codelineno-5-185" name="__codelineno-5-185" href="#__codelineno-5-185"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="n">inc_block</span><span class="p">)</span>
+<a id="__codelineno-5-186" name="__codelineno-5-186" href="#__codelineno-5-186"></a>
+<a id="__codelineno-5-187" name="__codelineno-5-187" href="#__codelineno-5-187"></a>        <span class="c1"># Increment</span>
+<a id="__codelineno-5-188" name="__codelineno-5-188" href="#__codelineno-5-188"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">position_at_end</span><span class="p">(</span><span class="n">inc_block</span><span class="p">)</span>
+<a id="__codelineno-5-189" name="__codelineno-5-189" href="#__codelineno-5-189"></a>        <span class="n">loop_var_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">loop_var_ptr</span><span class="p">)</span>
+<a id="__codelineno-5-190" name="__codelineno-5-190" href="#__codelineno-5-190"></a>        <span class="n">step_val</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">step</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">step</span> <span class="k">else</span> <span class="n">ir</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="n">loop_var_type</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-5-191" name="__codelineno-5-191" href="#__codelineno-5-191"></a>        <span class="n">next_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">loop_var_val</span><span class="p">,</span> <span class="n">step_val</span><span class="p">)</span>
+<a id="__codelineno-5-192" name="__codelineno-5-192" href="#__codelineno-5-192"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">next_val</span><span class="p">,</span> <span class="n">loop_var_ptr</span><span class="p">)</span>
+<a id="__codelineno-5-193" name="__codelineno-5-193" href="#__codelineno-5-193"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">branch</span><span class="p">(</span><span class="n">cond_block</span><span class="p">)</span>
+<a id="__codelineno-5-194" name="__codelineno-5-194" href="#__codelineno-5-194"></a>
+<a id="__codelineno-5-195" name="__codelineno-5-195" href="#__codelineno-5-195"></a>        <span class="c1"># Exit</span>
+<a id="__codelineno-5-196" name="__codelineno-5-196" href="#__codelineno-5-196"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">position_at_end</span><span class="p">(</span><span class="n">exit_block</span><span class="p">)</span>
+<a id="__codelineno-5-197" name="__codelineno-5-197" href="#__codelineno-5-197"></a>
+<a id="__codelineno-5-198" name="__codelineno-5-198" href="#__codelineno-5-198"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">visit_function_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">IRFunctionCall</span><span class="p">):</span>
+<a id="__codelineno-5-199" name="__codelineno-5-199" href="#__codelineno-5-199"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert IR function call to LLVM call.&quot;&quot;&quot;</span>
+<a id="__codelineno-5-200" name="__codelineno-5-200" href="#__codelineno-5-200"></a>        <span class="n">func</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">func_symtab</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">function_name</span><span class="p">)</span>
+<a id="__codelineno-5-201" name="__codelineno-5-201" href="#__codelineno-5-201"></a>        <span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="n">arg</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">arguments</span><span class="p">]</span>
+<a id="__codelineno-5-202" name="__codelineno-5-202" href="#__codelineno-5-202"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;call_tmp&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-203" name="__codelineno-5-203" href="#__codelineno-5-203"></a>
+<a id="__codelineno-5-204" name="__codelineno-5-204" href="#__codelineno-5-204"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_convert_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ir_type</span><span class="p">):</span>
+<a id="__codelineno-5-205" name="__codelineno-5-205" href="#__codelineno-5-205"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Map IRType to llvmlite type.&quot;&quot;&quot;</span>
+<a id="__codelineno-5-206" name="__codelineno-5-206" href="#__codelineno-5-206"></a>        <span class="n">mapping</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-5-207" name="__codelineno-5-207" href="#__codelineno-5-207"></a>            <span class="n">IRDataType</span><span class="o">.</span><span class="n">VOID</span><span class="p">:</span> <span class="n">ir</span><span class="o">.</span><span class="n">VoidType</span><span class="p">(),</span>
+<a id="__codelineno-5-208" name="__codelineno-5-208" href="#__codelineno-5-208"></a>            <span class="n">IRDataType</span><span class="o">.</span><span class="n">INT</span><span class="p">:</span> <span class="n">ir</span><span class="o">.</span><span class="n">IntType</span><span class="p">(</span><span class="mi">64</span><span class="p">),</span>
+<a id="__codelineno-5-209" name="__codelineno-5-209" href="#__codelineno-5-209"></a>            <span class="n">IRDataType</span><span class="o">.</span><span class="n">FLOAT</span><span class="p">:</span> <span class="n">ir</span><span class="o">.</span><span class="n">DoubleType</span><span class="p">(),</span>
+<a id="__codelineno-5-210" name="__codelineno-5-210" href="#__codelineno-5-210"></a>            <span class="n">IRDataType</span><span class="o">.</span><span class="n">BOOL</span><span class="p">:</span> <span class="n">ir</span><span class="o">.</span><span class="n">IntType</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
+<a id="__codelineno-5-211" name="__codelineno-5-211" href="#__codelineno-5-211"></a>            <span class="n">IRDataType</span><span class="o">.</span><span class="n">STRING</span><span class="p">:</span> <span class="n">ir</span><span class="o">.</span><span class="n">IntType</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span><span class="o">.</span><span class="n">as_pointer</span><span class="p">(),</span>  <span class="c1"># char*</span>
+<a id="__codelineno-5-212" name="__codelineno-5-212" href="#__codelineno-5-212"></a>        <span class="p">}</span>
+<a id="__codelineno-5-213" name="__codelineno-5-213" href="#__codelineno-5-213"></a>
+<a id="__codelineno-5-214" name="__codelineno-5-214" href="#__codelineno-5-214"></a>        <span class="n">base</span> <span class="o">=</span> <span class="n">mapping</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ir_type</span><span class="o">.</span><span class="n">base_type</span><span class="p">,</span> <span class="n">ir</span><span class="o">.</span><span class="n">VoidType</span><span class="p">())</span>
+<a id="__codelineno-5-215" name="__codelineno-5-215" href="#__codelineno-5-215"></a>
+<a id="__codelineno-5-216" name="__codelineno-5-216" href="#__codelineno-5-216"></a>        <span class="c1"># Handle pointers</span>
+<a id="__codelineno-5-217" name="__codelineno-5-217" href="#__codelineno-5-217"></a>        <span class="k">if</span> <span class="n">ir_type</span><span class="o">.</span><span class="n">is_pointer</span> <span class="ow">or</span> <span class="n">ir_type</span><span class="o">.</span><span class="n">pointer_depth</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+<a id="__codelineno-5-218" name="__codelineno-5-218" href="#__codelineno-5-218"></a>            <span class="n">depth</span> <span class="o">=</span> <span class="n">ir_type</span><span class="o">.</span><span class="n">pointer_depth</span> <span class="ow">or</span> <span class="mi">1</span>
+<a id="__codelineno-5-219" name="__codelineno-5-219" href="#__codelineno-5-219"></a>            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">depth</span><span class="p">):</span>
+<a id="__codelineno-5-220" name="__codelineno-5-220" href="#__codelineno-5-220"></a>                <span class="n">base</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">as_pointer</span><span class="p">()</span>
+<a id="__codelineno-5-221" name="__codelineno-5-221" href="#__codelineno-5-221"></a>
+<a id="__codelineno-5-222" name="__codelineno-5-222" href="#__codelineno-5-222"></a>        <span class="k">return</span> <span class="n">base</span>
+</code></pre></div>
+<h4 id="2-llvm-backend-class">2. LLVM Backend Class<a class="headerlink" href="#2-llvm-backend-class" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># src/multigen/backends/llvm/backend.py</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">..base</span><span class="w"> </span><span class="kn">import</span> <span class="n">LanguageBackend</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">.ir_to_llvm</span><span class="w"> </span><span class="kn">import</span> <span class="n">IRToLLVMConverter</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">.builder</span><span class="w"> </span><span class="kn">import</span> <span class="n">LLVMBuilder</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="k">class</span><span class="w"> </span><span class="nc">LLVMBackend</span><span class="p">(</span><span class="n">LanguageBackend</span><span class="p">):</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;LLVM IR backend for MultiGen.&quot;&quot;&quot;</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;llvm&quot;</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">file_extension</span> <span class="o">=</span> <span class="s2">&quot;.ll&quot;</span>  <span class="c1"># LLVM IR text format</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">builder</span> <span class="o">=</span> <span class="n">LLVMBuilder</span><span class="p">()</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">generate_code</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ir_module</span><span class="p">,</span> <span class="n">output_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate LLVM IR from Static IR.&quot;&quot;&quot;</span>
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>        <span class="n">converter</span> <span class="o">=</span> <span class="n">IRToLLVMConverter</span><span class="p">()</span>
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>        <span class="n">llvm_module</span> <span class="o">=</span> <span class="n">converter</span><span class="o">.</span><span class="n">visit_module</span><span class="p">(</span><span class="n">ir_module</span><span class="p">)</span>
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>        <span class="c1"># Return LLVM IR as string</span>
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">llvm_module</span><span class="p">)</span>
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">compile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_file</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Compile LLVM IR to native binary.&quot;&quot;&quot;</span>
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">compile_direct</span><span class="p">(</span><span class="n">source_file</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="3-type-mapping">3. Type Mapping<a class="headerlink" href="#3-type-mapping" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># Type Mapping: IRDataType → LLVM Types</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">IRDataType</span><span class="o">.</span><span class="n">VOID</span>      <span class="err">→</span> <span class="n">ir</span><span class="o">.</span><span class="n">VoidType</span><span class="p">()</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">IRDataType</span><span class="o">.</span><span class="n">INT</span>       <span class="err">→</span> <span class="n">ir</span><span class="o">.</span><span class="n">IntType</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>       <span class="c1"># 64-bit integer</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">IRDataType</span><span class="o">.</span><span class="n">FLOAT</span>     <span class="err">→</span> <span class="n">ir</span><span class="o">.</span><span class="n">DoubleType</span><span class="p">()</span>      <span class="c1"># double precision</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="n">IRDataType</span><span class="o">.</span><span class="n">BOOL</span>      <span class="err">→</span> <span class="n">ir</span><span class="o">.</span><span class="n">IntType</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>        <span class="c1"># i1</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="n">IRDataType</span><span class="o">.</span><span class="n">STRING</span>    <span class="err">→</span> <span class="n">ir</span><span class="o">.</span><span class="n">IntType</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span><span class="o">.</span><span class="n">as_pointer</span><span class="p">()</span>  <span class="c1"># char*</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="n">IRDataType</span><span class="o">.</span><span class="n">POINTER</span>   <span class="err">→</span> <span class="o">&lt;</span><span class="n">base_type</span><span class="o">&gt;.</span><span class="n">as_pointer</span><span class="p">()</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="n">IRDataType</span><span class="o">.</span><span class="n">ARRAY</span>     <span class="err">→</span> <span class="n">ir</span><span class="o">.</span><span class="n">ArrayType</span><span class="p">(</span><span class="o">&lt;</span><span class="n">elem_type</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">size</span><span class="o">&gt;</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="implementation-roadmap">Implementation Roadmap<a class="headerlink" href="#implementation-roadmap" title="Permanent link">&para;</a></h2>
+<h3 id="phase-1-proof-of-concept-weeks-1-3">Phase 1: Proof of Concept (Weeks 1-3)<a class="headerlink" href="#phase-1-proof-of-concept-weeks-1-3" title="Permanent link">&para;</a></h3>
+<p><strong>Week 1: Setup &amp; Infrastructure</strong></p>
+<ul>
+<li>[x] Install llvmlite: <code>uv add llvmlite</code></li>
+<li>[ ] Create <code>src/multigen/backends/llvm/</code> directory structure</li>
+<li>[ ] Implement basic <code>IRToLLVMConverter</code> skeleton</li>
+<li>[ ] Implement type mapping (<code>IRDataType</code> → llvmlite types)</li>
+<li>[ ] Test: Convert simple IR to LLVM IR text</li>
+</ul>
+<p><strong>Week 2: Basic Functions</strong></p>
+<ul>
+<li>[ ] Implement <code>visit_function()</code> - function generation</li>
+<li>[ ] Implement <code>visit_literal()</code> - constants</li>
+<li>[ ] Implement <code>visit_binary_operation()</code> - arithmetic</li>
+<li>[ ] Implement <code>visit_return()</code> - return statements</li>
+<li>[ ] Test case: <code>def add(x: int, y: int) -&gt; int: return x + y</code></li>
+<li>[ ] Verify: Can generate LLVM IR that compiles</li>
+</ul>
+<p><strong>Week 3: Control Flow</strong></p>
+<ul>
+<li>[ ] Implement <code>visit_if()</code> - conditional branches with phi nodes</li>
+<li>[ ] Implement <code>visit_while()</code> - loop basic blocks</li>
+<li>[ ] Implement <code>visit_for()</code> - range-based loops</li>
+<li>[ ] Test case: Fibonacci (recursive and iterative)</li>
+<li>[ ] Verify: Control flow works correctly</li>
+</ul>
+<p><strong>Milestone 1:</strong> Simple functions with arithmetic and control flow compile and execute correctly.</p>
+<h3 id="phase-2-language-features-weeks-4-8">Phase 2: Language Features (Weeks 4-8)<a class="headerlink" href="#phase-2-language-features-weeks-4-8" title="Permanent link">&para;</a></h3>
+<p><strong>Week 4-5: Variables &amp; Assignments</strong></p>
+<ul>
+<li>[ ] Implement <code>visit_assignment()</code> - alloca + store</li>
+<li>[ ] Implement <code>visit_variable_reference()</code> - load</li>
+<li>[ ] Handle local variables properly</li>
+<li>[ ] Test: Functions with local variables</li>
+<li>[ ] Benchmark: Fibonacci iterative (should pass)</li>
+</ul>
+<p><strong>Week 6-7: Function Calls</strong></p>
+<ul>
+<li>[ ] Implement <code>visit_function_call()</code> - call instruction</li>
+<li>[ ] Handle parameter passing</li>
+<li>[ ] Support recursive calls</li>
+<li>[ ] Test: Quicksort (recursive)</li>
+<li>[ ] Benchmark: Should pass quicksort test</li>
+</ul>
+<p><strong>Week 8: Integration</strong></p>
+<ul>
+<li>[ ] Add LLVM backend to pipeline</li>
+<li>[ ] Support <code>multigen --target llvm convert file.py</code></li>
+<li>[ ] Create <code>LLVMBuilder</code> for native compilation</li>
+<li>[ ] Test: All 7 benchmarks (expect 2-3 to pass)</li>
+</ul>
+<p><strong>Milestone 2:</strong> Basic language features work, 2-3 benchmarks passing.</p>
+<h3 id="phase-3-advanced-features-weeks-9-12">Phase 3: Advanced Features (Weeks 9-12)<a class="headerlink" href="#phase-3-advanced-features-weeks-9-12" title="Permanent link">&para;</a></h3>
+<p><strong>Week 9-10: Strings</strong></p>
+<ul>
+<li>[ ] Design string representation (char* + length? or struct?)</li>
+<li>[ ] Implement string operations via runtime library</li>
+<li>[ ] Support string concatenation, comparison</li>
+<li>[ ] Test: String manipulation functions</li>
+<li>[ ] Benchmark: Wordcount (should pass with runtime support)</li>
+</ul>
+<p><strong>Week 11-12: Containers</strong></p>
+<ul>
+<li>[ ] Design container representation (pointers to runtime structs)</li>
+<li>[ ] Implement list operations via runtime</li>
+<li>[ ] Implement dict operations via runtime</li>
+<li>[ ] Implement set operations via runtime</li>
+<li>[ ] Test: Container manipulation</li>
+<li>[ ] Benchmarks: list_ops, dict_ops, set_ops (should pass)</li>
+</ul>
+<p><strong>Milestone 3:</strong> All 7 benchmarks passing, feature parity with C backend.</p>
+<h3 id="phase-4-optimization-polish-ongoing">Phase 4: Optimization &amp; Polish (Ongoing)<a class="headerlink" href="#phase-4-optimization-polish-ongoing" title="Permanent link">&para;</a></h3>
+<p><strong>Optimization Passes</strong></p>
+<ul>
+<li>[ ] Enable LLVM optimization levels (-O1, -O2, -O3)</li>
+<li>[ ] Measure performance vs C/C++/Rust backends</li>
+<li>[ ] Tune optimization flags for best results</li>
+<li>[ ] Document performance characteristics</li>
+</ul>
+<p><strong>Quality &amp; Testing</strong></p>
+<ul>
+<li>[ ] Add comprehensive unit tests</li>
+<li>[ ] Add integration tests</li>
+<li>[ ] Performance regression tests</li>
+<li>[ ] Documentation and examples</li>
+</ul>
+<p><strong>Advanced Features (Future)</strong></p>
+<ul>
+<li>[ ] JIT compilation support (execute without file output)</li>
+<li>[ ] WebAssembly target</li>
+<li>[ ] Debug info generation (DWARF)</li>
+<li>[ ] Better error messages for LLVM failures</li>
+</ul>
+<h2 id="usage-examples">Usage Examples<a class="headerlink" href="#usage-examples" title="Permanent link">&para;</a></h2>
+<h3 id="command-line">Command Line<a class="headerlink" href="#command-line" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># Generate LLVM IR (text format)</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>multigen<span class="w"> </span>--target<span class="w"> </span>llvm<span class="w"> </span>convert<span class="w"> </span>fibonacci.py
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1"># Output: fibonacci.ll</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="c1"># Compile to native binary</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>multigen<span class="w"> </span>--target<span class="w"> </span>llvm<span class="w"> </span>build<span class="w"> </span>fibonacci.py
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="c1"># Output: fibonacci (executable)</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="c1"># View LLVM IR</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>multigen<span class="w"> </span>--target<span class="w"> </span>llvm<span class="w"> </span>convert<span class="w"> </span>fibonacci.py<span class="w"> </span>--emit-ir
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>cat<span class="w"> </span>fibonacci.ll
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="c1"># With optimization</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>multigen<span class="w"> </span>--target<span class="w"> </span>llvm<span class="w"> </span>build<span class="w"> </span>fibonacci.py<span class="w"> </span>--opt-level<span class="w"> </span><span class="m">3</span>
+</code></pre></div>
+<h3 id="example-output">Example Output<a class="headerlink" href="#example-output" title="Permanent link">&para;</a></h3>
+<p><strong>Python Input:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    <span class="n">result</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    <span class="k">return</span> <span class="n">result</span>
+</code></pre></div>
+<p><strong>Generated LLVM IR:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c">; ModuleID = &quot;multigen_module&quot;</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="k">target</span><span class="w"> </span><span class="k">triple</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&quot;unknown-unknown-unknown&quot;</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="k">define</span><span class="w"> </span><span class="kt">i64</span><span class="w"> </span><span class="vg">@add</span><span class="p">(</span><span class="kt">i64</span><span class="w"> </span><span class="nv">%x</span><span class="p">,</span><span class="w"> </span><span class="kt">i64</span><span class="w"> </span><span class="nv">%y</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="nl">entry:</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="w">  </span><span class="nv">%result</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">alloca</span><span class="w"> </span><span class="kt">i64</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="w">  </span><span class="nv">%add_tmp</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">add</span><span class="w"> </span><span class="kt">i64</span><span class="w"> </span><span class="nv">%x</span><span class="p">,</span><span class="w"> </span><span class="nv">%y</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="w">  </span><span class="k">store</span><span class="w"> </span><span class="kt">i64</span><span class="w"> </span><span class="nv">%add_tmp</span><span class="p">,</span><span class="w"> </span><span class="kt">i64</span><span class="p">*</span><span class="w"> </span><span class="nv">%result</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="w">  </span><span class="nv">%result_val</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">load</span><span class="w"> </span><span class="kt">i64</span><span class="p">,</span><span class="w"> </span><span class="kt">i64</span><span class="p">*</span><span class="w"> </span><span class="nv">%result</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="w">  </span><span class="k">ret</span><span class="w"> </span><span class="kt">i64</span><span class="w"> </span><span class="nv">%result_val</span>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="p">}</span>
+</code></pre></div>
+<p><strong>With Optimization (-O2):</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">define</span><span class="w"> </span><span class="kt">i64</span><span class="w"> </span><span class="vg">@add</span><span class="p">(</span><span class="kt">i64</span><span class="w"> </span><span class="nv">%x</span><span class="p">,</span><span class="w"> </span><span class="kt">i64</span><span class="w"> </span><span class="nv">%y</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="nl">entry:</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">  </span><span class="nv">%add_tmp</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">add</span><span class="w"> </span><span class="kt">i64</span><span class="w"> </span><span class="nv">%x</span><span class="p">,</span><span class="w"> </span><span class="nv">%y</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">  </span><span class="k">ret</span><span class="w"> </span><span class="kt">i64</span><span class="w"> </span><span class="nv">%add_tmp</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="p">}</span>
+</code></pre></div>
+<h2 id="performance-expectations">Performance Expectations<a class="headerlink" href="#performance-expectations" title="Permanent link">&para;</a></h2>
+<h3 id="compilation-time">Compilation Time<a class="headerlink" href="#compilation-time" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>LLVM IR generation:</strong> ~10-50ms per module</li>
+<li><strong>LLVM optimization:</strong> ~50-200ms (depends on -O level)</li>
+<li><strong>Native compilation:</strong> ~100-500ms</li>
+<li><strong>Total:</strong> ~200-750ms (competitive with C++ at ~422ms)</li>
+</ul>
+<h3 id="execution-performance">Execution Performance<a class="headerlink" href="#execution-performance" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>-O0 (no optimization):</strong> Similar to C -O0</li>
+<li><strong>-O2 (default):</strong> Within 5-10% of C -O2</li>
+<li><strong>-O3 (aggressive):</strong> Often matches or beats hand-written C</li>
+</ul>
+<h3 id="binary-size">Binary Size<a class="headerlink" href="#binary-size" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Without optimization:</strong> Larger than C (debug info)</li>
+<li><strong>With optimization + strip:</strong> Similar to C (30-100KB range)</li>
+</ul>
+<h2 id="comparison-llvm-vs-existing-backends">Comparison: LLVM vs Existing Backends<a class="headerlink" href="#comparison-llvm-vs-existing-backends" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>LLVM</th>
+<th>C</th>
+<th>C++</th>
+<th>Rust</th>
+<th>Go</th>
+<th>Haskell</th>
+<th>OCaml</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Compile Speed</strong></td>
+<td>Medium</td>
+<td>Fast</td>
+<td>Medium</td>
+<td>Slow</td>
+<td>Very Fast</td>
+<td>Medium</td>
+<td>Fast</td>
+</tr>
+<tr>
+<td><strong>Runtime Speed</strong></td>
+<td>Excellent</td>
+<td>Excellent</td>
+<td>Excellent</td>
+<td>Excellent</td>
+<td>Good</td>
+<td>Good</td>
+<td>Good</td>
+</tr>
+<tr>
+<td><strong>Binary Size</strong></td>
+<td>Medium</td>
+<td>Small</td>
+<td>Small</td>
+<td>Medium</td>
+<td>Large</td>
+<td>Very Large</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td><strong>Portability</strong></td>
+<td>Excellent</td>
+<td>Good</td>
+<td>Good</td>
+<td>Good</td>
+<td>Excellent</td>
+<td>Good</td>
+<td>Good</td>
+</tr>
+<tr>
+<td><strong>Debug Info</strong></td>
+<td>Excellent</td>
+<td>Good</td>
+<td>Good</td>
+<td>Excellent</td>
+<td>Good</td>
+<td>Good</td>
+<td>Good</td>
+</tr>
+<tr>
+<td><strong>Optimization</strong></td>
+<td>Excellent</td>
+<td>Good</td>
+<td>Good</td>
+<td>Excellent</td>
+<td>Good</td>
+<td>Good</td>
+<td>Good</td>
+</tr>
+<tr>
+<td><strong>Maintenance</strong></td>
+<td>Low*</td>
+<td>Medium</td>
+<td>Medium</td>
+<td>Medium</td>
+<td>Medium</td>
+<td>High</td>
+<td>High</td>
+</tr>
+</tbody>
+</table>
+<p>* Once working, LLVM handles architecture-specific concerns</p>
+<h2 id="decision-matrix">Decision Matrix<a class="headerlink" href="#decision-matrix" title="Permanent link">&para;</a></h2>
+<h3 id="when-to-use-llvm-backend">When to Use LLVM Backend<a class="headerlink" href="#when-to-use-llvm-backend" title="Permanent link">&para;</a></h3>
+<p><strong>Use LLVM when:</strong></p>
+<ul>
+<li>[x] Need multiple target architectures (x86, ARM, RISC-V)</li>
+<li>[x] Want maximum optimization potential</li>
+<li>[x] Need WebAssembly output</li>
+<li>[x] Want JIT compilation capability</li>
+<li>[x] Long-term maintainability is priority</li>
+<li>[x] Binary size &lt; 500KB is acceptable</li>
+</ul>
+<p><strong>Use C/C++ backends when:</strong></p>
+<ul>
+<li>[x] Need minimal binary size (&lt;50KB)</li>
+<li>[x] Need very fast compilation (&lt;100ms)</li>
+<li>[x] Need specific C library integration</li>
+<li>[x] Need to inspect/modify generated code</li>
+<li>[x] LLVM dependency is too large</li>
+</ul>
+<p><strong>Use Rust backend when:</strong></p>
+<ul>
+<li>[x] Need memory safety guarantees in output</li>
+<li>[x] Want Rust ecosystem integration</li>
+<li>[x] Ownership semantics are important</li>
+</ul>
+<h2 id="risk-assessment">Risk Assessment<a class="headerlink" href="#risk-assessment" title="Permanent link">&para;</a></h2>
+<h3 id="technical-risks">Technical Risks<a class="headerlink" href="#technical-risks" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Probability</th>
+<th>Impact</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LLVM version compatibility</td>
+<td>Medium</td>
+<td>High</td>
+<td>Pin LLVM version, test upgrades</td>
+</tr>
+<tr>
+<td>Performance worse than C</td>
+<td>Low</td>
+<td>Medium</td>
+<td>Extensive optimization tuning</td>
+</tr>
+<tr>
+<td>Container implementation complex</td>
+<td>High</td>
+<td>Medium</td>
+<td>Reuse C runtime libraries</td>
+</tr>
+<tr>
+<td>Development takes &gt;3 months</td>
+<td>Medium</td>
+<td>Low</td>
+<td>Phased rollout, keep existing backends</td>
+</tr>
+<tr>
+<td>llvmlite bugs/limitations</td>
+<td>Low</td>
+<td>Medium</td>
+<td>Fallback to LLVM C API if needed</td>
+</tr>
+</tbody>
+</table>
+<h3 id="project-risks">Project Risks<a class="headerlink" href="#project-risks" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Probability</th>
+<th>Impact</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Diverts from core mission</td>
+<td>Low</td>
+<td>Medium</td>
+<td>Keep as optional 7th backend</td>
+</tr>
+<tr>
+<td>Dependency bloat</td>
+<td>High</td>
+<td>Low</td>
+<td>Document deployment options</td>
+</tr>
+<tr>
+<td>Community doesn't adopt</td>
+<td>Medium</td>
+<td>Low</td>
+<td>Existing backends remain primary</td>
+</tr>
+<tr>
+<td>Maintenance burden</td>
+<td>Medium</td>
+<td>Medium</td>
+<td>Comprehensive tests, good docs</td>
+</tr>
+</tbody>
+</table>
+<h2 id="resources-references">Resources &amp; References<a class="headerlink" href="#resources-references" title="Permanent link">&para;</a></h2>
+<h3 id="llvm-learning-resources">LLVM Learning Resources<a class="headerlink" href="#llvm-learning-resources" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>llvmlite Documentation</strong></li>
+<li>Official docs: <a href="https://llvmlite.readthedocs.io/">https://llvmlite.readthedocs.io/</a></li>
+<li>IR Builder guide: <a href="https://llvmlite.readthedocs.io/en/latest/user-guide/ir/ir-builder.html">https://llvmlite.readthedocs.io/en/latest/user-guide/ir/ir-builder.html</a></li>
+<li>Type system: <a href="https://llvmlite.readthedocs.io/en/latest/user-guide/ir/types.html">https://llvmlite.readthedocs.io/en/latest/user-guide/ir/types.html</a></li>
+<li>
+<p>Examples: <a href="https://llvmlite.readthedocs.io/en/latest/user-guide/ir/examples.html">https://llvmlite.readthedocs.io/en/latest/user-guide/ir/examples.html</a></p>
+</li>
+<li>
+<p><strong>PyKaleidoscope Tutorial</strong></p>
+</li>
+<li>GitHub: <a href="https://github.com/eliben/pykaleidoscope">https://github.com/eliben/pykaleidoscope</a></li>
+<li>Complete working example of Python → LLVM IR</li>
+<li>
+<p>Updated for llvmlite 0.45.0 (2025)</p>
+</li>
+<li>
+<p><strong>LLVM Language Reference</strong></p>
+</li>
+<li>Official LLVM IR reference: <a href="https://llvm.org/docs/LangRef.html">https://llvm.org/docs/LangRef.html</a></li>
+<li>
+<p>SSA form explained: <a href="https://llvm.org/docs/tutorial/">https://llvm.org/docs/tutorial/</a></p>
+</li>
+<li>
+<p><strong>llvmlite on PyPI</strong></p>
+</li>
+<li>Package page: <a href="https://pypi.org/project/llvmlite/">https://pypi.org/project/llvmlite/</a></li>
+<li>Version 0.45.0+ requires LLVM 20.x</li>
+<li>Supports Python 3.10-3.13</li>
+</ol>
+<h3 id="multigen-relevant-files">MultiGen Relevant Files<a class="headerlink" href="#multigen-relevant-files" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>src/multigen/frontend/static_ir.py</code> - IR definition (922 lines)</li>
+<li><code>src/multigen/backends/base.py</code> - LanguageBackend interface</li>
+<li><code>src/multigen/backends/c/runtime/</code> - Reusable runtime for LLVM</li>
+<li><code>tests/benchmarks/</code> - 7 benchmark tests to pass</li>
+</ul>
+<h3 id="similar-projects">Similar Projects<a class="headerlink" href="#similar-projects" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Numba</strong>: Python JIT compiler using LLVM (for NumPy)</li>
+<li><strong>Nuitka</strong>: Python → C → binary compiler</li>
+<li><strong>Cython</strong>: Python-like language → C</li>
+<li><strong>Shed Skin</strong>: Python → C++ compiler</li>
+<li><strong>PyPy</strong>: Python interpreter with JIT (not LLVM, but instructive)</li>
+</ul>
+<h2 id="success-criteria">Success Criteria<a class="headerlink" href="#success-criteria" title="Permanent link">&para;</a></h2>
+<h3 id="minimum-viable-product-mvp">Minimum Viable Product (MVP)<a class="headerlink" href="#minimum-viable-product-mvp" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[ ] Compiles simple arithmetic functions</li>
+<li>[ ] Supports int, float types</li>
+<li>[ ] Supports if/else, while, for loops</li>
+<li>[ ] Generates working LLVM IR</li>
+<li>[ ] Can produce native binaries</li>
+<li>[ ] Passes 2-3 benchmark tests</li>
+</ul>
+<h3 id="feature-parity-with-c-backend">Feature Parity with C Backend<a class="headerlink" href="#feature-parity-with-c-backend" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[ ] All 7 benchmarks passing</li>
+<li>[ ] String support</li>
+<li>[ ] Container support (list, dict, set)</li>
+<li>[ ] File I/O support</li>
+<li>[ ] Module imports</li>
+<li>[ ] Comparable performance to C backend</li>
+</ul>
+<h3 id="production-ready">Production Ready<a class="headerlink" href="#production-ready" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[ ] Comprehensive test coverage (&gt;90%)</li>
+<li>[ ] Documentation complete</li>
+<li>[ ] Performance within 10% of C</li>
+<li>[ ] Stable across LLVM versions</li>
+<li>[ ] User feedback positive</li>
+</ul>
+<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<h3 id="immediate-this-week">Immediate (This Week)<a class="headerlink" href="#immediate-this-week" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Install llvmlite: <code>uv add llvmlite</code></li>
+<li>Create directory structure: <code>src/multigen/backends/llvm/</code></li>
+<li>Implement basic <code>IRToLLVMConverter</code> skeleton</li>
+<li>Write first test: Convert IR for <code>add(x, y)</code> function</li>
+</ol>
+<h3 id="short-term-this-month">Short Term (This Month)<a class="headerlink" href="#short-term-this-month" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Complete Phase 1 (Proof of Concept)</li>
+<li>Get simple functions working end-to-end</li>
+<li>Pass first benchmark (fibonacci)</li>
+<li>Document progress and learnings</li>
+</ol>
+<h3 id="medium-term-3-months">Medium Term (3 Months)<a class="headerlink" href="#medium-term-3-months" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Complete Phase 2 (Language Features)</li>
+<li>Pass 5-7 benchmarks</li>
+<li>Achieve feature parity with C backend</li>
+<li>Write comprehensive documentation</li>
+</ol>
+<h3 id="long-term-6-months">Long Term (6+ Months)<a class="headerlink" href="#long-term-6-months" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Optimize performance</li>
+<li>Add advanced features (JIT, WebAssembly)</li>
+<li>Gather community feedback</li>
+<li>Consider making LLVM default backend</li>
+</ol>
+<h2 id="conclusion">Conclusion<a class="headerlink" href="#conclusion" title="Permanent link">&para;</a></h2>
+<p>Using <code>static_ir.py</code> to target LLVM IR is a <strong>strategically sound decision</strong> that aligns with MultiGen's architecture and goals. The existing Static IR infrastructure provides an excellent foundation, and LLVM offers industrial-strength optimization with multiple target architectures.</p>
+<p><strong>Recommendation:</strong> Proceed with <strong>Phase 1 (Proof of Concept)</strong> as a 7th backend alongside existing C/C++/Rust/Go/Haskell/OCaml backends. This approach:</p>
+<ul>
+<li>Minimizes risk (existing backends remain)</li>
+<li>Enables learning and iteration</li>
+<li>Provides future-proof architecture</li>
+<li>Maintains backward compatibility</li>
+</ul>
+<p>The 2-3 month timeline to feature parity is reasonable given the quality of existing IR infrastructure. Success depends on starting small, iterating quickly, and leveraging LLVM's extensive documentation and community resources.</p>
+<p><strong>Status:</strong> Ready to begin implementation.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "content.code.copy", "search.suggest"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
