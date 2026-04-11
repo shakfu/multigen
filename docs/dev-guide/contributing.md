@@ -77,7 +77,7 @@ See existing backends (C, C++, Rust, Go, Haskell, OCaml, LLVM) for implementatio
 
 **PR Title**: Use conventional commits format:
 
-```
+```text
 feat: Add NewLang backend
 fix: Resolve type inference bug in Rust backend
 docs: Update verification guide

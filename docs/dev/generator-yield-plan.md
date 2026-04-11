@@ -104,8 +104,7 @@ Rust. That plan also called for a shared detection pass producing a
 
 The shipped implementation takes a different path:
 
-- **Uniform codegen across six backends.** Every target has a cheap, idiomatic
-  "push onto a mutable accumulator" pattern. No per-backend strategy tree.
+- **Uniform codegen across six backends.** Every target has a cheap, idiomatic "push onto a mutable accumulator" pattern. No per-backend strategy tree.
 - **No liveness analysis, no state-variable lifting, no resume-label
   dispatch.** The hardest pieces of the plan (especially for Rust and C) were
   avoided entirely because the eager rewrite doesn't need them.
@@ -133,8 +132,7 @@ rewrite changes this contract:
    at call time. Memory use is `O(n)` instead of `O(1)`.
 2. **Infinite generators don't terminate.** `def naturals(): i=0; while True:
    yield i; i+=1` compiles, but calling it at runtime allocates until the
-   process dies. There is no static check that rejects unbounded loops inside
-   a generator body.
+   process dies. There is no static check that rejects unbounded loops inside a generator body.
 3. **Early break doesn't save work.** `for x in f(): if cond: break`
    still runs `f()` to completion before the `for` starts. A consumer that
    only wanted the first element still pays for the whole list.
@@ -148,8 +146,7 @@ rewrite changes this contract:
    extends. Nested generators compose by copying, not by chaining iterators.
 
 These are not bugs in the implementation — they are the price of the chosen
-strategy. They should be documented in user-facing docs so that users porting
-streaming Python code don't get surprised by memory blowups.
+strategy. They should be documented in user-facing docs so that users porting streaming Python code don't get surprised by memory blowups.
 
 ### What still works fine
 
@@ -190,16 +187,10 @@ roughly ordered from cheapest to most expensive.
 
 Haskell and OCaml can get lazy generators at near-zero implementation cost:
 
-- **Haskell**: emit a lazy list (`[T]`) with `yield x` becoming cons and the
-  body expressed as `foldr`-style builders. Haskell is already lazy by
-  default; the main risk is a strict consumer forcing the whole spine.
-- **OCaml**: emit `Seq.t` using `fun () -> Seq.Cons (x, rest)`. `Seq.iter` on
-  the consumer side gives on-demand evaluation.
+- **Haskell**: emit a lazy list (`[T]`) with `yield x` becoming cons and the body expressed as `foldr`-style builders. Haskell is already lazy by default; the main risk is a strict consumer forcing the whole spine.
+- **OCaml**: emit `Seq.t` using `fun () -> Seq.Cons (x, rest)`. `Seq.iter` on the consumer side gives on-demand evaluation.
 
-Both are additive: gate behind a preference
-(`--prefer lazy_generators=true`) so existing eager behavior stays default
-until the lazy path is validated. Roughly two new emitter branches per
-backend and no shared infrastructure.
+Both are additive: gate behind a preference (`--prefer lazy_generators=true`) so existing eager behavior stays default until the lazy path is validated. Roughly two new emitter branches per backend and no shared infrastructure.
 
 ### Option B: C++20 `std::generator<T>`
 
@@ -254,10 +245,7 @@ comparable to Rust's.
 
 ### Option F: LLVM
 
-Unchanged from the original plan — deferred. A hand-written state machine at
-IR level is a large project on its own. The minimum viable fix is to make the
-LLVM backend raise a clear unsupported-feature error at conversion time and
-point users at this document.
+Unchanged from the original plan — deferred. A hand-written state machine at IR level is a large project on its own. The minimum viable fix is to make the LLVM backend raise a clear unsupported-feature error at conversion time and point users at this document.
 
 ## Suggested sequencing if the laziness work is picked up
 

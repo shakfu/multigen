@@ -25,7 +25,7 @@ uv run pytest -v
 
 Tests are organized by backend and feature:
 
-```
+```text
 tests/
   test_backend_c_*.py           # C backend tests
   test_backend_cpp_*.py         # C++ backend tests

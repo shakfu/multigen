@@ -79,7 +79,7 @@ class AbstractFactory(ABC):
 
 Each backend follows this structure:
 
-```
+```text
 backends/
   <language>/
     __init__.py          # Backend registration
@@ -144,7 +144,7 @@ class CFactory(AbstractFactory):
 
 Python types map to backend types:
 
-```
+```text
 Python          C++              Rust             Go
 ------          ---              ----             --
 int             int              i32              int

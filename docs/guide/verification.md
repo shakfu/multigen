@@ -32,7 +32,7 @@ def sum_array(arr: list[int]) -> int:
 
 Verification output:
 
-```
+```text
 [x] Array access arr[i] is SAFE
   Proof: 0 <= i < len(arr) for all iterations
 ```
@@ -51,7 +51,7 @@ def unsafe_function(arr: list[int], n: int) -> int:
 
 Verification output:
 
-```
+```text
 Array access arr[i] is UNSAFE
   Counterexample: i=5, arr_len=5
   Error: Index out of bounds
