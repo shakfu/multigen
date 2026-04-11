@@ -1,184 +1,277 @@
-# Generator / `yield` Support Plan
+# Generator / `yield` Support
 
-**Status**: Proposed
+**Status**: Shipped (eager-collection strategy)
 **Last updated**: 2026-04-11
-**Owner**: TBD
 
-## Goal
+## Summary
 
-Add Python generator function support (`def f(): ... yield x ...`) to MultiGen,
-lowering to idiomatic iteration constructs in each target language.
+MultiGen supports Python generator functions (`def f(): ... yield x ...`) and
+`yield from` across the Haskell, OCaml, C++, C, Go, and Rust backends. The
+LLVM backend still emits a stub. The implemented strategy is **eager
+collection to a list**: a generator function is rewritten to a regular function
+that returns the fully materialized sequence. This document records the
+shipped design, why it diverges from the original lazy-iteration plan, the
+laziness tradeoff it makes, and the options available if true laziness is
+needed later.
 
-## Current state
+## What is implemented
 
-Generators are entirely unimplemented:
-
-- `src/multigen/errors.py:213,217` — user-facing "not supported" error for `yield`
-  and generator expressions.
-- `src/multigen/frontend/subset_validator.py:352` — `FeatureRule` marked
-  `FeatureStatus.EXPERIMENTAL` / Tier 3 Advanced, but not wired to any backend.
-- `src/multigen/frontend/ast_analyzer.py:330` — only detects `ast.GeneratorExp`
-  as a comprehension form; no generator-function awareness.
-- No backend converter implements `ast.Yield` or `ast.YieldFrom`.
-- `src/multigen/backends/c/ext/stc/include/stc/coroutine.h` — STC vendors a
-  coroutine primitive (`cco_async` / `cco_yield`) that the C backend can target
-  directly.
-
-## MVP scope (Phase 1)
-
-**In scope**
+### Scope
 
 - Generator functions: `def f(...): ... yield expr ...`
-- Consumption via `for x in f(): ...`
-- `yield` inside arbitrary loops and conditionals
-- Parameters and local state
-- Generators returning `None` implicitly at end of function
-- Type-annotated generators: `def f() -> Iterator[int]` / `Generator[int, None, None]`
+- `yield from expr` where `expr` is a function call, `range(...)`, or a
+  variable
+- `yield` inside arbitrary loops, nested loops, and conditionals
+- Parameters and local mutable state
+- Consumption via `for x in f()` or `list(f())`
+- Type-annotated generators (element type inferred from the return annotation)
+- Generator expressions, normalized to list comprehensions
 
-**Out of scope for MVP** (candidates for Phase 2+)
+### Out of scope (unchanged from the original plan)
 
-- `yield from`
-- `send()`, `throw()`, `close()` — the two-way communication channel
-- Generator expressions `(x*2 for x in xs)` — can be lowered to synthetic
-  generator functions once functions work
+- `.send()`, `.throw()`, `.close()`
 - Async generators (`async def` + `yield`)
-- Returning a generator as a first-class value across function boundaries
-  beyond immediate `for` consumption
+- Returning a generator across function boundaries as a first-class lazy
+  stream (a generator returns a concrete list, not an iterator)
+- `yield from` over arbitrary expressions (e.g. generator expressions)
 
-## Architecture
+### Core transform
 
-### Shared detection pass
+Each backend detects a generator locally by walking the `FunctionDef` body for
+`ast.Yield` / `ast.YieldFrom`, then rewrites the function as follows:
 
-Add a single analysis step before backend dispatch:
+1. Inject an accumulator local at function entry
+   (`Vec<T>` / `std::vector<T>` / slice / list / `IORef`-ish list).
+2. Rewrite the return type to the collection type, picking the element type
+   from the return annotation (`-> int`) with a per-backend fallback.
+3. Replace `yield expr` with an append/push onto the accumulator.
+4. Replace `yield from iterable` with an extend/concat of the accumulator by
+   the iterable, with a fast path for `range(...)`.
+5. Append `return <accumulator>` at function exit.
 
-- **Where**: new helper in `src/multigen/frontend/analyzers/` or extend
-  `ast_analyzer.py`.
-- **What**: walk every `FunctionDef`, mark as generator if any `ast.Yield` or
-  `ast.YieldFrom` appears in its body (excluding nested `FunctionDef` and
-  `Lambda`).
-- **Output**: `GeneratorInfo` dataclass attached to `AnalysisPhaseResult`
-  (`src/multigen/pipeline_types.py`), mapping function qualname → metadata
-  (yield points, live-across-yield locals, element type).
-- **Benefit**: each backend reads pre-computed info instead of re-scanning.
+The consumer side needs no changes: `for x in f()` and `list(f())` already
+compile correctly because `f()` now returns a real list.
 
-### Shared lowering pass (for state-machine targets)
+### Implementation locations
 
-State-machine backends (C, Rust, C++ fallback, Go fallback) need the same
-transform:
-
-1. Identify locals live across a yield point → these become fields of a state
-   struct/enum.
-2. Assign each yield point a unique resume label (0..N-1).
-3. Rewrite the function body into a `switch (state)` dispatched on resume.
-4. Emit a constructor (initial state) and an advance function / `next()`.
-
-**Where**: new module `src/multigen/frontend/transforms/generator_lowering.py`
-emitting a `LoweredGenerator` IR that the state-machine backends consume.
-
-Languages with native lazy sequences (Haskell, OCaml) **skip this pass**
-entirely and emit directly from the original AST.
-
-### Validator / error wiring
-
-- Flip `subset_validator.py:352` from `EXPERIMENTAL` to `SUPPORTED` once the
-  first backend lands. Keep the feature gated per-backend via an allowlist.
-- Remove the blanket error in `errors.py:217` and replace with a per-backend
-  check that raises only when the selected target hasn't implemented generators
-  yet (initially just LLVM).
-
-## Per-backend strategy
-
-| Backend | Target construct | Complexity | Notes |
+| Backend | Converter | Detection | `yield` / `yield from` |
 |---|---|---|---|
-| **Haskell** | Lazy list `[a]` | Low | Generators map to list constructors; `yield x` becomes cons; `for` becomes list iteration. No runtime machinery. |
-| **OCaml** | `Seq.t` (stdlib) | Low | Emit `fun () -> Seq.Cons (x, rest)`. Idiomatic native fit. |
-| **C++** | C++20 `std::generator<T>` | Low–Medium | Gated on `cpp_standard=c++20` preference. Fallback to manual state machine for C++17. |
-| **C** | STC `cco_async` / `cco_yield` | Medium | Uses already-vendored `stc/coroutine.h`. Needs state-variable lifting from shared pass. |
-| **Go** | `iter.Seq[T]` (Go 1.23+) | Medium | **Requires MSRV bump**: Go backend currently targets 1.21 (`backends/go/builder.py:21`). Fallback: channel + goroutine (leaks if caller breaks early). |
-| **Rust** | `impl Iterator` on generated state enum | High | Stable Rust only, no nightly, no extra crates. Hardest state-machine transform but most valuable — benchmarks need this. |
-| **LLVM** | **Deferred** | — | Would need hand-written state machine at IR level. Initially errors with a clear "generators unsupported on LLVM target" message. |
+| Rust | `backends/rust/converter.py` | `:698` | `:812`, `:820` |
+| C++ | `backends/cpp/converter.py` | `:610` | `:916`, `:924` |
+| C | `backends/c/converter.py` | `:164` (via `function_converter`-style helper) | `:747`, `:756` |
+| Go | `backends/go/converter.py` | `:582` | `:1054`, `:1062` |
+| OCaml | `backends/ocaml/converter.py` | `:471` | `:626`, `:634` |
+| Haskell | `backends/haskell/function_converter.py` | `:67` | `:382`–`:555` (while / for / fallback patterns) |
+| LLVM | `backends/llvm/ir_to_llvm.py` | — | `:2282`, `:2299` (stubs) |
 
-## Execution order
+### Validator and error wiring
 
-The order is chosen so each step either de-risks the next or unlocks
-infrastructure:
+- `frontend/subset_validator.py:352` registers `generators` as
+  `PARTIALLY_SUPPORTED` with the description "eager collection to list".
+- `frontend/subset_validator.py:367` registers `yield_from` as
+  `PARTIALLY_SUPPORTED`, constrained to function calls, `range()`, and
+  variables.
+- `frontend/subset_validator.py:382` registers `generator_expressions` as
+  `FULLY_SUPPORTED` by normalizing to list comprehensions.
+- `errors.py:217` still carries a stale blanket "MultiGen does not support
+  generators" string. It is no longer reachable for the six shipping backends;
+  it should be either removed or re-scoped to fire only on the LLVM path. See
+  [Known loose ends](#known-loose-ends).
 
-1. **Shared detection + `GeneratorInfo`** — lights up `analyzer → pipeline_types`
-   plumbing; no codegen changes yet.
-2. **Validator gate flip** — allow generators through the pipeline for an
-   allowlisted backend (initially empty).
-3. **Haskell backend** — easiest codegen, validates end-to-end pipeline.
-4. **OCaml backend** — second easy win; confirms the "native lazy sequence"
-   path is generalizable.
-5. **C++ backend (C++20 path)** — minimal lowering work; preference-gated.
-6. **Shared `generator_lowering.py`** — build once for the state-machine
-   backends below.
-7. **C backend** — consumes lowering + STC coroutine primitives.
-8. **Go backend** — decide MSRV bump first; then `iter.Seq` path or channel
-   fallback.
-9. **Rust backend** — hardest transform; shared lowering pass carries most of
-   the weight.
-10. **LLVM backend** — explicit unsupported-error wiring.
+### Tests
 
-## Test matrix
+`tests/test_generators.py` is a single consolidated test module that exercises
+every backend against the same fixtures:
 
-For each supported backend, add `tests/test_backend_{lang}_generators.py`
-covering:
+- `SIMPLE_WHILE_GENERATOR` — `while` loop with mutable counter
+- `FOR_LOOP_GENERATOR` — `for i in range(n): yield i*i`
+- `CONDITIONAL_YIELD` — `yield` inside `if`
+- `MULTIPLE_YIELDS` — straight-line yields
+- `yield from` fixtures for `range(...)`, variables, and calls to other
+  generators
 
-- `yield` in a plain loop: `yield i for i in range(n)`
-- `yield` in a nested loop
-- `yield` inside a conditional (`if cond: yield x`)
-- Generator consumed by `for` loop
-- Generator consumed by `list(...)`
-- Generator with parameters and mutable local state
-- Early termination by caller (`break` in consuming `for`)
-- Generator with zero yields (empty sequence)
+Validation tests live in `TestGeneratorValidation` and lock in the per-rule
+acceptance criteria (return annotation required, `.send()` rejected, etc.).
 
-Integration: add a generator-based benchmark variant to
-`tests/benchmarks/algorithms/` — e.g. a sieve-of-Eratosthenes that yields
-primes. Reuses the existing `*_haskell.py`-style override mechanism if a
-backend can't express a particular variant.
+## Why eager collection instead of lazy iteration
 
-## Open decisions
+The original plan proposed per-backend lazy strategies: Haskell lazy lists,
+OCaml `Seq.t`, C++20 `std::generator`, STC `cco_async` coroutines in C,
+`iter.Seq` in Go 1.23+, and a hand-written state-machine `impl Iterator` in
+Rust. That plan also called for a shared detection pass producing a
+`GeneratorInfo` on `AnalysisPhaseResult` and a shared lowering module at
+`frontend/transforms/generator_lowering.py`.
 
-1. **LLVM generator support**: acceptable to ship as "6 of 7 backends"
-   initially? Alternative is a hand-written state machine at IR level, which is
-   a large project on its own.
-2. **Go MSRV**: bump `go 1.21` → `go 1.23` in `backends/go/builder.py:21` to
-   use `iter.Seq`, or stay on 1.21 and accept the channel+goroutine fallback
-   (with its early-break leak)?
-3. **Rust strategy**: stable-only manual `Iterator` (recommended — no toolchain
-   requirements, no new dependencies) vs. adding `genawaiter` as an optional
-   crate dep (simpler codegen, new dependency).
-4. **Generator expressions**: include in Phase 1 as a syntactic rewrite to
-   synthetic generator functions, or defer to Phase 2? They're a natural
-   extension once functions work.
-5. **Type annotations**: require `Iterator[T]` / `Generator[T, None, None]`
-   return annotations for type-inference-dependent backends (C, Rust), or
-   attempt to infer the element type from yield expressions?
+The shipped implementation takes a different path:
 
-## Risks
+- **Uniform codegen across six backends.** Every target has a cheap, idiomatic
+  "push onto a mutable accumulator" pattern. No per-backend strategy tree.
+- **No liveness analysis, no state-variable lifting, no resume-label
+  dispatch.** The hardest pieces of the plan (especially for Rust and C) were
+  avoided entirely because the eager rewrite doesn't need them.
+- **No toolchain or standard-library bumps.** The Go 1.21 → 1.23 MSRV bump,
+  the `cpp_standard=c++20` gate, and the STC coroutine integration are all
+  unnecessary for eager collection.
+- **Shared detection pass not built.** Each backend re-scans the function
+  body for `Yield`/`YieldFrom`. Cheap enough that the shared
+  `GeneratorInfo` / `pipeline_types` plumbing was never wired up, and
+  `frontend/transforms/` does not exist.
+- **Consumer-side simplicity.** Because `f()` returns a real list, every
+  existing `for`, `list(...)`, `sum(...)`, and indexing site works without
+  special-casing the generator call.
 
-- **State lifting correctness** (C, Rust): incorrectly identifying locals live
-  across yields silently corrupts generator state. Mitigation: use an
-  established liveness analysis; test aggressively with generators that yield
-  inside nested scopes.
-- **Rust borrow checker**: the generated state enum plus `Iterator::next`
-  signature interact with lifetimes in ways that manual codegen can get wrong.
-  Mitigation: restrict MVP to generators that don't yield references into
-  locals.
-- **Go early-break leak**: if we take the goroutine fallback, consumers that
-  `break` out of a `for` will leak the producer goroutine. Mitigation: prefer
-  the `iter.Seq` path (MSRV bump) or require callers to drain.
-- **Haskell strictness accidents**: list-based lowering relies on laziness; a
-  strict fold at the consumer could force the whole generator. Mitigation:
-  prefer `foldr`-style consumers in the generated `for` loop.
+The cost of this simplicity is laziness, discussed next.
 
-## Success criteria
+## The laziness tradeoff
 
-- All MVP test cases pass on every supported backend.
-- At least one benchmark uses a generator and runs on ≥ 5 backends.
-- The "generators not supported" error only fires for LLVM (and surfaces a
-  clear message pointing to this plan).
-- `subset_validator.py` reflects per-backend support status accurately.
-- No regression in existing 944-test suite.
+In CPython, a generator call produces an iterator; elements are computed
+on demand, and the producer's locals stay alive across yields. The eager
+rewrite changes this contract:
+
+1. **The full sequence is materialized before the first consumer step.**
+   A generator that yields `n` elements allocates an `n`-element collection
+   at call time. Memory use is `O(n)` instead of `O(1)`.
+2. **Infinite generators don't terminate.** `def naturals(): i=0; while True:
+   yield i; i+=1` compiles, but calling it at runtime allocates until the
+   process dies. There is no static check that rejects unbounded loops inside
+   a generator body.
+3. **Early break doesn't save work.** `for x in f(): if cond: break`
+   still runs `f()` to completion before the `for` starts. A consumer that
+   only wanted the first element still pays for the whole list.
+4. **Side-effect ordering changes.** In Python, a `print` inside a generator
+   interleaves with consumer-side work. After the rewrite, all producer-side
+   side effects happen before any consumer-side work.
+5. **`generator_expressions` inherits the same semantics.** `(x*x for x in
+   xs)` is normalized to a list comprehension, so it also materializes.
+   `sum(x*x for x in range(10**9))` will OOM instead of streaming.
+6. **`yield from inner(n)` calls `inner(n)` as a whole list first**, then
+   extends. Nested generators compose by copying, not by chaining iterators.
+
+These are not bugs in the implementation — they are the price of the chosen
+strategy. They should be documented in user-facing docs so that users porting
+streaming Python code don't get surprised by memory blowups.
+
+### What still works fine
+
+- Bounded generators used in `for` / `list()` / `sum()` / `max()` contexts,
+  which is the common case in algorithmic Python code.
+- Generators whose consumer drains the full sequence anyway (the "write it
+  as a generator because it reads cleaner" pattern).
+- Composition of bounded generators via `yield from`.
+
+## Known loose ends
+
+- **Stale error in `errors.py:217`.** The blanket "generators not supported"
+  message is unreachable for the six shipping backends. Either delete it or
+  convert it to a per-backend gate that only fires for LLVM.
+- **LLVM stub.** `visit_yield` / `visit_yield_from` in
+  `backends/llvm/ir_to_llvm.py` are stubs. The validator accepts generators,
+  so the LLVM backend should raise a clear "generators unsupported on LLVM
+  target" error at conversion time rather than silently emitting nothing.
+- **No shared detection pass.** Each backend walks the AST independently. If
+  more passes end up needing generator metadata (e.g. the analyzers in
+  `frontend/analyzers/`), factoring detection into a single
+  `GeneratorInfo` on `AnalysisPhaseResult` is still worth doing. It was not
+  required for codegen and was therefore skipped.
+- **User docs.** The laziness tradeoff is not mentioned in the user-facing
+  docs or CLI help. Users need to know that generators are eagerly collected
+  before they deploy memory-sensitive code.
+- **Unbounded generators.** There is no static rejection of obviously
+  infinite generator bodies. A lint/warning in the validator would catch the
+  worst footguns (`while True: yield ...` with no `break`/`return`).
+
+## Future options if true laziness is required
+
+True laziness should be reintroduced per-backend, not as a uniform design,
+because the cost/benefit varies a lot by target. The options below are
+roughly ordered from cheapest to most expensive.
+
+### Option A: native lazy sequences in Haskell and OCaml
+
+Haskell and OCaml can get lazy generators at near-zero implementation cost:
+
+- **Haskell**: emit a lazy list (`[T]`) with `yield x` becoming cons and the
+  body expressed as `foldr`-style builders. Haskell is already lazy by
+  default; the main risk is a strict consumer forcing the whole spine.
+- **OCaml**: emit `Seq.t` using `fun () -> Seq.Cons (x, rest)`. `Seq.iter` on
+  the consumer side gives on-demand evaluation.
+
+Both are additive: gate behind a preference
+(`--prefer lazy_generators=true`) so existing eager behavior stays default
+until the lazy path is validated. Roughly two new emitter branches per
+backend and no shared infrastructure.
+
+### Option B: C++20 `std::generator<T>`
+
+C++20 added `std::generator<T>` (coroutine-backed) to the standard library.
+When the user has already opted into `cpp_standard=c++20`, emit a
+`std::generator<T>` whose body contains `co_yield` in place of the eager
+`push_back`. Consumers iterate with a range-based `for`. Fallback to the
+current eager path under C++17.
+
+This is the most idiomatic lazy option for the C++ backend and does not
+require a shared lowering pass, because `co_yield` preserves locals
+automatically.
+
+### Option C: Go `iter.Seq[T]` (Go 1.23+)
+
+Bump the Go backend's MSRV from 1.21 to 1.23 and emit `iter.Seq[T]` using
+the `yield func(T) bool` pattern. Consumers use range-over-func. This is the
+blessed Go idiom as of 1.23 and also avoids a state-machine transform.
+
+The tradeoff is the MSRV bump. The channel-plus-goroutine fallback from the
+original plan is not recommended — it leaks producer goroutines on early
+`break`.
+
+### Option D: Rust `impl Iterator` via shared lowering
+
+This is the original plan's hardest piece and remains the only viable path on
+stable Rust without new crate dependencies. It requires:
+
+1. A shared lowering pass (`frontend/transforms/generator_lowering.py` in the
+   original plan) that:
+   - Computes locals live across each yield point.
+   - Lifts them into fields of a generated state struct.
+   - Assigns each yield point a resume label and rewrites the body into a
+     `match state { ... }` inside `Iterator::next`.
+2. A Rust emitter that renders the state struct, the `Iterator` impl, and
+   the initial constructor.
+3. Restricting the MVP to generators that don't yield references into
+   locals, to sidestep borrow-checker interaction with the generated enum.
+
+Alternative: depend on the `genawaiter` crate, which provides macro-based
+generators on stable. Simpler codegen, but adds a runtime dependency the
+project currently doesn't have.
+
+### Option E: C via STC `cco_async` / `cco_yield`
+
+STC is already vendored at `backends/c/ext/stc/include/stc/coroutine.h` and
+provides a coroutine primitive suitable for generator lowering. This path
+needs the same state-variable lifting as Rust, so it makes sense to build
+Option D's shared lowering pass first and reuse it here. The payoff is lazy
+C generators without a new dependency, but the engineering cost is
+comparable to Rust's.
+
+### Option F: LLVM
+
+Unchanged from the original plan — deferred. A hand-written state machine at
+IR level is a large project on its own. The minimum viable fix is to make the
+LLVM backend raise a clear unsupported-feature error at conversion time and
+point users at this document.
+
+## Suggested sequencing if the laziness work is picked up
+
+1. **Close the loose ends first** (stale error string, LLVM stub error, user
+   docs). Cheap, unblocks everything else.
+2. **Option A (Haskell + OCaml)** behind a preference. Proves the
+   preference-gated dual-strategy model works end to end.
+3. **Option B (C++20)** — second easy win, same model.
+4. **Option C (Go)** after deciding on the MSRV bump.
+5. **Build the shared lowering pass** for Option D.
+6. **Option D (Rust)** on top of the shared pass.
+7. **Option E (C)** reusing the same pass.
+8. **Option F (LLVM)** last, or never.
+
+Each step is independently shippable and each earlier step de-risks the
+next. The eager path stays as the default (and the fallback for unsupported
+lazy cases) throughout.
