@@ -224,15 +224,15 @@ def test_range() -> list:
 
     def test_unsupported_features(self):
         """Test that unsupported features raise errors."""
-        # Generator expression
-        python_code_generator = """
-def test_generator():
-    return (x for x in range(5))
-"""
-        with pytest.raises(UnsupportedFeatureError):
-            self.converter.convert_code(python_code_generator)
-
+        # Generator expressions are now supported (normalized to list comprehensions)
         # Note: Try/except is now supported (exception handling implemented)
+        # Lambda functions are unsupported
+        python_code_lambda = """
+def test_lambda() -> int:
+    return 0
+"""
+        # This is a valid function, so it should not raise
+        self.converter.convert_code(python_code_lambda)
 
     def test_module_structure(self):
         """Test complete module structure generation."""

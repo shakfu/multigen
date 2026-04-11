@@ -4,9 +4,12 @@ import ast
 from typing import Any, Optional
 
 from ..converter_utils import (
+    extract_format_spec,
+    format_spec_to_printf,
     get_augmented_assignment_operator,
     get_standard_binary_operator,
     get_standard_comparison_operator,
+    normalize_ast,
 )
 from ..errors import TypeMappingError, UnsupportedFeatureError
 from ..type_inference_strategies import InferenceContext
@@ -79,6 +82,7 @@ class MultiGenPythonToGoConverter:
         """Convert Python code to Go."""
         try:
             tree = ast.parse(python_code)
+            tree = normalize_ast(tree)
             return self._convert_module(tree)
         except Exception as e:
             raise TypeMappingError(f"Failed to convert Python code: {e}") from e
@@ -575,6 +579,9 @@ class MultiGenPythonToGoConverter:
 
         params_str = ", ".join(params)
 
+        # Detect generator functions (contain yield)
+        is_generator = any(isinstance(n, (ast.Yield, ast.YieldFrom)) for n in ast.walk(node))
+
         # Get return type
         # Special case: Go's main function must not have a return type
         return_type = ""
@@ -597,6 +604,12 @@ class MultiGenPythonToGoConverter:
                 if inferred_type:
                     return_type = " " + inferred_type
 
+        # For generators, rewrite return type
+        gen_element_type = "int"  # default
+        if is_generator:
+            gen_element_type = self._get_generator_element_type_go(node)
+            return_type = f" []{gen_element_type}"
+
         # Build function signature
         func_signature = f"func {node.name}({params_str}){return_type}"
 
@@ -606,6 +619,8 @@ class MultiGenPythonToGoConverter:
         self.variable_types = {}  # Reset variable type tracking for new function
         self.nested_vars = nested_vars  # Store for use in type inference
         self.append_map = append_map
+        self._is_generator = is_generator
+        self._gen_element_type_go = gen_element_type
 
         # Add parameters to variable types first
         for arg in node.args.args:
@@ -639,7 +654,16 @@ class MultiGenPythonToGoConverter:
         for arg in node.args.args:
             self.declared_vars.add(arg.arg)
 
+        # For generators, inject accumulator before body
+        gen_prefix = ""
+        if is_generator:
+            gen_prefix = f"    __mgen_result := []{gen_element_type}{{}}\n"
+
         body = self._convert_statements(node.body)
+
+        # For generators, add return at end
+        if is_generator:
+            body = gen_prefix + body + "\n    return __mgen_result"
 
         # Detect unused variables and mark them with _ = variable
         unused_vars = self._detect_unused_variables(node.body)
@@ -1008,6 +1032,10 @@ class MultiGenPythonToGoConverter:
             return self._convert_while(stmt)
         elif isinstance(stmt, ast.For):
             return self._convert_for(stmt)
+        elif isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.YieldFrom):
+            return self._convert_yield_from(stmt.value)
+        elif isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Yield):
+            return self._convert_yield(stmt.value)
         elif isinstance(stmt, ast.Expr):
             return self._convert_expression_statement(stmt)
         elif isinstance(stmt, ast.Pass):
@@ -1022,6 +1050,44 @@ class MultiGenPythonToGoConverter:
             return self._convert_with(stmt)
         else:
             raise UnsupportedFeatureError(f"Unsupported statement type: {type(stmt).__name__}")
+
+    def _convert_yield(self, node: ast.Yield) -> str:
+        """Convert yield to append on accumulator."""
+        if node.value is not None:
+            value = self._convert_expression(node.value)
+        else:
+            value = "0"
+        return f"    __mgen_result = append(__mgen_result, {value})"
+
+    def _convert_yield_from(self, node: ast.YieldFrom) -> str:
+        """Convert yield from to extend accumulator with iterable."""
+        # Handle range() specially
+        if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name):
+            if node.value.func.id == "range":
+                args = node.value.args
+                if len(args) == 1:
+                    end = self._convert_expression(args[0])
+                    return f"    for __mgen_yf := 0; __mgen_yf < {end}; __mgen_yf++ {{ __mgen_result = append(__mgen_result, __mgen_yf) }}"
+                elif len(args) == 2:
+                    start = self._convert_expression(args[0])
+                    end = self._convert_expression(args[1])
+                    return f"    for __mgen_yf := {start}; __mgen_yf < {end}; __mgen_yf++ {{ __mgen_result = append(__mgen_result, __mgen_yf) }}"
+                elif len(args) == 3:
+                    start = self._convert_expression(args[0])
+                    end = self._convert_expression(args[1])
+                    step = self._convert_expression(args[2])
+                    return f"    for __mgen_yf := {start}; __mgen_yf < {end}; __mgen_yf += {step} {{ __mgen_result = append(__mgen_result, __mgen_yf) }}"
+        # For function calls and variables, use variadic append
+        expr = self._convert_expression(node.value)
+        return f"    __mgen_result = append(__mgen_result, {expr}...)"
+
+    def _get_generator_element_type_go(self, node: ast.FunctionDef) -> str:
+        """Determine the Go element type yielded by a generator."""
+        if node.returns:
+            mapped = self._map_type_annotation(node.returns)
+            if mapped in ("int", "float64", "bool", "string"):
+                return mapped
+        return "int"
 
     def _convert_assert(self, stmt: ast.Assert) -> str:
         """Convert Python assert statement to Go panic on failure.
@@ -1140,6 +1206,25 @@ class MultiGenPythonToGoConverter:
             if body_line:
                 for line in body_line.split("\n"):
                     lines.append(f"    {line}")
+
+        # else clause: runs if no exception (appended to try body)
+        if stmt.orelse:
+            lines.append("        // else (no exception)")
+            for s in stmt.orelse:
+                body_line = self._convert_statement(s)
+                if body_line:
+                    for line in body_line.split("\n"):
+                        lines.append(f"        {line}")
+
+        # Convert finally clause if present -- use defer for cleanup
+        if stmt.finalbody:
+            lines.append("        defer func() {")
+            for s in stmt.finalbody:
+                body_line = self._convert_statement(s)
+                if body_line:
+                    for line in body_line.split("\n"):
+                        lines.append(f"            {line}")
+            lines.append("        }()")
 
         lines.append("    }()")
 
@@ -1955,12 +2040,28 @@ class MultiGenPythonToGoConverter:
         value_expr = self._convert_expression(expr.value)
 
         if isinstance(expr.slice, ast.Slice):
-            # Handle slicing
-            raise UnsupportedFeatureError("Slice operations not supported in Go backend")
+            return self._convert_slice(expr)
         else:
             # Simple subscript
             index_expr = self._convert_expression(expr.slice)
             return f"{value_expr}[{index_expr}]"
+
+    def _convert_slice(self, expr: ast.Subscript) -> str:
+        """Convert slice operation to Go slice expression.
+
+        Examples:
+            list[1:3] -> list[1:3]
+            list[1:]  -> list[1:]
+            list[:2]  -> list[:2]
+        """
+        slice_obj = expr.slice
+        assert isinstance(slice_obj, ast.Slice), "Expected ast.Slice"
+
+        obj = self._convert_expression(expr.value)
+        start = self._convert_expression(slice_obj.lower) if slice_obj.lower else ""
+        stop = self._convert_expression(slice_obj.upper) if slice_obj.upper else ""
+
+        return f"{obj}[{start}:{stop}]"
 
     def _convert_f_string(self, expr: ast.JoinedStr) -> str:
         """Convert f-string to Go fmt.Sprintf.
@@ -1980,9 +2081,14 @@ class MultiGenPythonToGoConverter:
                     literal = value.value.replace("%", "%%")
                     format_parts.append(literal)
             elif isinstance(value, ast.FormattedValue):
-                # Expression to be formatted - use %v (value in default format)
-                format_parts.append("%v")
                 expr_code = self._convert_expression(value.value)
+                spec = extract_format_spec(value)
+                if spec:
+                    # Convert Python format spec to Go fmt verb
+                    go_fmt = format_spec_to_printf(spec)
+                    format_parts.append(go_fmt)
+                else:
+                    format_parts.append("%v")
                 args.append(expr_code)
 
         format_string = "".join(format_parts)

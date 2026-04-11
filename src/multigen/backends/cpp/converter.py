@@ -24,9 +24,12 @@ from typing import Any, Optional, Union
 
 from ..base import AbstractEmitter
 from ..converter_utils import (
+    extract_format_spec,
+    format_spec_to_printf,
     get_standard_binary_operator,
     get_standard_comparison_operator,
     get_standard_unary_operator,
+    normalize_ast,
 )
 from ..errors import TypeMappingError, UnsupportedFeatureError
 from ..preferences import BackendPreferences
@@ -65,6 +68,7 @@ class MultiGenPythonToCppConverter:
         """Convert Python source code to C++ code."""
         try:
             tree = ast.parse(source_code)
+            tree = normalize_ast(tree)
             return self._convert_module(tree)
         except (UnsupportedFeatureError, TypeMappingError):
             # Re-raise our specific exceptions without wrapping
@@ -157,8 +161,17 @@ class MultiGenPythonToCppConverter:
         self.current_function = node.name
         self.variable_context.clear()
 
+        # Detect generator functions (contain yield)
+        is_generator = any(isinstance(n, (ast.Yield, ast.YieldFrom)) for n in ast.walk(node))
+
         # Get return type
         return_type = self._get_return_type(node)
+
+        # For generators, determine the yielded element type and rewrite return type
+        gen_element_type = "int"  # default
+        if is_generator:
+            gen_element_type = self._get_generator_element_type(node, return_type)
+            return_type = f"std::vector<{gen_element_type}>"
 
         # Pre-pass 0: Analyze parameter usage to detect nested containers
         nested_params = self._analyze_nested_subscripts(node.body)
@@ -184,10 +197,19 @@ class MultiGenPythonToCppConverter:
 
         # Generate function body
         body_parts = []
+
+        # For generators, inject accumulator at start
+        if is_generator:
+            body_parts.append(f"std::vector<{gen_element_type}> __mgen_result;")
+
         for stmt in node.body:
             converted = self._convert_statement(stmt)
             if converted.strip():
                 body_parts.append(converted)
+
+        # For generators, add return at end
+        if is_generator:
+            body_parts.append("return __mgen_result;")
 
         body = "\n".join(body_parts)
 
@@ -198,6 +220,16 @@ class MultiGenPythonToCppConverter:
         self.current_function = None
         self.append_map = {}  # Clear after function
         return function
+
+    def _get_generator_element_type(self, node: ast.FunctionDef, return_type: str) -> str:
+        """Determine the element type yielded by a generator function."""
+        # Check return annotation first (e.g., -> int means yields int)
+        if node.returns:
+            ann_type = self._convert_type_annotation(node.returns)
+            if ann_type in ("int", "double", "bool", "std::string"):
+                return ann_type
+        # Default to int
+        return "int"
 
     def _analyze_nested_subscripts(self, stmts: list[ast.stmt]) -> set[str]:
         """Detect variables used with nested subscripts like a[i][j]."""
@@ -862,6 +894,10 @@ class MultiGenPythonToCppConverter:
             return self._convert_while(stmt)
         elif isinstance(stmt, ast.For):
             return self._convert_for(stmt)
+        elif isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.YieldFrom):
+            return self._convert_yield_from(stmt.value)
+        elif isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Yield):
+            return self._convert_yield(stmt.value)
         elif isinstance(stmt, ast.Expr):
             return self._convert_expression_statement(stmt)
         elif isinstance(stmt, ast.Pass):
@@ -876,6 +912,36 @@ class MultiGenPythonToCppConverter:
             return self._convert_with(stmt)
         else:
             raise UnsupportedFeatureError(f"Unsupported statement type: {type(stmt).__name__}")
+
+    def _convert_yield(self, node: ast.Yield) -> str:
+        """Convert yield to push_back on accumulator."""
+        if node.value is not None:
+            value = self._convert_expression(node.value)
+        else:
+            value = "0"
+        return f"__mgen_result.push_back({value});"
+
+    def _convert_yield_from(self, node: ast.YieldFrom) -> str:
+        """Convert yield from to extend accumulator with iterable."""
+        # Handle range() specially - generate a counting loop
+        if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name):
+            if node.value.func.id == "range":
+                args = node.value.args
+                if len(args) == 1:
+                    end = self._convert_expression(args[0])
+                    return f"for (int __mgen_yf = 0; __mgen_yf < {end}; __mgen_yf++) {{ __mgen_result.push_back(__mgen_yf); }}"
+                elif len(args) == 2:
+                    start = self._convert_expression(args[0])
+                    end = self._convert_expression(args[1])
+                    return f"for (int __mgen_yf = {start}; __mgen_yf < {end}; __mgen_yf++) {{ __mgen_result.push_back(__mgen_yf); }}"
+                elif len(args) == 3:
+                    start = self._convert_expression(args[0])
+                    end = self._convert_expression(args[1])
+                    step = self._convert_expression(args[2])
+                    return f"for (int __mgen_yf = {start}; __mgen_yf < {end}; __mgen_yf += {step}) {{ __mgen_result.push_back(__mgen_yf); }}"
+        # For function calls and variables, use range-based for loop
+        expr = self._convert_expression(node.value)
+        return f"for (auto __mgen_yf : {expr}) {{ __mgen_result.push_back(__mgen_yf); }}"
 
     def _convert_assert(self, stmt: ast.Assert) -> str:
         """Convert Python assert statement to C++ assert() call.
@@ -943,6 +1009,16 @@ class MultiGenPythonToCppConverter:
                     if line.strip():
                         lines.append(f"    {line}")
 
+        # else clause: runs if no exception (appended to try body)
+        if stmt.orelse:
+            lines.append("            // else (no exception)")
+            for s in stmt.orelse:
+                converted = self._convert_statement(s)
+                if converted.strip():
+                    for line in converted.split("\n"):
+                        if line.strip():
+                            lines.append(f"    {line}")
+
         lines.append("        }")
 
         # Convert exception handlers
@@ -977,6 +1053,16 @@ class MultiGenPythonToCppConverter:
                             lines.append(f"    {line}")
 
             lines.append("        }")
+
+        # Convert finally clause if present
+        if stmt.finalbody:
+            lines.append("        // finally")
+            for s in stmt.finalbody:
+                converted = self._convert_statement(s)
+                if converted.strip():
+                    for line in converted.split("\n"):
+                        if line.strip():
+                            lines.append(f"    {line}")
 
         return "\n".join(lines)
 
@@ -1663,12 +1749,57 @@ class MultiGenPythonToCppConverter:
         value_expr = self._convert_expression(expr.value)
 
         if isinstance(expr.slice, ast.Slice):
-            # Handle slicing (not fully supported in C++, would need custom implementation)
-            raise UnsupportedFeatureError("Slice operations not supported in C++ backend")
+            return self._convert_slice(expr)
         else:
             # Simple subscript
             index_expr = self._convert_expression(expr.slice)
             return f"{value_expr}[{index_expr}]"
+
+    def _convert_slice(self, expr: ast.Subscript) -> str:
+        """Convert slice operation to C++ vector or string slice.
+
+        Examples:
+            list[1:3] -> vector<T>(list.begin() + 1, list.begin() + 3)
+            list[1:]  -> vector<T>(list.begin() + 1, list.end())
+            str[1:3]  -> str.substr(1, 2)
+            str[1:]   -> str.substr(1)
+        """
+        slice_obj = expr.slice
+        assert isinstance(slice_obj, ast.Slice), "Expected ast.Slice"
+
+        obj = self._convert_expression(expr.value)
+
+        # Determine the C++ type
+        cpp_type = None
+        if isinstance(expr.value, ast.Name):
+            var_name = expr.value.id
+            if var_name in self.variable_context:
+                cpp_type = self.variable_context[var_name]
+            elif var_name in self.container_variables:
+                cpp_type = self.container_variables[var_name].get("cpp_type", None)
+
+        start = self._convert_expression(slice_obj.lower) if slice_obj.lower else None
+        stop = self._convert_expression(slice_obj.upper) if slice_obj.upper else None
+
+        # String slicing uses substr
+        if cpp_type == "std::string":
+            if start and stop:
+                return f"{obj}.substr({start}, {stop} - {start})"
+            elif start:
+                return f"{obj}.substr({start})"
+            elif stop:
+                return f"{obj}.substr(0, {stop})"
+            else:
+                return f"{obj}.substr(0)"
+
+        # Vector slicing uses iterator constructor
+        begin = f"{obj}.begin() + {start}" if start else f"{obj}.begin()"
+        end = f"{obj}.begin() + {stop}" if stop else f"{obj}.end()"
+
+        if cpp_type:
+            return f"{cpp_type}({begin}, {end})"
+        else:
+            return f"decltype({obj})({begin}, {end})"
 
     def _convert_f_string(self, expr: ast.JoinedStr) -> str:
         """Convert f-string to C++ string concatenation.
@@ -1686,7 +1817,18 @@ class MultiGenPythonToCppConverter:
             elif isinstance(value, ast.FormattedValue):
                 # Expression to be converted to string
                 expr_code = self._convert_expression(value.value)
-                parts.append(self._to_string_cpp(expr_code, value.value))
+                spec = extract_format_spec(value)
+                if spec:
+                    # Use snprintf for formatted output
+                    self.includes_needed.add("<cstdio>")
+                    printf_fmt = format_spec_to_printf(spec)
+                    parts.append(
+                        f"([&]() {{ char buf[64]; "
+                        f'std::snprintf(buf, sizeof(buf), "{printf_fmt}", {expr_code}); '
+                        f"return std::string(buf); }}())"
+                    )
+                else:
+                    parts.append(self._to_string_cpp(expr_code, value.value))
 
         if len(parts) == 0:
             return '""'

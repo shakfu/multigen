@@ -263,7 +263,7 @@ JIT mode uses llvmlite's execution engine:
 
 - [llvmlite Documentation](https://llvmlite.readthedocs.io/)
 - [LLVM Execution Engine](https://llvm.org/docs/MCJITDesignAndImplementation.html)
-- [MultiGen LLVM Backend Roadmap](../../../LLVM_BACKEND_ROADMAP.md)
+- [MultiGen LLVM Backend Roadmap](LLVM_BACKEND_ROADMAP.md)
 
 ## Contributing
 
@@ -274,4 +274,4 @@ To add JIT support for runtime libraries:
 3. Add module to execution engine
 4. Test with benchmarks requiring runtime
 
-See [LLVM_BACKEND_ROADMAP.md](../../../LLVM_BACKEND_ROADMAP.md) for development guidelines.
+See [LLVM_BACKEND_ROADMAP.md](LLVM_BACKEND_ROADMAP.md) for development guidelines.

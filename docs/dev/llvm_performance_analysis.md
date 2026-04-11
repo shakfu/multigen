@@ -45,9 +45,9 @@ Comprehensive performance analysis of the LLVM backend against compiled systems 
 
 | Backend | Time (ms) | vs LLVM | Winner |
 |---------|-----------|---------|--------|
-| Go | 58.5 | **3.9x faster** | [x] |
-| C++ | 215.1 | 1.1x faster | [x] |
-| Rust | 217.9 | 1.0x faster | [x] |
+| Go | 58.5 | **3.9x faster** | yes |
+| C++ | 215.1 | 1.1x faster | yes |
+| Rust | 217.9 | 1.0x faster | yes |
 | **LLVM** | **225.8** | baseline | — |
 | C | 227.6 | 1.0x slower | |
 | OCaml | 227.9 | 1.0x slower | |
@@ -58,10 +58,10 @@ Comprehensive performance analysis of the LLVM backend against compiled systems 
 
 | Backend | Time (ms) | vs LLVM | Winner |
 |---------|-----------|---------|--------|
-| Go | 52.0 | **4.9x faster** | [x] |
-| Rust | 206.3 | 1.2x faster | [x] |
-| C | 207.6 | 1.2x faster | [x] |
-| OCaml | 208.2 | 1.2x faster | [x] |
+| Go | 52.0 | **4.9x faster** | yes |
+| Rust | 206.3 | 1.2x faster | yes |
+| C | 207.6 | 1.2x faster | yes |
+| OCaml | 208.2 | 1.2x faster | yes |
 | **LLVM** | **254.3** | baseline | — |
 | C++ | 568.7 | 2.2x slower | |
 
@@ -71,8 +71,8 @@ Comprehensive performance analysis of the LLVM backend against compiled systems 
 
 | Backend | Time (ms) | vs LLVM | Winner |
 |---------|-----------|---------|--------|
-| Go | 53.7 | **3.9x faster** | [x] |
-| Rust | 206.2 | 1.0x faster | [x] |
+| Go | 53.7 | **3.9x faster** | yes |
+| Rust | 206.2 | 1.0x faster | yes |
 | **LLVM** | **211.6** | baseline | — |
 | C | 212.1 | 1.0x slower | |
 | C++ | 212.2 | 1.0x slower | |
@@ -84,10 +84,10 @@ Comprehensive performance analysis of the LLVM backend against compiled systems 
 
 | Backend | Time (ms) | vs LLVM | Winner |
 |---------|-----------|---------|--------|
-| Go | 55.3 | **4.0x faster** | [x] |
-| C++ | 213.5 | 1.0x faster | [x] |
-| Rust | 218.6 | 1.0x faster | [x] |
-| C | 220.0 | 1.0x faster | [x] |
+| Go | 55.3 | **4.0x faster** | yes |
+| C++ | 213.5 | 1.0x faster | yes |
+| Rust | 218.6 | 1.0x faster | yes |
+| C | 220.0 | 1.0x faster | yes |
 | **LLVM** | **221.5** | baseline | — |
 | OCaml | 231.5 | 1.0x slower | |
 
@@ -97,9 +97,9 @@ Comprehensive performance analysis of the LLVM backend against compiled systems 
 
 | Backend | Time (ms) | vs LLVM | Winner |
 |---------|-----------|---------|--------|
-| Go | 54.6 | **3.9x faster** | [x] |
-| C | 208.0 | 1.0x faster | [x] |
-| C++ | 211.0 | 1.0x faster | [x] |
+| Go | 54.6 | **3.9x faster** | yes |
+| C | 208.0 | 1.0x faster | yes |
+| C++ | 211.0 | 1.0x faster | yes |
 | **LLVM** | **213.7** | baseline | — |
 | OCaml | 215.6 | 1.0x slower | |
 | Rust | 221.6 | 1.0x slower | |
@@ -110,11 +110,11 @@ Comprehensive performance analysis of the LLVM backend against compiled systems 
 
 | Backend | Time (ms) | vs LLVM | Winner |
 |---------|-----------|---------|--------|
-| Go | 56.8 | **4.0x faster** | [x] |
-| C | 209.7 | 1.1x faster | [x] |
-| Rust | 210.0 | 1.1x faster | [x] |
-| C++ | 215.0 | 1.1x faster | [x] |
-| OCaml | 220.3 | 1.0x faster | [x] |
+| Go | 56.8 | **4.0x faster** | yes |
+| C | 209.7 | 1.1x faster | yes |
+| Rust | 210.0 | 1.1x faster | yes |
+| C++ | 215.0 | 1.1x faster | yes |
+| OCaml | 220.3 | 1.0x faster | yes |
 | **LLVM** | **228.4** | baseline | — |
 
 **Insight**: LLVM's hash map implementation is slightly less optimized than C/Rust, but still competitive.
@@ -123,9 +123,9 @@ Comprehensive performance analysis of the LLVM backend against compiled systems 
 
 | Backend | Time (ms) | vs LLVM | Winner |
 |---------|-----------|---------|--------|
-| Go | 54.1 | **4.0x faster** | [x] |
-| Rust | 208.9 | 1.0x faster | [x] |
-| C | 211.6 | 1.0x faster | [x] |
+| Go | 54.1 | **4.0x faster** | yes |
+| Rust | 208.9 | 1.0x faster | yes |
+| C | 211.6 | 1.0x faster | yes |
 | **LLVM** | **216.4** | baseline | — |
 | C++ | 217.5 | 1.0x slower | |
 | OCaml | 245.1 | 1.1x slower | |
@@ -232,11 +232,11 @@ Go         2.3MB    2.4MB    2.4MB   0.3KB
 
 | Backend | Avg LOC | Readability | Maintainability |
 |---------|---------|-------------|-----------------|
-| OCaml | 27 | [x][x][x] High | Functional |
-| Rust | 37 | [x][x][x] High | Ownership clear |
-| Go | 38 | [x][x][x] High | Idiomatic |
-| C++ | 50 | [x][x] Medium | STL templates |
-| C | 76 | [x] Low | Manual memory |
+| OCaml | 27 | \[x\]\[x\]\[x\] High | Functional |
+| Rust | 37 | \[x\]\[x\]\[x\] High | Ownership clear |
+| Go | 38 | \[x\]\[x\]\[x\] High | Idiomatic |
+| C++ | 50 | \[x\]\[x\] Medium | STL templates |
+| C | 76 | \[x\] Low | Manual memory |
 | **LLVM** | **321** | — | IR (not human-written) |
 
 **Note**: LLVM IR is **not meant for human consumption**. It's an intermediate representation optimized for:
@@ -256,20 +256,20 @@ Go         2.3MB    2.4MB    2.4MB   0.3KB
 
 | Backend | Model | ASAN Verified | Leak Detection | Use-After-Free Prevention |
 |---------|-------|---------------|----------------|---------------------------|
-| **Rust** | Ownership | [x] | [x] (compile-time) | [x] (compile-time) |
-| **LLVM** | Manual | **[x] (v0.1.82)** | **[x] (runtime)** | **[x] (runtime)** |
+| **Rust** | Ownership | yes | \[x\] (compile-time) | \[x\] (compile-time) |
+| **LLVM** | Manual | **\[x\] (v0.1.82)** | **\[x\] (runtime)** | **\[x\] (runtime)** |
 | C | Manual | — | — | — |
 | C++ | RAII | — | Partial | Partial |
-| Go | GC | [x] | [x] (runtime) | [x] (runtime) |
+| Go | GC | yes | \[x\] (runtime) | \[x\] (runtime) |
 
 **LLVM Memory Safety Status** (v0.1.82):
 
-- [x] **0 memory leaks** across all benchmarks
-- [x] **0 use-after-free** errors
-- [x] **0 buffer overflows**
-- [x] **~8,300 lines** of runtime verified
-- [x] **AddressSanitizer** integration
-- [x] **Automated testing** infrastructure
+- \[x\] **0 memory leaks** across all benchmarks
+- \[x\] **0 use-after-free** errors
+- \[x\] **0 buffer overflows**
+- \[x\] **~8,300 lines** of runtime verified
+- \[x\] **AddressSanitizer** integration
+- \[x\] **Automated testing** infrastructure
 
 **Comparison**:
 
@@ -295,9 +295,9 @@ multigen build --target llvm program.py
 | Level | Compile Time | Execution Time | Binary Size | vs O0 |
 |-------|-------------|----------------|-------------|-------|
 | O0 | 245ms | 312ms | 38KB | baseline |
-| O1 | 268ms (+9%) | 251ms (-20%) | 38KB | [x] Faster exec |
-| O2 | 287ms (+17%) | 226ms (-28%) | 38KB | [x][x] Much faster |
-| O3 | 315ms (+29%) | 221ms (-29%) | 38KB | [x][x][x] Best exec |
+| O1 | 268ms (+9%) | 251ms (-20%) | 38KB | \[x\] Faster exec |
+| O2 | 287ms (+17%) | 226ms (-28%) | 38KB | \[x\]\[x\] Much faster |
+| O3 | 315ms (+29%) | 221ms (-29%) | 38KB | \[x\]\[x\]\[x\] Best exec |
 
 **Recommendation**: Use **O2** (default) for balanced compile/exec times, **O3** for production deployments.
 
@@ -323,7 +323,7 @@ multigen build --target llvm program.py
 | Backend | Binary Size | Execution | Rank |
 |---------|-------------|-----------|------|
 | **C++** | 36KB | 265ms | 1st |
-| **LLVM** | 49KB | 225ms | **2nd** [x] |
+| **LLVM** | 49KB | 225ms | **2nd** \[x\] |
 | C | 66KB | 214ms | 3rd |
 | Rust | 446KB | 213ms | 4th |
 
@@ -336,7 +336,7 @@ multigen build --target llvm program.py
 | Backend | Binary Size | Compile | Total | Rank |
 |---------|-------------|---------|-------|------|
 | **Go** | 2.4MB | 81ms | 2.4MB/81ms | 1st |
-| **LLVM** | 49KB | 312ms | **49KB/312ms** | **2nd** [x] |
+| **LLVM** | 49KB | 312ms | **49KB/312ms** | **2nd** \[x\] |
 | Rust | 446KB | 227ms | 446KB/227ms | 3rd |
 | C++ | 36KB | 389ms | 36KB/389ms | 4th |
 
@@ -351,7 +351,7 @@ multigen build --target llvm program.py
 | **Go** | 55ms | 1st |
 | **Rust** | 213ms | 2nd |
 | **C** | 214ms | 3rd |
-| **LLVM** | 225ms | **4th** [x] |
+| **LLVM** | 225ms | **4th** \[x\] |
 | **OCaml** | 223ms | 5th |
 | **C++** | 265ms | 6th |
 
@@ -364,7 +364,7 @@ multigen build --target llvm program.py
 | Backend | Total Time | Mode | Rank |
 |---------|-----------|------|------|
 | **Go** | 136ms | AOT | 1st |
-| **LLVM** | **~200ms** | **JIT** | **2nd** [x] |
+| **LLVM** | **~200ms** | **JIT** | **2nd** \[x\] |
 | **Rust** | 440ms | AOT | 3rd |
 | **LLVM** | 536ms | AOT | 4th |
 
@@ -432,13 +432,13 @@ multigen build --target llvm program.py
 
 ### When to Choose LLVM
 
-[x] **Production deployments** where binary size matters
-[x] **Embedded systems** with memory constraints
-[x] **Serverless functions** needing fast cold starts
-[x] **String-heavy applications** (wordcount, parsing, etc.)
-[x] **Development/testing** with JIT mode
-[x] **Cross-platform targets** (future: WebAssembly, ARM)
-[x] **Performance-critical code** where execution speed > compile speed
+\[x\] **Production deployments** where binary size matters
+\[x\] **Embedded systems** with memory constraints
+\[x\] **Serverless functions** needing fast cold starts
+\[x\] **String-heavy applications** (wordcount, parsing, etc.)
+\[x\] **Development/testing** with JIT mode
+\[x\] **Cross-platform targets** (future: WebAssembly, ARM)
+\[x\] **Performance-critical code** where execution speed > compile speed
 
 ### When to Choose Alternatives
 
@@ -525,15 +525,15 @@ scores: dict[str, int] = {"alice": 100, "bob": 95}
 
 | Metric | LLVM | Best | vs Best | Verdict |
 |--------|------|------|---------|---------|
-| Execution Speed | 225ms | 55ms (Go) | 4.1x slower | [x][x] Excellent |
-| Binary Size | 49KB | 36KB (C++) | 1.4x larger | [x][x][x] Outstanding |
-| Compilation Speed | 312ms | 81ms (Go) | 3.8x slower | [x] Good |
-| Memory Safety | 0 leaks | Rust | Runtime vs compile-time | [x][x] Very Good |
+| Execution Speed | 225ms | 55ms (Go) | 4.1x slower | \[x\]\[x\] Excellent |
+| Binary Size | 49KB | 36KB (C++) | 1.4x larger | \[x\]\[x\]\[x\] Outstanding |
+| Compilation Speed | 312ms | 81ms (Go) | 3.8x slower | \[x\] Good |
+| Memory Safety | 0 leaks | Rust | Runtime vs compile-time | \[x\]\[x\] Very Good |
 | Code Quality | 321 LOC IR | 27 LOC (OCaml) | N/A | — Intermediate |
 
 ### Overall Assessment
 
-**LLVM Backend Rating: [+][+][+][+][+] (5/5)**
+**LLVM Backend Rating: +++++ (5/5)**
 
 The LLVM backend delivers **exceptional performance** for a compiler backend:
 

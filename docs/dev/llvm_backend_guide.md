@@ -10,7 +10,7 @@
 
 1. [Overview](#overview)
 2. [Quick Start](#quick-start)
-3. [Features & Capabilities](#features--capabilities)
+3. [Features & Capabilities](#features-capabilities)
 4. [Compilation Modes](#compilation-modes)
 5. [Optimization Levels](#optimization-levels)
 6. [String Operations](#string-operations)
@@ -922,17 +922,16 @@ set[int]             %struct.set_int*    set_int*
 
 ### Documentation
 
-- [Backend Comparison](backend_comparison.md) - Compare all 7 backends
-- [Memory Testing Guide](dev/llvm_memory_testing.md) - ASAN usage
-- [JIT Mode Details](dev/llvm_jit.md) - JIT compilation
-- [Production Roadmap](../PRODUCTION_ROADMAP.md) - Future plans
+- [Backend Comparison](../backend_comparison.md) - Compare all 7 backends
+- [Memory Testing Guide](llvm_memory_testing.md) - ASAN usage
+- [JIT Mode Details](llvm_jit.md) - JIT compilation
 
 ### Development
 
-- [Architecture Overview](dev/ir_to_llvm_ir.md) - Design decisions
-- [Runtime Implementation](../src/multigen/backends/llvm/runtime/) - C code
-- [Test Suite](../tests/test_backend_llvm*.py) - 107 tests
-- [String Method Tests](../tests/test_llvm_string_methods.py) - 20 tests
+- [Architecture Overview](ir_to_llvm_ir.md) - Design decisions
+- Runtime Implementation: `src/multigen/backends/llvm/runtime/`
+- Test Suite: `tests/test_backend_llvm*.py`
+- String Method Tests: `tests/test_llvm_string_methods.py`
 
 ### Examples
 

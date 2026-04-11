@@ -15,9 +15,291 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ---
 
-## [0.1.x]
+## [Unreleased]
 
-## [0.1.113] - 2026-02-01
+## [0.1.116]
+
+### Added
+
+- **`mgen check` CLI command** -- Validates Python files against the supported subset without converting
+  - `mgen check file.py` reports valid/invalid with tier level and violation details
+  - `mgen check --report file.py` outputs the full feature support report
+  - Wires up the existing `SubsetValidator` to a standalone CLI subcommand
+  - Supports multiple input files in a single invocation
+
+- **List slicing across all text-based backends** (6/7 backends)
+  - `arr[1:3]`, `arr[1:]`, `arr[:2]` now work in C++, Go, Rust, OCaml (C and Haskell already supported)
+  - **C++**: `vector<T>(v.begin() + start, v.begin() + stop)` iterator-pair constructor
+  - **Go**: Native slice syntax `v[start:stop]`
+  - **Rust**: `v[start..stop].to_vec()` range indexing
+  - **OCaml**: `Array.sub v start length`
+  - **C**: Loop-based slicing (existing, regression tested)
+  - **Haskell**: `drop`/`take` (existing, regression tested)
+  - LLVM not yet supported (requires IR-level changes)
+
+- **F-string format specifications** (all 7 backends)
+  - Numeric precision: `f"{x:.2f}"`, `f"{x:.4e}"`
+  - Integer formatting: `f"{n:d}"`, `f"{n:x}"`, `f"{n:X}"`, `f"{n:o}"`
+  - Shared utilities: `extract_format_spec()` and `format_spec_to_printf()` in `converter_utils.py`
+  - **C/C++**: printf-style `%.2f` / `snprintf` formatting
+  - **Go**: Printf verbs in `fmt.Sprintf` (`%.2f`, `%x`)
+  - **Rust**: `format!` macro with `:{spec}` syntax (`:.2`, `:x`)
+  - **Haskell**: `Text.Printf.printf` with printf-style format strings
+  - **OCaml**: `Printf.sprintf` with printf-style format strings
+  - Conversion flags (`!r`, `!s`, `!a`) remain unsupported
+
+- **`finally` clause for try/except** (all 7 backends)
+  - `try/except/finally` blocks now accepted by the validator
+  - **C++**: Finally body emitted sequentially after try/catch block
+  - **C**: Finally body emitted after `MGEN_END_TRY` macro
+  - **Go**: `defer func(){}()` block for cleanup semantics
+  - **Rust**: Finally body emitted after `catch_unwind` match block
+  - **Haskell**: Finally body emitted after `catch` expression
+  - **OCaml**: Finally body emitted after `try/with` expression
+
+- **`else` clause for try/except** (all 7 backends)
+  - `try/except/else` blocks now accepted by the validator
+  - Else body appended to end of try body (runs only when no exception raised)
+  - All 7 backends: C++, C, Go, Rust, Haskell, OCaml emit else body with comment marker
+  - Combined `try/except/else/finally` fully supported
+
+- **String slicing** (6/7 backends)
+  - `s[1:3]`, `s[1:]`, `s[:2]` on string variables now work
+  - **C++**: `s.substr(start, length)` -- detects `std::string` type from variable context
+  - **Rust**: `s[start..stop].to_string()` -- detects `String` type from variable types
+  - **OCaml**: `String.sub s start length` -- detects `str` type from parameter/variable tracking
+  - **Go**: Native `s[start:stop]` -- works identically to list slicing
+  - **Haskell**: `drop`/`take` -- strings are `[Char]`, same as list slicing
+  - **C**: `mgen_substring(s, start, length)` -- detects `char*` type
+  - LLVM not yet supported (requires IR-level changes)
+
+- **68 new tests** in `tests/test_check_slice_fspec_finally.py`
+  - `TestCheckCommand` (5 tests): CLI parser, valid/invalid/missing file handling, multi-file
+  - `TestSlice*` (14 tests): Validation + list slicing code generation for 6 backends
+  - `TestFStringFormatSpec*` (17 tests): Validation + code generation for all 7 backends
+  - `TestFinally*` (9 tests): Validation + code generation for all 7 backends
+  - `TestStringSlice*` (9 tests): String slicing for C++, Go, Rust, OCaml, Haskell
+  - `TestElse*` (10 tests): Validation + else clause code generation for all 7 backends
+  - `TestElseValidation` (3 tests): else valid, else+finally valid, chaining still rejected
+
+### Changed
+
+- **Test count**: 1285 -> 1353 (68 new tests, 2 updated from rejection to acceptance)
+- **Validator**: F-string `format_spec` no longer rejected; validated against supported spec patterns
+- **Validator**: `finally` and `else` clauses no longer rejected; exception handling now fully supported
+- **Validator**: Exception handling constraints updated: `["No exception chaining (raise ... from ...)"]`
+- **Validator**: Added `_extract_format_spec_string()` and `_is_supported_format_spec()` helper methods
+- **CLI**: New `check` subcommand added alongside `convert`, `build`, `batch`, `clean`, `backends`
+- **OCaml backend**: Function parameter types now tracked in `self.variables` for type-aware slicing
+
+- **Documentation migrated from Sphinx to MkDocs** (Material theme)
+  - All 11 RST files converted to Markdown with updated content
+  - `mkdocs.yml` with Material theme, mkdocstrings for API docs, full nav
+  - 19 existing reference/technical docs integrated into nav
+  - `make docs` / `make docs-serve` / `make docs-deploy` targets updated
+  - `pyproject.toml` dependencies: sphinx -> mkdocs/mkdocs-material/mkdocstrings
+  - `site/` added to `.gitignore`
+  - Old `docs/sphinx/` directory removed
+
+### Removed
+
+- **17 stale/historical doc files** cleaned up from `docs/` and `docs/dev/`
+  - 6 stale: failure_analysis_report, production_roadmap, c_backend_plan, c_backend_improvement_plan, cgen_analysis_summary, cgen_mgen_comparison
+  - 11 historical: cpp/go/haskell/ocaml/rust_build_fix, next_steps, tier2_fixes_summary, immutablity-analysis, cli-redesign, diy-compiler, llvm_backend_complete
+
+## [0.1.115]
+
+### Added
+
+- **Generator expression support for all 7 backends** - `sum(x*x for x in range(n))` now works
+  - AST normalization approach: `GeneratorExp` nodes rewritten to `ListComp` before backend processing
+  - Single `_GeneratorExpNormalizer` (ast.NodeTransformer) in `converter_utils.py` handles all backends
+  - Semantically equivalent to list comprehensions under MGen's eager collection strategy
+  - Works with builtins: `sum(genexpr)`, `min(genexpr)`, `max(genexpr)`, `list(genexpr)`
+  - Filter conditions preserved: `sum(x for x in range(n) if x % 2 == 0)`
+
+- **15 new tests** in `tests/test_generators.py`
+  - `TestGeneratorExpressionValidation` (3 tests): sum, filter, standalone genexpr validation
+  - `TestGeneratorExpressionNormalization` (3 tests): genexpr->listcomp conversion, preservation of filters
+  - `TestCppGeneratorExpressions` (2 tests): sum and filter genexpr code generation
+  - `TestRustGeneratorExpressions` (2 tests): sum and filter genexpr code generation
+  - `TestGoGeneratorExpressions` (2 tests): sum and filter genexpr code generation
+  - `TestHaskellGeneratorExpressions` (2 tests): sum and filter genexpr code generation
+  - `TestOCamlGeneratorExpressions` (1 test): sum genexpr code generation (filter test included)
+
+### Changed
+
+- **Test count**: 1269 -> 1285 (16 new tests, 1 converted from rejection to acceptance)
+- **Validator**: `generator_expressions` rule moved from `TIER_4_UNSUPPORTED`/`NOT_SUPPORTED` to `TIER_2_STRUCTURED`/`FULLY_SUPPORTED`
+- **Validator**: Removed "No generator expressions" constraint from `generators` rule
+- **Static IR**: `IRBuilder` expression handler now accepts `ast.GeneratorExp` alongside `ast.ListComp` (defense-in-depth)
+- **Rust backend**: Removed explicit `GeneratorExp` -> `UnsupportedFeatureError` raise (unreachable after normalization)
+- **All 7 backend converters + base_converter**: Added `normalize_ast(tree)` call after `ast.parse()`
+
+### Technical Details
+
+Generator expressions have identical AST structure to list comprehensions (`.elt`, `.generators`),
+so the implementation normalizes them early rather than adding `isinstance` checks across 18+ files:
+
+```python
+# Input Python
+result = sum(x * x for x in range(n))
+
+# After AST normalization (GeneratorExp -> ListComp)
+result = sum([x * x for x in range(n)])
+
+# Output C++ (example)
+int result = multigen::sum(list_comprehension(Range(n), [](auto x) { return (x * x); }));
+```
+
+**Not supported**: Standalone generator expressions used as lazy iterators (e.g., `g = (x for x in items)` consumed incrementally). Under eager collection, the full list is materialized regardless.
+
+## [0.1.114]
+
+### Added
+
+- **`yield from` support for all 7 backends** - Extends accumulator with all elements from iterable
+  - **C++**: Range-based for loop with `push_back()`, or counting loop for `range()`
+  - **C**: Counting loop with `vec_int_push()`, or loop over temp vec for function calls/variables
+  - **Rust**: `for .. in` range loop, or `.extend()` for function calls/variables
+  - **Go**: C-style for loop, or variadic `append(result, expr...)` for function calls/variables
+  - **Haskell**: `++` list concatenation in fallback generator body
+  - **OCaml**: `for` loop prepending to ref, or `List.iter` for function calls/variables
+  - **LLVM**: Stub implementation (evaluates iterable expression; consistent with yield stub)
+
+- **Static IR support** for yield from
+  - New `IRYieldFrom` class in `frontend/static_ir.py` with `iterable: IRExpression` field
+  - Added `visit_yield_from()` abstract method to `IRVisitor` interface
+  - `IRBuilder` handles `ast.YieldFrom` in `_build_statement` and `_build_yield_from`
+  - Generator detection updated to scan for both `ast.Yield` and `ast.YieldFrom`
+
+- **Validator updates** for yield from
+  - `yield_from` rule upgraded from `NOT_SUPPORTED`/`TIER_4` to `PARTIALLY_SUPPORTED`/`TIER_2`
+  - New `_validate_yield_from` validator (allows function calls, range(), and variables)
+  - Removed "No yield from" constraint from generators rule
+
+- **`range()` special-casing** across all backends
+  - `yield from range(n)` generates a counting loop (not a list allocation)
+  - 1-arg, 2-arg, and 3-arg `range()` variants supported in all 7 backends
+  - Function calls and variables use extend/iterate pattern directly
+
+- **20 new tests** in `tests/test_generators.py`
+  - `TestGeneratorValidation`: yield_from_valid, yield_from_with_generator_call_valid
+  - `TestCppYieldFrom` (3 tests): range, function call, mixed yield + yield from
+  - `TestCYieldFrom` (3 tests): range, function call, mixed
+  - `TestRustYieldFrom` (3 tests): range, function call, mixed
+  - `TestGoYieldFrom` (3 tests): range, function call, mixed
+  - `TestHaskellYieldFrom` (3 tests): range, function call, mixed with `++`
+  - `TestOCamlYieldFrom` (3 tests): range, function call, mixed
+  - `TestIRGenerators`: ir_yield_from_node (IRYieldFrom creation and is_generator flag)
+
+- **Generator function support for all 7 backends** - Python `yield` now converts to eager list collection
+  - **C++**: `std::vector<T>` accumulator with `push_back()`, function returns `std::vector<int>`
+  - **C**: `vec_int` accumulator with `vec_int_push()`, function returns `vec_int`
+  - **Rust**: `Vec<T>` accumulator with `.push()`, function returns `Vec<i32>`
+  - **Go**: Slice accumulator with `append()`, function returns `[]int`
+  - **Haskell**: Recursive helper with accumulation pattern (`acc ++ [x]`), or `map`/`concatMap` for for-loop generators
+  - **OCaml**: `ref []` accumulator with prepend + `List.rev`, function returns `int list`
+  - **LLVM**: Stub implementation (evaluates yield value; full vec accumulation planned)
+
+- **Static IR support** for generators
+  - New `IRYield` class in `frontend/static_ir.py` for yield statement representation
+  - Added `is_generator` boolean field to `IRFunction` (auto-detected via `ast.Yield` scan)
+  - Added `visit_yield()` abstract method to `IRVisitor` interface
+  - `IRBuilder` handles `ast.Yield` in `_build_statement` and `_build_yield`
+
+- **Validator updates** for generator constraints
+  - `generators` rule upgraded from `EXPERIMENTAL` to `PARTIALLY_SUPPORTED`
+  - Added `yield_from` rejection rule (`NOT_SUPPORTED`)
+  - Added `generator_expressions` rejection rule (`NOT_SUPPORTED`)
+  - New `_validate_yield` validator method
+
+- **38 new tests** in `tests/test_generators.py`
+  - `TestGeneratorValidation` (5 tests): yield valid, yield_from rejected, generator expressions rejected
+  - `TestCppGenerators` (5 tests): simple, for-loop, conditional, return type, multiple yields
+  - `TestCGenerators` (5 tests): vec_int accumulation pattern
+  - `TestRustGenerators` (5 tests): Vec push pattern
+  - `TestGoGenerators` (5 tests): slice append pattern
+  - `TestHaskellGenerators` (5 tests): recursive accumulation and map patterns
+  - `TestOCamlGenerators` (5 tests): ref list prepend + List.rev pattern
+  - `TestIRGenerators` (3 tests): IRYield node, is_generator flag, yield in body
+
+### Changed
+
+- **Test count**: 1249 -> 1269 (20 new tests)
+- **Validator**: yield_from moved from Tier 4 (Unsupported) to Tier 2 (Structured)
+- **Generator detection**: All 7 backends updated to detect `ast.YieldFrom` alongside `ast.Yield`
+- **Batch build status**: 26/26 translations, 26/26 builds (zero failures)
+
+- **Test count**: 1183 -> 1249 (66 new tests total including generators)
+- **Validator**: generators rule moved from Tier 3 (Advanced) to Tier 2 (Structured)
+
+### Fixed
+
+- **AST analyzer complexity gate**: High complexity score (`UNSUPPORTED`) no longer blocks conversion -- only actual errors prevent translation. Triple-nested loops (e.g., matrix multiplication) now translate successfully.
+- **C backend rvalue address-of bug**: `len()` on nested container expressions (e.g., `len(matrix[i])`) no longer generates invalid `&func_call_expr`. Detects function call expressions and skips `&` prefix.
+- **Batch build**: 26/26 translations, 26/26 builds (was 25/26 + 25/26). `nested_dict_list.py` moved to `tests/translation/known_limitations/` (genuine type system limitation: `dict[str, list[int]]` not yet supported).
+
+- **mypy z3 type ignores**: Changed `type: ignore[import-not-found]` to `type: ignore[import-untyped]` across 6 files to fix strict mypy errors when z3 is installed
+
+### Technical Details
+
+`yield from` is the natural complement to `yield` in the eager collection strategy:
+- `yield x` appends one element to the accumulator
+- `yield from expr` extends the accumulator with all elements from the expression
+
+```python
+# Input Python
+def gen(n: int) -> int:
+    yield 0
+    yield from range(n)
+    yield 99
+
+# Output C++ (example)
+std::vector<int> gen(int n) {
+    std::vector<int> __mgen_result;
+    __mgen_result.push_back(0);
+    for (int __mgen_yf = 0; __mgen_yf < n; __mgen_yf++) { __mgen_result.push_back(__mgen_yf); }
+    __mgen_result.push_back(99);
+    return __mgen_result;
+}
+```
+
+Supported expressions: `yield from func()`, `yield from range(...)`, `yield from variable`.
+
+**Not supported** (Phase 2): `.send()`, `.throw()`, generator expressions, lazy evaluation.
+
+Generator functions are detected by scanning for `ast.Yield` nodes in the function body. The eager
+collection strategy transforms generators into functions that return a collected list:
+
+```python
+# Input Python
+def count_up(n: int) -> int:
+    i: int = 0
+    while i < n:
+        yield i
+        i += 1
+
+# Output C++ (example)
+std::vector<int> count_up(int n) {
+    std::vector<int> __mgen_result;
+    int i = 0;
+    while (i < n) {
+        __mgen_result.push_back(i);
+        i += 1;
+    }
+    return __mgen_result;
+}
+```
+
+The `__mgen_result` accumulator name is chosen to avoid collision with user variables. Each backend
+uses its idiomatic collection type and append operation.
+
+**Not supported** (Phase 2): `.send()`, `.throw()`, generator expressions, lazy evaluation.
+
+---
+
+## [0.1.113]
 
 **Haskell Achieves 7/7 Benchmarks - All 7 Backends Now at 100%**
 

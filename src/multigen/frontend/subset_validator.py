@@ -264,10 +264,10 @@ class StaticPythonSubsetValidator:
             validator=self._validate_f_string,
             c_mapping="String concatenation with type conversion (std::to_string, sprintf, etc.)",
             examples={
-                "valid": 'f"Result: {x}"\nf"Count: {len(items)} items"',
-                "invalid": 'f"Value: {x:.2f}"  # Format specs not yet supported',
+                "valid": 'f"Result: {x}"\nf"Pi: {pi:.2f}"\nf"Hex: {n:x}"',
+                "invalid": 'f"Value: {x!r}"  # Conversion flags not supported',
             },
-            constraints=["No format specifications in Phase 1", "Expressions must be type-inferrable"],
+            constraints=["Format specs: .Nf, d, x, X, o, e, E, %", "No conversion flags (!r, !s, !a)"],
         )
 
         # Tier 2: Structured Data (Feasible)
@@ -351,11 +351,45 @@ class StaticPythonSubsetValidator:
 
         rules["generators"] = FeatureRule(
             name="Generator Functions",
-            tier=SubsetTier.TIER_3_ADVANCED,
-            status=FeatureStatus.EXPERIMENTAL,
-            description="Generators as state machines",
+            tier=SubsetTier.TIER_2_STRUCTURED,
+            status=FeatureStatus.PARTIALLY_SUPPORTED,
+            description="Generator functions with yield/yield from (eager collection to list)",
             ast_nodes=[ast.Yield],
-            c_mapping="C state machine implementations",
+            validator=self._validate_yield,
+            constraints=["No .send() or .throw()"],
+            c_mapping="Function returning list/vector with accumulation pattern",
+            examples={
+                "valid": "def gen(n: int) -> int:\n    i: int = 0\n    while i < n:\n        yield i\n        i += 1",
+                "invalid": "gen.send(42)  # .send() not supported",
+            },
+        )
+
+        rules["yield_from"] = FeatureRule(
+            name="Yield From",
+            tier=SubsetTier.TIER_2_STRUCTURED,
+            status=FeatureStatus.PARTIALLY_SUPPORTED,
+            description="yield from for extending accumulator with iterable (eager collection)",
+            ast_nodes=[ast.YieldFrom],
+            validator=self._validate_yield_from,
+            constraints=["Function calls, range(), and variables only", "No .send() or .throw()"],
+            c_mapping="Extend accumulator with all elements from iterable",
+            examples={
+                "valid": "def gen(n: int) -> int:\n    yield from range(n)",
+                "invalid": "def gen():\n    yield from (x for x in range(10))",
+            },
+        )
+
+        rules["generator_expressions"] = FeatureRule(
+            name="Generator Expressions",
+            tier=SubsetTier.TIER_2_STRUCTURED,
+            status=FeatureStatus.FULLY_SUPPORTED,
+            description="Generator expressions normalized to list comprehensions (eager collection)",
+            ast_nodes=[ast.GeneratorExp],
+            c_mapping="Normalized to list comprehension, then standard comprehension handling",
+            examples={
+                "valid": "total: int = sum(x * x for x in range(10))",
+                "invalid": "g = (x for x in range(10))  # Standalone genexpr as lazy iterator",
+            },
         )
 
         rules["generics"] = FeatureRule(
@@ -415,15 +449,15 @@ class StaticPythonSubsetValidator:
         rules["exceptions"] = FeatureRule(
             name="Exception Handling",
             tier=SubsetTier.TIER_2_STRUCTURED,
-            status=FeatureStatus.PARTIALLY_SUPPORTED,
-            description="Basic try/except with exception types (no else/finally)",
+            status=FeatureStatus.FULLY_SUPPORTED,
+            description="try/except/else/finally with exception types",
             ast_nodes=[ast.Try, ast.Raise, ast.ExceptHandler],
             validator=self._validate_exception_handling,
-            constraints=["No else clause", "No finally clause", "No exception chaining"],
+            constraints=["No exception chaining (raise ... from ...)"],
             c_mapping="try/catch in C++, try/with in OCaml",
             examples={
-                "valid": "try:\n    x = 1 / 0\nexcept ZeroDivisionError:\n    x = 0",
-                "invalid": "try:\n    x = 1\nexcept:\n    pass\nfinally:\n    cleanup()",
+                "valid": "try:\n    x = 1\nexcept ValueError:\n    x = 0\nelse:\n    print('ok')\nfinally:\n    cleanup()",
+                "invalid": "raise ValueError('msg') from original_error",
             },
         )
 
@@ -629,21 +663,52 @@ class StaticPythonSubsetValidator:
             # Check each formatted value in the f-string
             for value in node.values:
                 if isinstance(value, ast.FormattedValue):
-                    # Phase 1: Don't support format specifications
-                    if value.format_spec is not None:
-                        self.last_validation_error = (
-                            f"F-string format specifications (e.g., ':.2f') are not yet supported "
-                            f"at line {node.lineno if hasattr(node, 'lineno') else '?'}"
-                        )
-                        return False
-                    # Phase 1: Don't support conversion flags (!r, !s, !a)
+                    # Conversion flags (!r, !s, !a) not supported
                     if value.conversion != -1:
                         self.last_validation_error = (
                             f"F-string conversion flags (!r, !s, !a) are not yet supported "
                             f"at line {node.lineno if hasattr(node, 'lineno') else '?'}"
                         )
                         return False
+                    # Validate format spec if present (only simple numeric specs supported)
+                    if value.format_spec is not None and isinstance(value.format_spec, ast.JoinedStr):
+                        spec_str = self._extract_format_spec_string(value.format_spec)
+                        if spec_str is not None and not self._is_supported_format_spec(spec_str):
+                            self.last_validation_error = (
+                                f"F-string format spec ':{spec_str}' is not supported "
+                                f"at line {node.lineno if hasattr(node, 'lineno') else '?'}. "
+                                f"Supported: numeric precision (.Nf), integer (d), hex (x/X), octal (o), "
+                                f"scientific (e/E), percentage (%)"
+                            )
+                            return False
         return True
+
+    def _extract_format_spec_string(self, format_spec: ast.JoinedStr) -> Optional[str]:
+        """Extract a simple string from a format_spec JoinedStr node."""
+        parts: list[str] = []
+        for value in format_spec.values:
+            if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                parts.append(value.value)
+            else:
+                return None  # Dynamic format spec, not supported
+        return "".join(parts)
+
+    def _is_supported_format_spec(self, spec: str) -> bool:
+        """Check if a format specification string is supported."""
+        import re
+
+        # Supported format specs:
+        # .Nf - float precision (e.g., .2f, .4f)
+        # d   - integer
+        # x/X - hex
+        # o   - octal
+        # b   - binary
+        # e/E - scientific notation
+        # %   - percentage
+        # >N, <N, ^N - alignment with width (optional fill char)
+        # 0Nd - zero-padded integer
+        pattern = r"^[<>^]?\d*\.?\d*[dfxXobeE%]?$"
+        return bool(re.match(pattern, spec)) and len(spec) > 0
 
     def _validate_no_metaclasses(self, node: ast.ClassDef) -> bool:
         """Validate no metaclasses are used."""
@@ -662,28 +727,10 @@ class StaticPythonSubsetValidator:
     def _validate_exception_handling(self, node: ast.AST) -> bool:
         """Validate exception handling constraints.
 
-        Only basic try/except is supported. Rejects:
-        - else clause on try blocks
-        - finally clause on try blocks
+        Supported: try/except with optional else and finally clauses. Rejects:
         - exception chaining (raise ... from ...)
         """
         if isinstance(node, ast.Try):
-            # Check for unsupported else clause
-            if node.orelse:
-                self.last_validation_error = (
-                    f"try/except 'else' clause is not supported "
-                    f"at line {node.lineno if hasattr(node, 'lineno') else '?'}"
-                )
-                return False
-
-            # Check for unsupported finally clause
-            if node.finalbody:
-                self.last_validation_error = (
-                    f"try/except 'finally' clause is not supported "
-                    f"at line {node.lineno if hasattr(node, 'lineno') else '?'}"
-                )
-                return False
-
             return True
 
         elif isinstance(node, ast.Raise):
@@ -727,6 +774,29 @@ class StaticPythonSubsetValidator:
 
             return True
 
+        return True
+
+    def _validate_yield(self, node: ast.AST) -> bool:
+        """Validate yield statement constraints."""
+        if isinstance(node, ast.Yield):
+            return True
+        return True
+
+    def _validate_yield_from(self, node: ast.AST) -> bool:
+        """Validate yield from statement constraints."""
+        if isinstance(node, ast.YieldFrom):
+            # Allow function calls, range(), and variable references
+            value = node.value
+            if isinstance(value, ast.Call):
+                return True
+            elif isinstance(value, ast.Name):
+                return True
+            else:
+                self.last_validation_error = (
+                    f"yield from only supports function calls, range(), and variables "
+                    f"at line {node.lineno if hasattr(node, 'lineno') else '?'}"
+                )
+                return False
         return True
 
     def _determine_conversion_strategy(self, result: ValidationResult) -> str:

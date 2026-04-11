@@ -1,5 +1,8 @@
 .DS_Store
 
+# documentation build
+site/
+
 # benchmarking
 benchmark_results/
 

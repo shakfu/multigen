@@ -7,7 +7,7 @@ import ast
 from typing import Any, Optional
 
 try:
-    import z3  # type: ignore[import-not-found]
+    import z3  # type: ignore[import-untyped]
 
     Z3_AVAILABLE = True
 except ImportError:

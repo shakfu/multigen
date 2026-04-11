@@ -4,8 +4,11 @@ import ast
 from typing import TYPE_CHECKING, Any, Optional
 
 from ..converter_utils import (
+    extract_format_spec,
+    format_spec_to_printf,
     get_standard_binary_operator,
     get_standard_comparison_operator,
+    normalize_ast,
 )
 from ..errors import TypeMappingError, UnsupportedFeatureError
 from ..loop_conversion_strategies import LoopContext
@@ -126,6 +129,7 @@ class MultiGenPythonToHaskellConverter:
         """Convert Python code to Haskell."""
         try:
             tree = ast.parse(python_code)
+            tree = normalize_ast(tree)
             return self._convert_module(tree)
         except UnsupportedFeatureError:
             # Re-raise UnsupportedFeatureError without wrapping
@@ -435,6 +439,16 @@ main = printValue "Generated Haskell code executed successfully"'''
             else:
                 return "-- Complex annotated assignment"
 
+        elif isinstance(node, ast.Expr) and isinstance(node.value, ast.YieldFrom):
+            # Yield from is handled at the function level for generators
+            return self._convert_expression(node.value.value)
+
+        elif isinstance(node, ast.Expr) and isinstance(node.value, ast.Yield):
+            # Yield is handled at the function level for generators
+            if node.value.value:
+                return self._convert_expression(node.value.value)
+            return "()"
+
         elif isinstance(node, ast.Expr):
             # Check if this is a mutation that needs to be converted to reassignment
             if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Attribute):
@@ -545,6 +559,14 @@ main = printValue "Generated Haskell code executed successfully"'''
             if body_line:
                 lines.append(f"    {body_line}")
 
+        # else clause: runs if no exception (appended to try body)
+        if node.orelse:
+            lines.append("    -- else (no exception)")
+            for stmt in node.orelse:
+                body_line = self._convert_statement(stmt)
+                if body_line:
+                    lines.append(f"    {body_line}")
+
         lines.append(") (\\e -> case (fromException e) of")
 
         # Convert exception handlers
@@ -577,6 +599,14 @@ main = printValue "Generated Haskell code executed successfully"'''
             lines.append("    _ -> throw e")
 
         lines.append(")")
+
+        # Convert finally clause if present
+        if node.finalbody:
+            lines.append("-- finally")
+            for stmt in node.finalbody:
+                body_line = self._convert_statement(stmt)
+                if body_line:
+                    lines.append(body_line)
 
         return "\n".join(lines)
 
@@ -1002,10 +1032,13 @@ main = printValue "Generated Haskell code executed successfully"'''
                 if isinstance(value.value, str):
                     parts.append(f'"{value.value}"')
             elif isinstance(value, ast.FormattedValue):
-                # Expression to be converted to string
                 expr_code = self._convert_expression(value.value)
-                # Use show to convert to string, but check if already a string
-                if self._is_string_expression(value.value):
+                spec = extract_format_spec(value)
+                if spec:
+                    # Use Text.Printf.printf for formatted output
+                    printf_fmt = format_spec_to_printf(spec)
+                    parts.append(f'(Text.Printf.printf "{printf_fmt}" {expr_code} :: String)')
+                elif self._is_string_expression(value.value):
                     parts.append(expr_code)
                 else:
                     parts.append(f"(show {expr_code})")

@@ -23,10 +23,13 @@ import ast
 from typing import Any
 
 from ..converter_utils import (
+    extract_format_spec,
+    format_spec_to_printf,
     get_augmented_assignment_operator,
     get_standard_binary_operator,
     get_standard_comparison_operator,
     get_standard_unary_operator,
+    normalize_ast,
 )
 from ..errors import TypeMappingError, UnsupportedFeatureError
 from ..preferences import BackendPreferences, CPreferences
@@ -106,6 +109,7 @@ class MultiGenPythonToCConverter:
         """Convert Python source code to C code."""
         try:
             tree = ast.parse(source_code)
+            tree = normalize_ast(tree)
             return self._convert_module(tree)
         except (UnsupportedFeatureError, TypeMappingError):
             # Re-raise our specific exceptions without wrapping
@@ -603,6 +607,9 @@ class MultiGenPythonToCConverter:
         # Reset temp variable counters for each function (allows reuse of simple names)
         self._temp_var_counters = {}
 
+        # Detect generator functions (contain yield)
+        is_generator = any(isinstance(n, (ast.Yield, ast.YieldFrom)) for n in ast.walk(node))
+
         # Build parameter list
         params = []
         for arg in node.args.args:
@@ -651,6 +658,13 @@ class MultiGenPythonToCConverter:
                                 return_type = "vec_vec_int"
                                 break
 
+        # For generators, determine vec type and rewrite return type
+        gen_vec_type = "vec_int"  # default
+        if is_generator:
+            gen_vec_type = self._get_generator_vec_type(node, return_type)
+            return_type = gen_vec_type
+            self._current_gen_vec_type = gen_vec_type
+
         # Build function signature
         params_str = ", ".join(params) if params else "void"
         signature = f"{return_type} {node.name}({params_str})"
@@ -660,17 +674,38 @@ class MultiGenPythonToCConverter:
 
         # Convert function body
         body_lines = []
+
+        # For generators, inject accumulator at start
+        if is_generator:
+            body_lines.append(f"{gen_vec_type} __mgen_result = {gen_vec_type}_init();")
+
         for stmt in node.body:
             converted = self._convert_statement(stmt)
             if converted:
                 body_lines.extend(converted.split("\n"))
+
+        # For generators, add return at end
+        if is_generator:
+            body_lines.append("return __mgen_result;")
 
         # Format function
         body = "\n".join(f"    {line}" if line.strip() else "" for line in body_lines)
 
         self.current_function = None
         self.current_function_ast = None
+        if is_generator:
+            self._current_gen_vec_type = ""
         return f"{signature} {{\n{body}\n}}"
+
+    def _get_generator_vec_type(self, node: ast.FunctionDef, return_type: str) -> str:
+        """Determine the C vec type for a generator function."""
+        if node.returns:
+            py_type = self._get_type_annotation(node.returns)
+            if py_type == "str":
+                return "vec_str"
+            elif py_type == "float":
+                return "vec_int"  # C backend uses vec_int for doubles too
+        return "vec_int"
 
     def _convert_statement(self, stmt: ast.stmt) -> str:
         """Convert Python statement to C code."""
@@ -688,6 +723,10 @@ class MultiGenPythonToCConverter:
             return self._convert_while(stmt)
         elif isinstance(stmt, ast.For):
             return self._convert_for(stmt)
+        elif isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.YieldFrom):
+            return self._convert_yield_from(stmt.value)
+        elif isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Yield):
+            return self._convert_yield(stmt.value)
         elif isinstance(stmt, ast.Expr):
             return self._convert_expression_statement(stmt)
         elif isinstance(stmt, ast.ClassDef):
@@ -704,6 +743,42 @@ class MultiGenPythonToCConverter:
             return self._convert_with(stmt)
         else:
             raise UnsupportedFeatureError(f"Unsupported statement type: {type(stmt).__name__}")
+
+    def _convert_yield(self, node: ast.Yield) -> str:
+        """Convert yield to vec push on accumulator."""
+        gen_vec_type = getattr(self, "_current_gen_vec_type", "vec_int")
+        if node.value is not None:
+            value = self._convert_expression(node.value)
+        else:
+            value = "0"
+        return f"{gen_vec_type}_push(&__mgen_result, {value});"
+
+    def _convert_yield_from(self, node: ast.YieldFrom) -> str:
+        """Convert yield from to extend accumulator with iterable."""
+        gen_vec_type = getattr(self, "_current_gen_vec_type", "vec_int")
+        # Handle range() specially - generate a counting loop
+        if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name):
+            if node.value.func.id == "range":
+                args = node.value.args
+                if len(args) == 1:
+                    end = self._convert_expression(args[0])
+                    return f"for (int __mgen_yf = 0; __mgen_yf < {end}; __mgen_yf++) {{ {gen_vec_type}_push(&__mgen_result, __mgen_yf); }}"
+                elif len(args) == 2:
+                    start = self._convert_expression(args[0])
+                    end = self._convert_expression(args[1])
+                    return f"for (int __mgen_yf = {start}; __mgen_yf < {end}; __mgen_yf++) {{ {gen_vec_type}_push(&__mgen_result, __mgen_yf); }}"
+                elif len(args) == 3:
+                    start = self._convert_expression(args[0])
+                    end = self._convert_expression(args[1])
+                    step = self._convert_expression(args[2])
+                    return f"for (int __mgen_yf = {start}; __mgen_yf < {end}; __mgen_yf += {step}) {{ {gen_vec_type}_push(&__mgen_result, __mgen_yf); }}"
+        # For function calls and variables, loop over and push each element
+        expr = self._convert_expression(node.value)
+        return (
+            f"{{ {gen_vec_type} __mgen_tmp = {expr}; "
+            f"for (int __mgen_yf = 0; __mgen_yf < {gen_vec_type}_size(&__mgen_tmp); __mgen_yf++) {{ "
+            f"{gen_vec_type}_push(&__mgen_result, {gen_vec_type}_get(&__mgen_tmp, __mgen_yf)); }} }}"
+        )
 
     def _convert_return(self, stmt: ast.Return) -> str:
         """Convert return statement.
@@ -1344,15 +1419,19 @@ class MultiGenPythonToCConverter:
 
             # Use the appropriate size function based on container type
             # Check for multigen custom types first (before generic STC types)
+            # Helper: determine address-of prefix based on whether container_name
+            # is already a pointer expression (e.g., from subscript access)
+            addr = "" if "(" in container_name else "&"
+
             if container_type == "multigen_str_int_map_t*":
                 return f"multigen_str_int_map_size({container_name})"
             elif container_type and container_type.startswith("map_"):
                 # STC map types
-                return f"{container_type}_size(&{container_name})"
+                return f"{container_type}_size({addr}{container_name})"
             elif container_type and container_type.startswith("set_"):
-                return f"{container_type}_size(&{container_name})"
+                return f"{container_type}_size({addr}{container_name})"
             elif container_type and container_type.startswith("vec_"):
-                return f"{container_type}_size(&{container_name})"
+                return f"{container_type}_size({addr}{container_name})"
             elif container_type and "multigen_string_array" in container_type:
                 return f"multigen_string_array_size({container_name})"
             elif container_type and container_type in ("char*", "const char*", "string"):
@@ -1361,7 +1440,7 @@ class MultiGenPythonToCConverter:
                 return f"strlen({container_name})"
             else:
                 # Default to vec_int for backward compatibility
-                return f"vec_int_size(&{container_name})"
+                return f"vec_int_size({addr}{container_name})"
         elif func_name == "bool":
             return f"multigen_bool_int({args[0]})"
         elif func_name == "abs":
@@ -2183,6 +2262,14 @@ class MultiGenPythonToCConverter:
             if body_line:
                 lines.append(f"    {body_line}")
 
+        # else clause: runs if no exception (appended to try body)
+        if stmt.orelse:
+            lines.append("    // else (no exception)")
+            for s in stmt.orelse:
+                body_line = self._convert_statement(s)
+                if body_line:
+                    lines.append(f"    {body_line}")
+
         # Convert exception handlers
         for handler in stmt.handlers:
             if handler.type is None:
@@ -2205,6 +2292,14 @@ class MultiGenPythonToCConverter:
                     lines.append(f"    {body_line}")
 
         lines.append("} MGEN_END_TRY;")
+
+        # Convert finally clause if present
+        if stmt.finalbody:
+            lines.append("// finally")
+            for s in stmt.finalbody:
+                body_line = self._convert_statement(s)
+                if body_line:
+                    lines.append(body_line)
 
         return "\n".join(lines)
 
@@ -2376,11 +2471,20 @@ class MultiGenPythonToCConverter:
             elif var_name in self.inferred_types:
                 c_type = self.inferred_types[var_name].c_type
 
-        if not c_type or not c_type.startswith("vec_"):
-            raise UnsupportedFeatureError(f"Slicing only supported for vec_* containers, got {c_type}")
-
         # Extract start, stop, step
         start = self._convert_expression(slice_obj.lower) if slice_obj.lower else "0"
+
+        # String slicing uses mgen_substring helper
+        if c_type in ("char*", "const char*"):
+            if slice_obj.upper:
+                stop = self._convert_expression(slice_obj.upper)
+                return f"mgen_substring({obj}, {start}, {stop} - {start})"
+            else:
+                return f"mgen_substring({obj}, {start}, strlen({obj}) - {start})"
+
+        if not c_type or not c_type.startswith("vec_"):
+            raise UnsupportedFeatureError(f"Slicing only supported for vec_* containers and strings, got {c_type}")
+
         stop = self._convert_expression(slice_obj.upper) if slice_obj.upper else f"{c_type}_size(&{obj})"
         step = self._convert_expression(slice_obj.step) if slice_obj.step else "1"
 
@@ -2388,9 +2492,6 @@ class MultiGenPythonToCConverter:
         slice_var = f"slice_result_{id(expr)}"
 
         # Generate C code for slicing using a compound statement
-        # This creates a new vector and copies elements in the range
-        c_type[4:]  # Remove "vec_" prefix to get element type
-
         slice_code = f"""({{
         {c_type} {slice_var} = {{0}};
         for (int _i = {start}; _i < {stop}; _i += {step}) {{
@@ -2424,11 +2525,18 @@ class MultiGenPythonToCConverter:
                 if isinstance(value.value, str):
                     format_parts.append(value.value)
             elif isinstance(value, ast.FormattedValue):
-                # Expression - add placeholder
-                format_parts.append("%s")
                 expr_code = self._convert_expression(value.value)
-                # Wrap in appropriate conversion based on type
-                args.append(self._to_c_string_expr(expr_code, value.value))
+                spec = extract_format_spec(value)
+                if spec:
+                    # Use printf-style format spec directly
+                    printf_fmt = format_spec_to_printf(spec)
+                    format_parts.append(printf_fmt)
+                    args.append(expr_code)
+                else:
+                    # Expression - add placeholder
+                    format_parts.append("%s")
+                    # Wrap in appropriate conversion based on type
+                    args.append(self._to_c_string_expr(expr_code, value.value))
 
         format_string = "".join(format_parts)
 

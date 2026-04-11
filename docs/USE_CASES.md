@@ -8,14 +8,14 @@
 
 ## Table of Contents
 
-1. [Embedded Systems & IoT](#embedded-systems--iot)
-2. [Web Services & APIs](#web-services--apis)
-3. [CLI Tools & DevOps](#cli-tools--devops)
+1. [Embedded Systems & IoT](#embedded-systems-iot)
+2. [Web Services & APIs](#web-services-apis)
+3. [CLI Tools & DevOps](#cli-tools-devops)
 4. [Performance-Critical Applications](#performance-critical-applications)
 5. [Data Processing Pipelines](#data-processing-pipelines)
-6. [WebAssembly & Browser Applications](#webassembly--browser-applications)
+6. [WebAssembly & Browser Applications](#webassembly-browser-applications)
 7. [Cross-Platform Libraries](#cross-platform-libraries)
-8. [Research & Academia](#research--academia)
+8. [Research & Academia](#research-academia)
 
 ---
 

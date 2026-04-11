@@ -5,9 +5,11 @@ from typing import Any, Optional
 
 from ...frontend.immutability_analyzer import ImmutabilityAnalyzer, MutabilityClass
 from ..converter_utils import (
+    extract_format_spec,
     get_augmented_assignment_operator,
     get_standard_binary_operator,
     get_standard_comparison_operator,
+    normalize_ast,
 )
 from ..errors import TypeMappingError, UnsupportedFeatureError
 from ..type_inference_strategies import InferenceContext
@@ -85,6 +87,7 @@ class MultiGenPythonToRustConverter:
         """Convert Python code to Rust."""
         try:
             tree = ast.parse(python_code)
+            tree = normalize_ast(tree)
 
             # Run immutability analysis on the module (backend-agnostic)
             self.mutability_info = self.immutability_analyzer.analyze_module(tree)
@@ -692,6 +695,16 @@ class MultiGenPythonToRustConverter:
             else:
                 return_type = ""
 
+        # Detect generator functions (contain yield)
+        is_generator = any(isinstance(n, (ast.Yield, ast.YieldFrom)) for n in ast.walk(node))
+
+        # For generators, rewrite return type
+        gen_element_type = "i32"  # default
+        if is_generator:
+            gen_element_type = self._get_generator_element_type_rust(node)
+            actual_return_type = f"Vec<{gen_element_type}>"
+            return_type = f" -> Vec<{gen_element_type}>"
+
         # Store function return type for later reference
         self.function_return_types[node.name] = actual_return_type
 
@@ -703,6 +716,8 @@ class MultiGenPythonToRustConverter:
         self.current_function_node = node  # Store AST node for analysis
         self.declared_vars = set()  # Reset for new function
         self.variable_types = {}  # Reset variable type tracking for new function
+        self._is_generator = is_generator
+        self._gen_element_type = gen_element_type
         # Add parameters to declared variables and their types
         for arg in node.args.args:
             self.declared_vars.add(arg.arg)
@@ -722,11 +737,35 @@ class MultiGenPythonToRustConverter:
                     self.variable_types[arg.arg] = param_type
             else:
                 self.variable_types[arg.arg] = param_type
+
+        # Build body parts
+        body_parts = []
+
+        # For generators, inject accumulator at start
+        if is_generator:
+            body_parts.append(f"    let mut __mgen_result: Vec<{gen_element_type}> = Vec::new();")
+
         body = self._convert_statements(node.body)
+        body_parts.append(body)
+
+        # For generators, add implicit return at end
+        if is_generator:
+            body_parts.append("    __mgen_result")
+
+        full_body = "\n".join(body_parts)
         self.current_function = None
         self.current_function_node = None
+        self._is_generator = False
 
-        return f"{func_signature} {{\n{body}\n}}"
+        return f"{func_signature} {{\n{full_body}\n}}"
+
+    def _get_generator_element_type_rust(self, node: ast.FunctionDef) -> str:
+        """Determine the Rust element type yielded by a generator."""
+        if node.returns:
+            mapped = self._map_type_annotation(node.returns)
+            if mapped in ("i32", "f64", "bool", "String"):
+                return mapped
+        return "i32"
 
     def _convert_statements(self, statements: list[ast.stmt]) -> str:
         """Convert a list of statements."""
@@ -751,6 +790,10 @@ class MultiGenPythonToRustConverter:
             return self._convert_while(stmt)
         elif isinstance(stmt, ast.For):
             return self._convert_for(stmt)
+        elif isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.YieldFrom):
+            return self._convert_yield_from(stmt.value)
+        elif isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Yield):
+            return self._convert_yield(stmt.value)
         elif isinstance(stmt, ast.Expr):
             return self._convert_expression_statement(stmt)
         elif isinstance(stmt, ast.Pass):
@@ -765,6 +808,39 @@ class MultiGenPythonToRustConverter:
             return self._convert_with(stmt)
         else:
             raise UnsupportedFeatureError(f"Statement type {type(stmt).__name__} is not supported in Rust backend")
+
+    def _convert_yield(self, node: ast.Yield) -> str:
+        """Convert yield to push on accumulator."""
+        if node.value is not None:
+            value = self._convert_expression(node.value)
+        else:
+            value = "0"
+        return f"    __mgen_result.push({value});"
+
+    def _convert_yield_from(self, node: ast.YieldFrom) -> str:
+        """Convert yield from to extend accumulator with iterable."""
+        # Handle range() specially
+        if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name):
+            if node.value.func.id == "range":
+                args = node.value.args
+                if len(args) == 1:
+                    end = self._convert_expression(args[0])
+                    return f"    for __mgen_yf in 0..{end} {{ __mgen_result.push(__mgen_yf); }}"
+                elif len(args) == 2:
+                    start = self._convert_expression(args[0])
+                    end = self._convert_expression(args[1])
+                    return f"    for __mgen_yf in {start}..{end} {{ __mgen_result.push(__mgen_yf); }}"
+                elif len(args) == 3:
+                    start = self._convert_expression(args[0])
+                    end = self._convert_expression(args[1])
+                    step = self._convert_expression(args[2])
+                    return (
+                        f"    {{ let mut __mgen_yf = {start}; "
+                        f"while __mgen_yf < {end} {{ __mgen_result.push(__mgen_yf); __mgen_yf += {step}; }} }}"
+                    )
+        # For function calls and variables, use extend
+        expr = self._convert_expression(node.value)
+        return f"    __mgen_result.extend({expr});"
 
     def _convert_assert(self, stmt: ast.Assert) -> str:
         """Convert Python assert statement to Rust assert!() macro.
@@ -831,6 +907,15 @@ class MultiGenPythonToRustConverter:
                 for line in body_line.split("\n"):
                     lines.append(f"    {line}")
 
+        # else clause: runs if no exception (appended to try body)
+        if stmt.orelse:
+            lines.append("        // else (no exception)")
+            for s in stmt.orelse:
+                body_line = self._convert_statement(s)
+                if body_line:
+                    for line in body_line.split("\n"):
+                        lines.append(f"    {line}")
+
         lines.append("    })) {")
         lines.append("        Ok(v) => v,")
         lines.append("        Err(e) => {")
@@ -884,6 +969,15 @@ class MultiGenPythonToRustConverter:
 
         lines.append("        }")
         lines.append("    }")
+
+        # Convert finally clause if present
+        if stmt.finalbody:
+            lines.append("    // finally")
+            for s in stmt.finalbody:
+                body_line = self._convert_statement(s)
+                if body_line:
+                    for line in body_line.split("\n"):
+                        lines.append(f"    {line}")
 
         return "\n".join(lines)
 
@@ -1216,8 +1310,6 @@ class MultiGenPythonToRustConverter:
             return self._convert_subscript(expr)
         elif isinstance(expr, ast.JoinedStr):
             return self._convert_f_string(expr)
-        elif isinstance(expr, ast.GeneratorExp):
-            raise UnsupportedFeatureError("Generator expressions are not supported in Rust backend")
         else:
             raise UnsupportedFeatureError(f"Expression type {type(expr).__name__} is not supported in Rust backend")
 
@@ -1367,7 +1459,10 @@ class MultiGenPythonToRustConverter:
         return f"[{', '.join(elements)}].iter().cloned().collect::<std::collections::HashSet<_>>()"
 
     def _convert_subscript(self, expr: ast.Subscript) -> str:
-        """Convert subscript operations (indexing)."""
+        """Convert subscript operations (indexing and slicing)."""
+        if isinstance(expr.slice, ast.Slice):
+            return self._convert_slice(expr)
+
         value = self._convert_expression(expr.value)
         slice_expr = self._convert_expression(expr.slice)
 
@@ -1390,6 +1485,39 @@ class MultiGenPythonToRustConverter:
         # For complex expressions or unknown types, assume Vec (safer default)
         return f"{value}[{slice_expr} as usize]"
 
+    def _convert_slice(self, expr: ast.Subscript) -> str:
+        """Convert slice operation to Rust Vec or String slicing.
+
+        Examples:
+            list[1:3] -> list[1..3].to_vec()
+            str[1:3]  -> str[1..3].to_string()
+            str[1:]   -> str[1..].to_string()
+        """
+        slice_obj = expr.slice
+        assert isinstance(slice_obj, ast.Slice), "Expected ast.Slice"
+
+        obj = self._convert_expression(expr.value)
+        start = self._convert_expression(slice_obj.lower) if slice_obj.lower else ""
+        stop = self._convert_expression(slice_obj.upper) if slice_obj.upper else ""
+
+        # Detect string type for .to_string() vs .to_vec()
+        is_string = False
+        if isinstance(expr.value, ast.Name):
+            var_type = self.variable_types.get(expr.value.id, "")
+            if "String" in var_type or var_type == "str":
+                is_string = True
+
+        suffix = ".to_string()" if is_string else ".to_vec()"
+
+        if start and stop:
+            return f"{obj}[{start}..{stop}]{suffix}"
+        elif start:
+            return f"{obj}[{start}..]{suffix}"
+        elif stop:
+            return f"{obj}[..{stop}]{suffix}"
+        else:
+            return f"{obj}[..]{suffix}"
+
     def _convert_f_string(self, expr: ast.JoinedStr) -> str:
         """Convert f-string to Rust format! macro.
 
@@ -1408,9 +1536,15 @@ class MultiGenPythonToRustConverter:
                     literal = value.value.replace("{", "{{").replace("}", "}}")
                     format_parts.append(literal)
             elif isinstance(value, ast.FormattedValue):
-                # Expression to be formatted
-                format_parts.append("{}")
                 expr_code = self._convert_expression(value.value)
+                spec = extract_format_spec(value)
+                if spec:
+                    # Convert Python format spec to Rust format spec
+                    # .2f -> :.2, x -> :x, d -> (no spec needed), .4e -> :.4e
+                    rust_spec = self._python_spec_to_rust(spec)
+                    format_parts.append("{" + rust_spec + "}")
+                else:
+                    format_parts.append("{}")
                 args.append(expr_code)
 
         format_string = "".join(format_parts)
@@ -1422,6 +1556,26 @@ class MultiGenPythonToRustConverter:
             # Use format! macro
             args_str = ", ".join(args)
             return f'format!("{format_string}", {args_str})'
+
+    def _python_spec_to_rust(self, spec: str) -> str:
+        """Convert Python format spec to Rust format spec."""
+        # d (integer) -> no spec needed in Rust (default for integers)
+        if spec == "d":
+            return ""
+        # .Nf -> :.N (Rust infers float from the value)
+        if spec.endswith("f") and "." in spec:
+            # .2f -> :.2
+            precision = spec[:-1]  # Remove trailing 'f'
+            return f":{precision}"
+        # x, X, o, b, e, E -> :x, :X, :o, :b, :e, :E
+        if spec in ("x", "X", "o", "b", "e", "E"):
+            return f":{spec}"
+        # .Ne, .NE -> :.Ne, :.NE
+        if (spec.endswith("e") or spec.endswith("E")) and "." in spec:
+            return f":{spec}"
+        # % -> not directly supported in Rust, use manual multiply
+        # For now, pass through
+        return f":{spec}"
 
     def _convert_call(self, expr: ast.Call) -> str:
         """Convert function calls."""

@@ -4,8 +4,11 @@ import ast
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 from ..converter_utils import (
+    extract_format_spec,
+    format_spec_to_printf,
     get_standard_binary_operator,
     get_standard_comparison_operator,
+    normalize_ast,
 )
 from ..errors import UnsupportedFeatureError
 from ..loop_conversion_strategies import LoopContext
@@ -47,6 +50,7 @@ class MultiGenPythonToOCamlConverter:
         """Convert Python source code to OCaml."""
         try:
             tree = ast.parse(python_code)
+            tree = normalize_ast(tree)
             return self._convert_module(tree)
         except SyntaxError as e:
             raise UnsupportedFeatureError(f"Python syntax error: {e}") from e
@@ -97,6 +101,10 @@ class MultiGenPythonToOCamlConverter:
             return self._convert_annotated_assignment(node)
         elif isinstance(node, ast.AugAssign):
             return self._convert_augmented_assignment(node)
+        elif isinstance(node, ast.Expr) and isinstance(node.value, ast.YieldFrom):
+            return self._convert_yield_from_statement(node.value)
+        elif isinstance(node, ast.Expr) and isinstance(node.value, ast.Yield):
+            return self._convert_yield_statement(node.value)
         elif isinstance(node, ast.Expr):
             return self._convert_expression_statement(node)
         elif isinstance(node, ast.Return):
@@ -193,6 +201,17 @@ class MultiGenPythonToOCamlConverter:
                 else:
                     body_lines.append(converted)
 
+        # else clause: runs if no exception (appended to try body)
+        if node.orelse:
+            body_lines.append("(* else (no exception) *)")
+            for s in node.orelse:
+                converted = self._convert_statement(s)
+                if converted:
+                    if isinstance(converted, list):
+                        body_lines.extend(converted)
+                    else:
+                        body_lines.append(converted)
+
         # Build the try body with proper sequencing
         if len(body_lines) == 0:
             lines.append("  ()")
@@ -280,6 +299,19 @@ class MultiGenPythonToOCamlConverter:
                         else:
                             lines.append(f"    {line}")
                 lines.append("  end")
+
+        # Convert finally clause if present
+        if node.finalbody:
+            # Wrap in begin...end with Fun.protect pattern
+            lines.append("(* finally *)")
+            for s in node.finalbody:
+                converted = self._convert_statement(s)
+                if converted:
+                    if isinstance(converted, list):
+                        for line in converted:
+                            lines.append(f"  {line}")
+                    else:
+                        lines.append(f"  {converted}")
 
         return "\n".join(lines)
 
@@ -436,12 +468,23 @@ class MultiGenPythonToOCamlConverter:
         """Convert a regular function definition."""
         func_name = self._to_ocaml_var_name(node.name)
 
+        # Detect generator functions (contain yield)
+        is_generator = any(isinstance(n, (ast.Yield, ast.YieldFrom)) for n in ast.walk(node))
+        if is_generator:
+            return self._convert_generator_function(node, params, return_type)
+
         # Find mutable variables for this function
         self.mutable_vars = self._find_mutable_variables(node)
 
         # Exclude function parameters from mutable vars (they're passed normally, not as refs)
         param_names = {name for name, _ in params}
         self.mutable_vars = self.mutable_vars - param_names
+
+        # Track parameter types for type-aware code generation (e.g., string slicing)
+        for arg in node.args.args:
+            if arg.annotation and isinstance(arg.annotation, ast.Name):
+                ocaml_name = self._to_ocaml_var_name(arg.arg)
+                self.variables[ocaml_name] = arg.annotation.id
 
         # Check if function is recursive
         is_recursive = self._is_recursive_function(node, node.name)
@@ -528,6 +571,92 @@ class MultiGenPythonToOCamlConverter:
                 lines.append("  ()")
 
         return lines
+
+    def _convert_generator_function(
+        self, node: ast.FunctionDef, params: list[tuple[str, str]], return_type: str
+    ) -> list[str]:
+        """Convert a generator function to OCaml using ref accumulator pattern."""
+        func_name = self._to_ocaml_var_name(node.name)
+
+        # Function signature
+        if params:
+            param_list = " ".join([name for name, _ in params])
+            signature = f"let {func_name} {param_list} ="
+        else:
+            signature = f"let {func_name} () ="
+
+        lines = [signature]
+        lines.append("  let __mgen_result = ref [] in")
+
+        # Convert body statements
+        filtered_body = [
+            stmt
+            for stmt in node.body
+            if not (
+                isinstance(stmt, ast.Expr)
+                and isinstance(stmt.value, ast.Constant)
+                and isinstance(stmt.value.value, str)
+            )
+        ]
+
+        self.mutable_vars = self._find_mutable_variables(node)
+        param_names = {name for name, _ in params}
+        self.mutable_vars = self.mutable_vars - param_names
+        # Add __mgen_result to mutable vars so it uses ref semantics
+        self.mutable_vars.add("__mgen_result")
+
+        body_lines: list[str] = []
+        for stmt in filtered_body:
+            if isinstance(stmt, ast.Return):
+                # Skip explicit returns in generators
+                continue
+            converted = self._convert_statement(stmt)
+            if isinstance(converted, list):
+                body_lines.extend(converted)
+            else:
+                body_lines.append(converted)
+
+        for line in body_lines:
+            lines.append(f"  {line};")
+
+        lines.append("  List.rev !__mgen_result")
+
+        return lines
+
+    def _convert_yield_statement(self, node: ast.Yield) -> str:
+        """Convert yield to prepend on accumulator ref."""
+        if node.value is not None:
+            value = self._convert_expression(node.value)
+        else:
+            value = "0"
+        return f"__mgen_result := {value} :: !__mgen_result"
+
+    def _convert_yield_from_statement(self, node: ast.YieldFrom) -> str:
+        """Convert yield from to extend accumulator with iterable."""
+        # Handle range() specially
+        if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name):
+            if node.value.func.id == "range":
+                args = node.value.args
+                if len(args) == 1:
+                    end = self._convert_expression(args[0])
+                    return f"for __mgen_yf = 0 to {end} - 1 do __mgen_result := __mgen_yf :: !__mgen_result done"
+                elif len(args) == 2:
+                    start = self._convert_expression(args[0])
+                    end = self._convert_expression(args[1])
+                    return f"for __mgen_yf = {start} to {end} - 1 do __mgen_result := __mgen_yf :: !__mgen_result done"
+                elif len(args) == 3:
+                    start = self._convert_expression(args[0])
+                    end = self._convert_expression(args[1])
+                    step = self._convert_expression(args[2])
+                    return (
+                        f"let __mgen_yf = ref {start} in "
+                        f"while !__mgen_yf < {end} do "
+                        f"__mgen_result := !__mgen_yf :: !__mgen_result; "
+                        f"__mgen_yf := !__mgen_yf + {step} done"
+                    )
+        # For function calls and variables, iterate and prepend each element
+        expr = self._convert_expression(node.value)
+        return f"List.iter (fun __mgen_yf -> __mgen_result := __mgen_yf :: !__mgen_result) {expr}"
 
     def _convert_class_def(self, node: ast.ClassDef) -> list[str]:
         """Convert Python class to OCaml record type and functions."""
@@ -1671,7 +1800,10 @@ class MultiGenPythonToOCamlConverter:
         return defaults.get(type_name, 'failwith "default value not implemented"')
 
     def _convert_subscript(self, node: ast.Subscript) -> str:
-        """Convert subscript access (e.g., list[0], dict[key])."""
+        """Convert subscript access (e.g., list[0], dict[key], list[1:3])."""
+        if isinstance(node.slice, ast.Slice):
+            return self._convert_slice(node)
+
         value = self._convert_expression(node.value)
         slice_expr = self._convert_expression(node.slice)
 
@@ -1696,6 +1828,41 @@ class MultiGenPythonToOCamlConverter:
             # Array access - use array indexing notation
             return f"{value}.({slice_expr})"
 
+    def _convert_slice(self, node: ast.Subscript) -> str:
+        """Convert slice operation to OCaml Array.sub or String.sub.
+
+        Examples:
+            list[1:3] -> Array.sub list 1 (3 - 1)
+            str[1:3]  -> String.sub str 1 (3 - 1)
+            str[1:]   -> String.sub str 1 (String.length str - 1)
+        """
+        slice_obj = node.slice
+        assert isinstance(slice_obj, ast.Slice), "Expected ast.Slice"
+
+        obj = self._convert_expression(node.value)
+        start = self._convert_expression(slice_obj.lower) if slice_obj.lower else "0"
+
+        # Detect string type (variables store Python type name "str")
+        is_string = False
+        if isinstance(node.value, ast.Name):
+            var_name = self._to_ocaml_var_name(node.value.id)
+            var_type = self.variables.get(var_name, "")
+            if var_type in ("str", "string"):
+                is_string = True
+
+        if is_string:
+            module = "String"
+        else:
+            module = "Array"
+
+        if slice_obj.upper:
+            stop = self._convert_expression(slice_obj.upper)
+            length = f"({stop} - {start})"
+        else:
+            length = f"({module}.length {obj} - {start})"
+
+        return f"{module}.sub {obj} {start} {length}"
+
     def _convert_f_string(self, node: ast.JoinedStr) -> str:
         """Convert f-string to OCaml string concatenation.
 
@@ -1712,10 +1879,15 @@ class MultiGenPythonToOCamlConverter:
                     escaped = value.value.replace("\\", "\\\\").replace('"', '\\"')
                     parts.append(f'"{escaped}"')
             elif isinstance(value, ast.FormattedValue):
-                # Expression to be converted to string
                 expr_code = self._convert_expression(value.value)
-                # Determine the type conversion function needed
-                parts.append(self._to_string_ocaml(expr_code, value.value))
+                spec = extract_format_spec(value)
+                if spec:
+                    # Use Printf.sprintf for formatted output
+                    printf_fmt = format_spec_to_printf(spec)
+                    parts.append(f'(Printf.sprintf "{printf_fmt}" {expr_code})')
+                else:
+                    # Determine the type conversion function needed
+                    parts.append(self._to_string_ocaml(expr_code, value.value))
 
         if len(parts) == 0:
             return '""'

@@ -1,6 +1,6 @@
 [project]
 name = "multigen"
-version = "0.1.113"
+version = "0.1.116"
 authors = [
     { name = "Shakeeb Alireza", email = "shakfu@users.noreply.github.com" }
 ]
@@ -49,9 +49,9 @@ dev = [
     "mypy>=1.18.2",
     "pytest>=8.4.2",
     "pytest-cov>=7.0.0",
-    "sphinx>=7.0.0",
-    "sphinx-rtd-theme>=2.0.0",
-    "myst-parser>=2.0.0",
+    "mkdocs>=1.6.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings[python]>=0.25.0",
     "pytest-review>=0.1.1",
     "twine>=6.2.0",
     "llvmlite>=0.43.0",
@@ -67,7 +67,7 @@ llvm = [
 
 [project.urls]
 Homepage = "https://github.com/shakfu/multigen"
-Documentation = "https://multigen.readthedocs.io"
+Documentation = "https://shakfu.github.io/multigen/"
 Repository = "https://github.com/shakfu/multigen"
 "Bug Tracker" = "https://github.com/shakfu/multigen/issues"
 
