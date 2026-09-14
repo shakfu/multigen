@@ -10,8 +10,6 @@
 
 - [ ] **The bounds prover models no program state** (R-7, `verifiers/bounds_prover.py`). Partly addressed: an access whose offset or region size is not concrete is now reported UNKNOWN instead of being handed to Z3 as unconstrained integers, so guarded and annotated code is no longer reported unsafe, and annotation subscripts (`a: list[int]`) no longer invent a region. Still outstanding: path conditions and a `len()` model, without which only accesses with literal indices into literal-sized regions are decided.
 
-- [x] **The correctness prover checks preconditions for validity rather than assuming them** (R-6). Fixed: preconditions are now checked for satisfiability (a contradictory assumption makes the spec vacuous), and every property that needs a model of the function body -- postconditions, loop invariants, termination, ranking functions, functional correctness -- reports UNKNOWN with the reason instead of DISPROVED. `failed_properties` lists only genuine counterexamples.
-
 - [ ] **The symbolic executor stops at the first loop** (R-5). `_execute_for` and `_execute_while` return a `None` continuation, so a function containing a loop is never analysed past it and no return value is recorded.
 
 - [ ] **Build configuration is exposed but ignored** (R-9). `compiler`, `compiler_flags`, `include_dirs` and `libraries` on `PipelineConfig` are read nowhere outside `__post_init__`. `multigen build --compiler clang` still emits `CC = gcc`.
