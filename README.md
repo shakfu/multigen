@@ -7,15 +7,25 @@ MultiGen is a Python-to-multiple-languages code generator that translates Python
 ## Key Features
 
 - **Multi-Language Support**: Generate code for C, C++, Rust, Go, Haskell, OCaml, LLVM IR, and TypeScript
+
 - **Universal Preference System**: Customize code generation for each backend with language-specific preferences
+
 - **Advanced Python Support**: Object-oriented programming, comprehensions, string methods, augmented assignment
+
 - **Modern Libraries**: C++ STL, Rust standard library, Go standard library, Haskell containers, OCaml standard library
+
 - **Clean Architecture**: Extensible backend system with abstract interfaces for adding new target languages
+
 - **Type-Safe Generation**: Leverages Python type annotations for accurate and safe code translation
+
 - **Runtime Libraries**: Enhanced C backend with 50KB+ runtime libraries providing Python-like semantics
+
 - **CLI Interface**: Simple command-line tool with conversion, building, validation (`mgen check`), and batch processing
+
 - **Production-Ready**: 1559 passing tests ensuring translation accuracy and code quality
+
 - **LLVM Backend**: Native compilation via LLVM IR with O0-O3 optimization levels
+
 - **TypeScript Backend**: Standalone binaries via the Deno toolchain (`deno compile`)
 
 ## Supported Languages
@@ -33,8 +43,7 @@ MultiGen is a Python-to-multiple-languages code generator that translates Python
 
 ## Benchmark Results
 
-The benchmark harness compares each generated program's output against CPython's,
-so a run only counts as a success when the translation computes the same answer.
+The benchmark harness compares each generated program's output against CPython's, so a run only counts as a success when the translation computes the same answer.
 
 ```sh
 % make benchmark # x86_64 Linux; opam and deno not installed here
@@ -61,10 +70,7 @@ typescript   0/7       0.000        0.000000     0.0          0
 ===============================================================================
 ```
 
-`dict_ops` is refused by the validator on every backend (`Unsupported feature: Tuples`),
-so no backend can reach 7/7 today. The `ocaml` and `typescript` rows are skips on this
-machine (no `opam`, no `deno`); the `llvm` rows are link failures. Open defects are
-tracked in TODO.md.
+`dict_ops` is refused by the validator on every backend (`Unsupported feature: Tuples`), so no backend can reach 7/7 today. The `ocaml` and `typescript` rows are skips on this machine (no `opam`, no `deno`); the `llvm` rows are link failures. Open defects are tracked in TODO.md.
 
 ## Quick Start
 
@@ -169,6 +175,7 @@ MultiGen features a preference system that allows you to choose between **cross-
 ### Design Philosophy
 
 - **Default (Consistent)**: Uses runtime library functions for predictable behavior across all languages
+
 - **Idiomatic (Optimized)**: Uses native language features for better performance and familiarity
 
 ### Available Preference Categories
@@ -559,17 +566,25 @@ MultiGen follows a clean, extensible architecture with well-defined components:
 ### 7-Phase Translation Pipeline
 
 1. **Validation**: Verify Python source compatibility
+
 2. **Analysis**: Analyze code structure and dependencies
+
 3. **Python Optimization**: Apply Python-level optimizations
+
 4. **Mapping**: Map Python constructs to target language equivalents
+
 5. **Target Optimization**: Apply target language-specific optimizations
+
 6. **Generation**: Generate target language code
+
 7. **Build**: Compile/build using target language toolchain
 
 ### Frontend (Language-Agnostic)
 
 - **Type Inference**: Analyzes Python type annotations and infers types
+
 - **Static Analysis**: Validates code compatibility and detects unsupported features
+
 - **AST Processing**: Parses and transforms Python abstract syntax tree
 
 ### Backends (Language-Specific)
@@ -577,16 +592,23 @@ MultiGen follows a clean, extensible architecture with well-defined components:
 Each backend implements abstract interfaces:
 
 - **AbstractEmitter**: Code generation for target language
+
 - **AbstractFactory**: Factory for backend components
+
 - **AbstractBuilder**: Build system integration
+
 - **AbstractContainerSystem**: Container and collection handling
 
 ### Runtime Libraries (C Backend)
 
 - **Error Handling** (`multigen_error_handling.h/.c`): Python-like exception system
+
 - **Memory Management** (`multigen_memory_ops.h/.c`): Safe allocation and cleanup
+
 - **Python Operations** (`multigen_python_ops.h/.c`): Python built-ins and semantics
+
 - **String Operations** (`multigen_string_ops.h/.c`): String methods with memory safety
+
 - **STC Integration** (`multigen_stc_bridge.h/.c`): Smart Template Container bridge
 
 ## CLI Commands
@@ -660,18 +682,31 @@ make typecheck      # Run type checking with mypy
 MultiGen maintains a test suite organized into focused modules:
 
 - `test_backend_c_*.py`: C backend tests (191 tests total)
+
   - Core functionality, OOP, comprehensions, string methods, runtime libraries
+
 - `test_backend_cpp_*.py`: C++ backend tests (104 tests)
+
   - STL integration, modern C++ features, OOP support
+
 - `test_backend_rust_*.py`: Rust backend tests (176 tests)
+
   - Ownership patterns, memory safety, standard library
+
 - `test_backend_go_*.py`: Go backend tests (95 tests)
+
   - Go idioms, standard library, concurrency patterns
+
 - `test_backend_haskell_*.py`: Haskell backend tests (93 tests)
+
   - Functional programming, type safety, comprehensions
+
 - `test_backend_ocaml_*.py`: OCaml backend tests (51 tests)
+
   - Functional programming, pattern matching, immutability
+
 - `test_backend_llvm_*.py`: LLVM backend tests (130 tests)
+
   - Native compilation, optimization levels, IR generation
 
 ### Adding New Backends
@@ -679,15 +714,25 @@ MultiGen maintains a test suite organized into focused modules:
 To add support for a new target language:
 
 1. Create backend directory: `src/multigen/backends/mylang/`
+
 2. Implement required abstract interfaces:
+
    - `MyLangBackend(LanguageBackend)`: Main backend class
+
    - `MyLangFactory(AbstractFactory)`: Component factory
+
    - `MyLangEmitter(AbstractEmitter)`: Code generation
+
    - `MyLangBuilder(AbstractBuilder)`: Build system integration
+
    - `MyLangContainerSystem(AbstractContainerSystem)`: Container handling
+
    - `MyLangPreferences(BasePreferences)`: Language-specific preferences
+
 3. Register backend in `src/multigen/backends/registry.py`
+
 4. Add tests in `tests/test_backend_mylang_*.py`
+
 5. Update documentation
 
 See existing backends (C, C++, Rust, Go, Haskell, OCaml, LLVM, TypeScript) for implementation examples.
@@ -695,9 +740,13 @@ See existing backends (C, C++, Rust, Go, Haskell, OCaml, LLVM, TypeScript) for i
 ## Contributing
 
 1. Fork the repository
+
 2. Create a feature branch
+
 3. Add tests for new functionality
+
 4. Ensure all tests pass
+
 5. Submit a pull request
 
 ## License
@@ -711,25 +760,41 @@ MIT License - see LICENSE file for details.
 All backends support core Python features:
 
 - **Object-Oriented Programming**: Classes, methods, constructors, instance variables, method calls
+
 - **Augmented Assignment**: All operators (`+=`, `-=`, `*=`, `/=`, `//=`, `%=`, `|=`, `^=`, `&=`, `<<=`, `>>=`)
+
 - **String Operations**: `upper()`, `lower()`, `strip()`, `find()`, `replace()`, `split()`
+
 - **Comprehensions**: List, dict, and set comprehensions with range iteration and conditional filtering
+
 - **Control Structures**: if/elif/else, while loops, for loops with range()
+
 - **Built-in Functions**: `abs()`, `bool()`, `len()`, `min()`, `max()`, `sum()`
+
 - **Type Inference**: Automatic type detection from annotations and assignments
+
 - **Slicing**: List slicing (`arr[1:3]`, `arr[1:]`, `arr[:2]`) and string slicing (`s[1:3]`)
+
 - **F-String Format Specs**: `f"{x:.2f}"`, `f"{n:x}"`, `f"{n:d}"` with precision and radix formatting
+
 - **Exception Handling**: `try/except/else/finally`, `raise`, 6 exception types
+
 - **Context Managers**: `with open(...) as f:` for file I/O
+
 - **Generators**: `yield`, `yield from`, generator expressions (eager collection)
 
 ### Container Support by Language
 
 - **C**: STC (Smart Template Container) library with optimized C containers (864KB integrated library)
+
 - **C++**: STL containers (`std::vector`, `std::unordered_map`, `std::unordered_set`)
+
 - **Rust**: Standard library collections (`Vec`, `HashMap`, `HashSet`) with memory safety
+
 - **Go**: Standard library containers with idiomatic Go patterns
+
 - **Haskell**: Standard library containers with type-safe functional operations
+
 - **OCaml**: Standard library with immutable data structures and pattern matching
 
 ### Test Coverage
@@ -737,9 +802,13 @@ All backends support core Python features:
 MultiGen maintains test coverage ensuring translation accuracy:
 
 - **1559 total tests** across all components and backends
+
 - **56/56 benchmarks passing** (100%) across all 8 backends
+
 - Comprehensive backend coverage testing all major Python features
+
 - Test categories: basics, OOP, comprehensions, string methods, augmented assignment, control flow, integration, exception handling, context managers, generators, slicing, f-string format specs
+
 - All tests passing with zero regressions (100%)
 
 ## Development Roadmap
@@ -747,30 +816,53 @@ MultiGen maintains test coverage ensuring translation accuracy:
 ### Completed Milestones
 
 - Multi-language backend system with C, C++, Rust, Go, Haskell, and OCaml support
+
 - Advanced C runtime integration with 50KB+ of runtime libraries
+
 - Sophisticated Python-to-C conversion with complete function and control flow support
+
 - Object-oriented programming support across all backends
+
 - Advanced Python language features: comprehensions, string methods, augmented assignment
+
 - Complete STC library integration (864KB Smart Template Container library)
+
 - Architecture consolidation with unified C backend module
+
 - Professional test organization with 1559 tests in focused, single-responsibility files
+
 - Universal preference system with language-specific customization
+
 - Production-ready code generation with clean, efficient output
+
 - 8 backends (C++, C, Rust, Go, Haskell, OCaml, LLVM, TypeScript); see the benchmark table above for measured pass rates
+
 - Exception handling (try/except/else/finally/raise) across all backends
+
 - Context managers (with statement) across all backends
+
 - Generator/yield support (eager collection) across all backends
+
 - List and string slicing across 7/8 backends
+
 - F-string format specifications across all backends
+
 - `mgen check` CLI command for validation without conversion
 
 ### Future Development
 
 - **Advanced Frontend Analysis**: Integrate optimization detection and static analysis engine
+
 - **STC Performance Optimization**: Container specialization and memory layout optimization
+
 - **Formal Verification**: Theorem proving and memory safety proofs integration
+
 - **Cross-Language Runtime**: Extend runtime concepts to other backends (C++, Rust, Go)
+
 - **Performance Benchmarking**: Comprehensive performance analysis across all target languages
+
 - **IDE Integration**: Language server protocol support for MultiGen syntax
+
 - **Web Interface**: Online code conversion tool
+
 - **Plugin System**: External backend support and extensibility
