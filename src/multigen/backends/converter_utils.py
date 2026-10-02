@@ -29,9 +29,17 @@ class _GeneratorExpNormalizer(ast.NodeTransformer):
         )
         return ast.copy_location(new_node, node)
 
+    def visit_comprehension(self, node: ast.comprehension) -> ast.comprehension:
+        """Merge `if a if b` into `if a and b`: Python short-circuits both the same way."""
+        self.generic_visit(node)
+        if len(node.ifs) > 1:
+            node.ifs = [ast.copy_location(ast.BoolOp(op=ast.And(), values=node.ifs), node.ifs[0])]
+        return node
+
 
 def normalize_ast(tree: ast.Module) -> ast.Module:
-    """Normalize AST by rewriting generator expressions to list comprehensions.
+    """Normalize AST: generator expressions become list comprehensions, and
+    multiple comprehension `if` clauses become one `and`.
 
     Args:
         tree: Parsed AST module
@@ -113,6 +121,97 @@ def uses_builtin_functions(node: ast.Module) -> set[str]:
             if func_name in ["abs", "len", "min", "max", "sum", "bool", "str", "range", "print"]:
                 builtins.add(func_name)
     return builtins
+
+
+_MUTATING_METHODS = frozenset(
+    {
+        "append",
+        "extend",
+        "insert",
+        "pop",
+        "remove",
+        "clear",
+        "sort",
+        "reverse",
+        "add",
+        "discard",
+        "update",
+        "setdefault",
+        "popitem",
+    }
+)
+
+
+def find_in_place_mutated_params(module: ast.Module) -> dict[str, set[str]]:
+    """Map each top-level function to the parameters it mutates in place.
+
+    A parameter counts when the function stores through it (``p[i] = v``,
+    ``p[i] += v``, ``del p[i]``), calls a mutating method on it, or passes it
+    to a module function that mutates that argument. A parameter the function
+    also rebinds (``p = ...``) is excluded: the caller never sees that object.
+    """
+    functions = {f.name: f for f in module.body if isinstance(f, ast.FunctionDef)}
+    params = {name: [a.arg for a in f.args.args] for name, f in functions.items()}
+
+    def subscript_base(target: ast.expr) -> Optional[str]:
+        if isinstance(target, ast.Subscript) and isinstance(target.value, ast.Name):
+            return target.value.id
+        return None
+
+    direct: dict[str, set[str]] = {}
+    rebound: dict[str, set[str]] = {}
+    for name, func in functions.items():
+        own = set(params[name])
+        hits: set[str] = set()
+        rebinds: set[str] = set()
+        for node in ast.walk(func):
+            targets: list[ast.expr] = []
+            if isinstance(node, ast.Assign):
+                targets = node.targets
+            elif isinstance(node, (ast.AugAssign, ast.AnnAssign)):
+                targets = [node.target]
+            elif isinstance(node, ast.Delete):
+                targets = node.targets
+            for target in targets:
+                base = subscript_base(target)
+                if base in own:
+                    hits.add(base)
+                elif isinstance(target, ast.Name) and target.id in own and not isinstance(node, ast.AugAssign):
+                    rebinds.add(target.id)
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id in own
+                and node.func.attr in _MUTATING_METHODS
+            ):
+                hits.add(node.func.value.id)
+        direct[name] = hits
+        rebound[name] = rebinds
+
+    # Propagate through calls between module functions until nothing changes.
+    mutated = {name: direct[name] - rebound[name] for name in functions}
+    changed = True
+    while changed:
+        changed = False
+        for name, func in functions.items():
+            for node in ast.walk(func):
+                if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in functions):
+                    continue
+                callee = node.func.id
+                for index, arg in enumerate(node.args):
+                    if (
+                        isinstance(arg, ast.Name)
+                        and arg.id in params[name]
+                        and index < len(params[callee])
+                        and params[callee][index] in mutated[callee]
+                        and arg.id not in mutated[name]
+                        and arg.id not in rebound[name]
+                    ):
+                        mutated[name].add(arg.id)
+                        changed = True
+
+    return mutated
 
 
 def extract_instance_variables(class_node: ast.ClassDef) -> dict[str, Optional[ast.expr]]:

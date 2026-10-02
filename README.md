@@ -22,7 +22,7 @@ MultiGen is a Python-to-multiple-languages code generator that translates Python
 
 - **CLI Interface**: Simple command-line tool with conversion, building, validation (`mgen check`), and batch processing
 
-- **Production-Ready**: 1559 passing tests ensuring translation accuracy and code quality
+- **Tested**: 1,691 passing tests (`make test`)
 
 - **LLVM Backend**: Native compilation via LLVM IR with O0-O3 optimization levels
 
@@ -30,47 +30,43 @@ MultiGen is a Python-to-multiple-languages code generator that translates Python
 
 ## Supported Languages
 
-| Language | Status      | Extension | Build System      | Advanced Features | Benchmarks |
-|----------|-------------|-----------|-------------------|-------------------|------------|
-| C        | Production  | `.c`      | Makefile / gcc    | OOP, STC containers, string methods, comprehensions | 6/7 |
-| C++      | Production  | `.cpp`    | Makefile / g++    | OOP, STL containers, string methods, comprehensions | 5/7 |
-| Rust     | Production  | `.rs`     | Cargo / rustc     | OOP, ownership-aware, string methods, comprehensions | 6/7 |
-| Go       | Production  | `.go`     | go.mod / go build | OOP, defer pattern, string methods, comprehensions | 6/7 |
-| Haskell  | Production  | `.hs`     | Cabal / ghc       | Pure functional, comprehensions, type safety | 4/7 |
-| OCaml    | Production  | `.ml`     | dune / ocamlc     | Functional, pattern matching, mutable refs | n/a (no toolchain) |
-| LLVM     | Production  | `.ll`     | llvmlite / clang  | Native compilation, O0-O3 optimization, multi-platform | 0/7 |
-| TypeScript | Production | `.ts`    | Deno / deno compile | Map/Set containers, native classes, template literals, comprehensions | n/a (no toolchain) |
+| Language | Extension | Build System      | Advanced Features | Benchmarks |
+|----------|-----------|-------------------|-------------------|------------|
+| C        | `.c`      | Makefile / gcc    | OOP, STC containers, string methods, comprehensions | 7/7 |
+| C++      | `.cpp`    | Makefile / g++    | OOP, STL containers, string methods, comprehensions | 7/7 |
+| Rust     | `.rs`     | Cargo / rustc     | OOP, ownership-aware, string methods, comprehensions | 7/7 |
+| Go       | `.go`     | go.mod / go build | OOP, defer pattern, string methods, comprehensions | 7/7 |
+| Haskell  | `.hs`     | Cabal / ghc       | Pure functional, comprehensions, type safety | 7/7 |
+| OCaml    | `.ml`     | dune / ocamlc     | Functional, pattern matching, mutable refs | 7/7 |
+| LLVM     | `.ll`     | llvmlite / clang  | Native compilation, O0-O3 optimization, multi-platform | 7/7 |
+| TypeScript | `.ts`    | Deno / deno compile | Map/Set containers, native classes, template literals, comprehensions | 7/7 |
 
 ## Benchmark Results
 
 The benchmark harness compares each generated program's output against CPython's, so a run only counts as a success when the translation computes the same answer.
 
 ```sh
-% make benchmark # x86_64 Linux; opam and deno not installed here
+% make benchmark # macOS arm64, all eight toolchains installed
 ================================================================================
 BENCHMARK SUMMARY
 ================================================================================
 Total: 7 benchmarks × 8 backends = 56 runs
-Success: 27 | Failed: 17 (of which 2 built and ran but printed the wrong answer) | Skipped: 12 (toolchain missing)
-
-Output mismatches:
-  haskell/set_ops: got '34', CPython prints '234'
-  cpp/quicksort: got '100', CPython prints '5'
+Success: 56 | Failed: 0 (of which 0 built and ran but printed the wrong answer) | Skipped: 0 (toolchain missing)
 
 Backend      Success  Compile (s)  Run (s)      Binary (KB)  LOC
 --------------------------------------------------------------------------------
-c            6/7       0.760        0.002528     78.1         73
-cpp          5/7       0.412        0.003551     21.3         49
-go           6/7       0.123        0.003077     2371.0       37
-haskell      4/7       0.109        0.003214     2719.2       24
-llvm         0/7       0.000        0.000000     0.0          0
-ocaml        0/7       0.000        0.000000     0.0          0
-rust         6/7       0.181        0.002043     4416.0       36
-typescript   0/7       0.000        0.000000     0.0          0
-===============================================================================
+c            7/7       0.405        0.286091     94.9         76
+cpp          7/7       0.465        0.268678     36.1         51
+go           7/7       0.179        0.406986     2385.6       38
+haskell      7/7       1.036        0.550622     20267.6      65
+llvm         7/7       0.331        0.276880     53.7         327
+ocaml        7/7       0.306        0.391101     831.2        27
+rust         7/7       0.237        0.304464     468.5        37
+typescript   7/7       0.691        0.993575     66076.4      38
+================================================================================
 ```
 
-`dict_ops` is refused by the validator on every backend (`Unsupported feature: Tuples`), so no backend can reach 7/7 today. The `ocaml` and `typescript` rows are skips on this machine (no `opam`, no `deno`); the `llvm` rows are link failures. Open defects are tracked in TODO.md.
+A previous run on x86_64 Linux recorded LLVM link failures; that platform has not been re-measured. Open defects are tracked in TODO.md.
 
 ## Quick Start
 
@@ -833,7 +829,7 @@ MultiGen maintains test coverage ensuring translation accuracy:
 
 - Universal preference system with language-specific customization
 
-- Production-ready code generation with clean, efficient output
+- Clean, efficient generated code
 
 - 8 backends (C++, C, Rust, Go, Haskell, OCaml, LLVM, TypeScript); see the benchmark table above for measured pass rates
 

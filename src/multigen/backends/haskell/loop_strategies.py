@@ -7,10 +7,23 @@ like foldl/foldM, list comprehensions, and do-notation.
 import ast
 from typing import TYPE_CHECKING
 
+from ..errors import UnsupportedFeatureError
 from ..loop_conversion_strategies import ForLoopStrategy, LoopContext
 
 if TYPE_CHECKING:
     from .converter import MultiGenPythonToHaskellConverter
+
+
+def _reject_fold_capture(expr: ast.expr, accumulated: str) -> None:
+    """Raise if a fold step reads the accumulated variable or a variable named `acc`.
+
+    The fold lambda binds `acc`, so either name would read the wrong value.
+    """
+    for sub in ast.walk(expr):
+        if isinstance(sub, ast.Name) and sub.id in (accumulated, "acc"):
+            raise UnsupportedFeatureError(
+                f"for loop at line {expr.lineno}: a fold step that reads '{sub.id}' is not supported"
+            )
 
 
 class HaskellNestedListBuildingStrategy(ForLoopStrategy):
@@ -102,7 +115,7 @@ class HaskellNestedListBuildingStrategy(ForLoopStrategy):
         converter: MultiGenPythonToHaskellConverter = context.converter  # type: ignore
 
         # Extract components
-        var_name = converter._to_haskell_var_name(node.target.id) if isinstance(node.target, ast.Name) else "i"
+        var_name = converter._loop_target_pattern(node.target, node.iter)
         iterable = converter._convert_expression(node.iter)
 
         inner_loop = node.body[1]
@@ -114,9 +127,7 @@ class HaskellNestedListBuildingStrategy(ForLoopStrategy):
         inner_call = inner_stmt.value
 
         matrix_var = converter._to_haskell_var_name(outer_append.value.func.value.id)  # type: ignore
-        inner_var = (
-            converter._to_haskell_var_name(inner_loop.target.id) if isinstance(inner_loop.target, ast.Name) else "j"
-        )
+        inner_var = converter._loop_target_pattern(inner_loop.target, inner_loop.iter)
         inner_iterable = converter._convert_expression(inner_loop.iter)
         assert len(inner_call.args) > 0
         append_expr = converter._convert_expression(inner_call.args[0])
@@ -162,7 +173,7 @@ class HaskellListAppendStrategy(ForLoopStrategy):
         """Convert list append to foldl/foldM."""
         converter: MultiGenPythonToHaskellConverter = context.converter  # type: ignore
 
-        var_name = converter._to_haskell_var_name(node.target.id) if isinstance(node.target, ast.Name) else "i"
+        var_name = converter._loop_target_pattern(node.target, node.iter)
         iterable = converter._convert_expression(node.iter)
 
         stmt = node.body[0]
@@ -170,6 +181,7 @@ class HaskellListAppendStrategy(ForLoopStrategy):
         call = stmt.value
         list_var = converter._to_haskell_var_name(call.func.value.id)  # type: ignore
         assert len(call.args) > 0
+        _reject_fold_capture(call.args[0], call.func.value.id)  # type: ignore[attr-defined]
         append_expr = converter._convert_expression(call.args[0])
 
         if context.current_function != "main":
@@ -202,12 +214,13 @@ class HaskellAccumulationStrategy(ForLoopStrategy):
         """Convert accumulation to foldl/foldM."""
         converter: MultiGenPythonToHaskellConverter = context.converter  # type: ignore
 
-        var_name = converter._to_haskell_var_name(node.target.id) if isinstance(node.target, ast.Name) else "i"
+        var_name = converter._loop_target_pattern(node.target, node.iter)
         iterable = converter._convert_expression(node.iter)
 
         stmt = node.body[0]
-        assert isinstance(stmt, ast.AugAssign)
-        var_name_target = converter._to_haskell_var_name(stmt.target.id)  # type: ignore
+        assert isinstance(stmt, ast.AugAssign) and isinstance(stmt.target, ast.Name)
+        var_name_target = converter._to_haskell_var_name(stmt.target.id)
+        _reject_fold_capture(stmt.value, stmt.target.id)
         value_expr = converter._convert_expression(stmt.value)
         op = converter._convert_operator(stmt.op)
 
@@ -215,6 +228,108 @@ class HaskellAccumulationStrategy(ForLoopStrategy):
             return f"{var_name_target} = foldl (\\acc {var_name} -> acc {op} ({value_expr})) {var_name_target} ({iterable})"
         else:
             return f"{var_name_target} <- foldM (\\acc {var_name} -> return (acc {op} ({value_expr}))) {var_name_target} ({iterable})"
+
+
+class HaskellConditionalAccumulationStrategy(ForLoopStrategy):
+    r"""Strategy for augmented assignment guarded by an if without else.
+
+    Pattern:
+        for i in iter:
+            if cond:
+                var += expr
+
+    Converts to:
+        var = foldl (\\acc i -> if cond then acc + (expr) else acc) var iter  (pure)
+        var <- foldM (\\acc i -> return (if cond then acc + (expr) else acc)) var iter  (IO)
+    """
+
+    def can_handle(self, node: ast.For, context: LoopContext) -> bool:
+        """Check for guarded accumulation pattern."""
+        if len(node.body) != 1 or not isinstance(node.body[0], ast.If):
+            return False
+        if_stmt = node.body[0]
+        return (
+            not if_stmt.orelse
+            and len(if_stmt.body) == 1
+            and isinstance(if_stmt.body[0], ast.AugAssign)
+            and isinstance(if_stmt.body[0].target, ast.Name)
+        )
+
+    def convert(self, node: ast.For, context: LoopContext) -> str:
+        """Convert guarded accumulation to foldl/foldM."""
+        converter: MultiGenPythonToHaskellConverter = context.converter  # type: ignore
+
+        var_name = converter._loop_target_pattern(node.target, node.iter)
+        iterable = converter._convert_expression(node.iter)
+
+        if_stmt = node.body[0]
+        assert isinstance(if_stmt, ast.If)
+        stmt = if_stmt.body[0]
+        assert isinstance(stmt, ast.AugAssign) and isinstance(stmt.target, ast.Name)
+        _reject_fold_capture(if_stmt.test, stmt.target.id)
+        _reject_fold_capture(stmt.value, stmt.target.id)
+        target = converter._to_haskell_var_name(stmt.target.id)
+        condition = converter._convert_expression(if_stmt.test)
+        value_expr = converter._convert_expression(stmt.value)
+        op = converter._convert_operator(stmt.op)
+        step = f"if {condition} then acc {op} ({value_expr}) else acc"
+
+        if context.current_function != "main":
+            return f"{target} = foldl (\\acc {var_name} -> {step}) {target} ({iterable})"
+        else:
+            return f"{target} <- foldM (\\acc {var_name} -> return ({step})) {target} ({iterable})"
+
+
+class HaskellDictInsertStrategy(ForLoopStrategy):
+    r"""Strategy for a single item assignment into a known dict.
+
+    Pattern:
+        for i in iter:
+            d[key] = expr
+
+    Converts to:
+        d = foldl (\\acc i -> Map.insert (key) (expr) acc) d iter  (pure)
+        d <- foldM (\\acc i -> return (Map.insert (key) (expr) acc)) d iter  (IO)
+    """
+
+    def can_handle(self, node: ast.For, context: LoopContext) -> bool:
+        """Check for dict item assignment pattern."""
+        converter: MultiGenPythonToHaskellConverter = context.converter  # type: ignore
+        if len(node.body) != 1 or not isinstance(node.body[0], ast.Assign):
+            return False
+        stmt = node.body[0]
+        if len(stmt.targets) != 1 or not isinstance(stmt.targets[0], ast.Subscript):
+            return False
+        target = stmt.targets[0]
+        # Lists also take subscript assignment; only names known to be dicts map to Map.insert.
+        return (
+            isinstance(target.value, ast.Name)
+            and target.value.id in converter.dict_vars
+            and not isinstance(target.slice, ast.Slice)
+        )
+
+    def convert(self, node: ast.For, context: LoopContext) -> str:
+        """Convert dict item assignment to foldl/foldM over Map.insert."""
+        converter: MultiGenPythonToHaskellConverter = context.converter  # type: ignore
+
+        var_name = converter._loop_target_pattern(node.target, node.iter)
+        iterable = converter._convert_expression(node.iter)
+
+        stmt = node.body[0]
+        assert isinstance(stmt, ast.Assign)
+        subscript = stmt.targets[0]
+        assert isinstance(subscript, ast.Subscript) and isinstance(subscript.value, ast.Name)
+        _reject_fold_capture(subscript.slice, subscript.value.id)
+        _reject_fold_capture(stmt.value, subscript.value.id)
+        dict_var = converter._to_haskell_var_name(subscript.value.id)
+        key_expr = converter._convert_expression(subscript.slice)
+        value_expr = converter._convert_expression(stmt.value)
+        step = f"Map.insert ({key_expr}) ({value_expr}) acc"
+
+        if context.current_function != "main":
+            return f"{dict_var} = foldl (\\acc {var_name} -> {step}) {dict_var} ({iterable})"
+        else:
+            return f"{dict_var} <- foldM (\\acc {var_name} -> return ({step})) {dict_var} ({iterable})"
 
 
 class HaskellAssignmentInMainStrategy(ForLoopStrategy):
@@ -243,7 +358,7 @@ class HaskellAssignmentInMainStrategy(ForLoopStrategy):
         """Convert assignment to foldM."""
         converter: MultiGenPythonToHaskellConverter = context.converter  # type: ignore
 
-        var_name = converter._to_haskell_var_name(node.target.id) if isinstance(node.target, ast.Name) else "i"
+        var_name = converter._loop_target_pattern(node.target, node.iter)
         iterable = converter._convert_expression(node.iter)
 
         stmt = node.body[0]
@@ -266,6 +381,8 @@ def create_haskell_loop_converter() -> "ForLoopConverter":  # type: ignore[name-
         HaskellNestedListBuildingStrategy(),
         HaskellListAppendStrategy(),
         HaskellAccumulationStrategy(),
+        HaskellConditionalAccumulationStrategy(),
+        HaskellDictInsertStrategy(),
         HaskellAssignmentInMainStrategy(),
         # More strategies can be added here for other patterns
     ]
@@ -277,6 +394,8 @@ __all__ = [
     "HaskellNestedListBuildingStrategy",
     "HaskellListAppendStrategy",
     "HaskellAccumulationStrategy",
+    "HaskellConditionalAccumulationStrategy",
+    "HaskellDictInsertStrategy",
     "HaskellAssignmentInMainStrategy",
     "create_haskell_loop_converter",
 ]

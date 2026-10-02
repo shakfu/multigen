@@ -26,6 +26,7 @@ from ..base import AbstractEmitter
 from ..converter_utils import (
     escape_string_for_c_family,
     extract_format_spec,
+    find_in_place_mutated_params,
     format_spec_to_printf,
     get_standard_binary_operator,
     get_standard_comparison_operator,
@@ -62,6 +63,7 @@ class MultiGenPythonToCppConverter:
         self.includes_needed: set[str] = set()
         self.use_runtime = True
         self.append_map: dict[str, str] = {}  # container -> appended_item (from pre-pass)
+        self.mutated_params: dict[str, set[str]] = {}  # function -> params mutated in place
         # Initialize type inference engine with C++-specific strategies
         self.type_inference_engine = create_cpp_type_inference_engine()
 
@@ -87,6 +89,7 @@ class MultiGenPythonToCppConverter:
 
         # First pass: check for string methods to populate includes_needed
         self._detect_string_methods(node)
+        self.mutated_params = find_in_place_mutated_params(node)
 
         # Add includes
         parts.extend(self._generate_includes())
@@ -187,8 +190,11 @@ class MultiGenPythonToCppConverter:
             if param_name in nested_params and param_type == "std::vector<int>":
                 param_type = "std::vector<std::vector<int>>"
 
-            params.append(f"{param_type} {param_name}")
             self.variable_context[param_name] = param_type
+            # Python callers see in-place mutation of a list, dict or set argument.
+            if param_type.startswith("std::") and param_name in self.mutated_params.get(node.name, set()):
+                param_type += "&"
+            params.append(f"{param_type} {param_name}")
 
         # Pre-pass 1: Build append map
         self.append_map = self._analyze_append_operations(node.body)
@@ -631,19 +637,24 @@ class MultiGenPythonToCppConverter:
         value_expr = self._convert_method_expression(stmt.value, class_name)
         op = self._get_aug_op(stmt.op)
 
+        target: Optional[str] = None
         if isinstance(stmt.target, ast.Attribute):
             # self.attr += value -> this->attr += value
             if isinstance(stmt.target.value, ast.Name) and stmt.target.value.id == "self":
-                return f"        this->{stmt.target.attr} {op}= {value_expr};"
+                target = f"this->{stmt.target.attr}"
             else:
                 # obj.attr += value
                 obj_expr = self._convert_method_expression(stmt.target.value, class_name)
-                return f"        {obj_expr}.{stmt.target.attr} {op}= {value_expr};"
+                target = f"{obj_expr}.{stmt.target.attr}"
         elif isinstance(stmt.target, ast.Name):
             # Regular variable augmented assignment
-            return f"        {stmt.target.id} {op}= {value_expr};"
+            target = stmt.target.id
 
-        return "        /* Unknown augmented assignment target */"
+        if target is None:
+            return "        /* Unknown augmented assignment target */"
+        if isinstance(stmt.op, (ast.FloorDiv, ast.Mod)):
+            return f"        {target} = {self._floor_op_call(stmt.op, target, value_expr)};"
+        return f"        {target} {op}= {value_expr};"
 
     def _convert_method_return(self, stmt: ast.Return, class_name: str) -> str:
         """Convert method return statement."""
@@ -714,9 +725,8 @@ class MultiGenPythonToCppConverter:
 
             if isinstance(expr.op, ast.Pow):
                 return f"pow({left}, {right})"
-            elif isinstance(expr.op, ast.FloorDiv):
-                # C++ integer division is already floor division
-                return f"({left} / {right})"
+            elif isinstance(expr.op, (ast.FloorDiv, ast.Mod)):
+                return self._floor_op_call(expr.op, left, right)
 
             # Use standard operator mapping from converter_utils
             op = get_standard_binary_operator(expr.op)
@@ -764,6 +774,8 @@ class MultiGenPythonToCppConverter:
         target = expr.generators[0].target
         iter_expr = expr.generators[0].iter
         conditions = expr.generators[0].ifs
+        if isinstance(target, ast.Tuple):
+            raise UnsupportedFeatureError("Tuple unpacking is not supported in this comprehension")
 
         if isinstance(iter_expr, ast.Call) and isinstance(iter_expr.func, ast.Name) and iter_expr.func.id == "range":
             # Range-based comprehension
@@ -808,6 +820,8 @@ class MultiGenPythonToCppConverter:
         target = expr.generators[0].target
         iter_expr = expr.generators[0].iter
         conditions = expr.generators[0].ifs
+        if isinstance(target, ast.Tuple):
+            raise UnsupportedFeatureError("Tuple unpacking is not supported in this comprehension")
 
         if isinstance(iter_expr, ast.Call) and isinstance(iter_expr.func, ast.Name) and iter_expr.func.id == "range":
             range_args = [self._convert_method_expression(arg, class_name) for arg in iter_expr.args]
@@ -848,6 +862,8 @@ class MultiGenPythonToCppConverter:
         target = expr.generators[0].target
         iter_expr = expr.generators[0].iter
         conditions = expr.generators[0].ifs
+        if isinstance(target, ast.Tuple):
+            raise UnsupportedFeatureError("Tuple unpacking is not supported in this comprehension")
 
         if isinstance(iter_expr, ast.Call) and isinstance(iter_expr.func, ast.Name) and iter_expr.func.id == "range":
             range_args = [self._convert_method_expression(arg, class_name) for arg in iter_expr.args]
@@ -1254,8 +1270,19 @@ class MultiGenPythonToCppConverter:
         """Convert augmented assignment (+=, -=, etc.)."""
         target_expr = self._convert_expression(stmt.target)
         value_expr = self._convert_expression(stmt.value)
+        if isinstance(stmt.op, (ast.FloorDiv, ast.Mod)):
+            if isinstance(stmt.target, ast.Name):
+                return f"        {target_expr} = {self._floor_op_call(stmt.op, target_expr, value_expr)};"
+            # Bind once so the target expression is evaluated once, as in Python.
+            call = self._floor_op_call(stmt.op, "__mg_t", value_expr)
+            return f"        {{ auto& __mg_t = {target_expr}; __mg_t = {call}; }}"
         op = self._get_aug_op(stmt.op)
         return f"        {target_expr} {op}= {value_expr};"
+
+    def _floor_op_call(self, op: ast.operator, left: str, right: str) -> str:
+        """Return the runtime call for Python // or %; C++ / and % truncate toward zero."""
+        func = "multigen::floordiv" if isinstance(op, ast.FloorDiv) else "multigen::pymod"
+        return f"{func}({left}, {right})"
 
     def _convert_if(self, stmt: ast.If) -> str:
         """Convert if statement."""
@@ -1282,8 +1309,38 @@ class MultiGenPythonToCppConverter:
         body = self._convert_statements(stmt.body)
         return f"        while ({condition}) {{\n{body}\n        }}"
 
+    def _items_unpack_names(self, target: ast.expr, iter_expr: ast.expr) -> Optional[tuple[str, str]]:
+        """Return (k, v) for a `k, v in d.items()` target, None for a non-tuple target.
+
+        Raises:
+            UnsupportedFeatureError: for any other tuple target.
+        """
+        if not isinstance(target, ast.Tuple):
+            return None
+        elts = target.elts
+        if (
+            len(elts) == 2
+            and isinstance(elts[0], ast.Name)
+            and isinstance(elts[1], ast.Name)
+            and isinstance(iter_expr, ast.Call)
+            and isinstance(iter_expr.func, ast.Attribute)
+            and iter_expr.func.attr == "items"
+            and not iter_expr.args
+            and not iter_expr.keywords
+        ):
+            return elts[0].id, elts[1].id
+        raise UnsupportedFeatureError("Tuple unpacking is only supported as `for k, v in d.items()`")
+
     def _convert_for(self, stmt: ast.For) -> str:
         """Convert for loop (range-based or container iteration)."""
+        items_names = self._items_unpack_names(stmt.target, stmt.iter)
+        if items_names is not None:
+            # Structured binding over std::unordered_map entries
+            k_name, v_name = items_names
+            iter_expr = self._convert_expression(stmt.iter)
+            body = self._convert_statements(stmt.body)
+            return f"        for (const auto& [{k_name}, {v_name}] : {iter_expr}) {{\n{body}\n        }}"
+
         target_name = stmt.target.id if isinstance(stmt.target, ast.Name) else "iter_var"
 
         if isinstance(stmt.iter, ast.Call) and isinstance(stmt.iter.func, ast.Name) and stmt.iter.func.id == "range":
@@ -1387,9 +1444,8 @@ class MultiGenPythonToCppConverter:
 
         if isinstance(expr.op, ast.Pow):
             return f"pow({left}, {right})"
-        elif isinstance(expr.op, ast.FloorDiv):
-            # C++ integer division is already floor division
-            return f"({left} / {right})"
+        elif isinstance(expr.op, (ast.FloorDiv, ast.Mod)):
+            return self._floor_op_call(expr.op, left, right)
 
         # Use standard operator mapping from converter_utils
         op = get_standard_binary_operator(expr.op)
@@ -1599,6 +1655,19 @@ class MultiGenPythonToCppConverter:
         iter_expr = expr.generators[0].iter
         conditions = expr.generators[0].ifs
 
+        items_names = self._items_unpack_names(target, iter_expr)
+        if items_names is not None:
+            # Bind k, v from the map entry inside each lambda
+            container_expr = self._convert_expression(iter_expr)
+            binds = f"const auto& {items_names[0]} = __pair.first; const auto& {items_names[1]} = __pair.second;"
+            transform_lambda = f"[](const auto& __pair) {{ {binds} return {self._convert_expression(element_expr)}; }}"
+            if conditions:
+                condition_lambda = (
+                    f"[](const auto& __pair) {{ {binds} return {self._convert_expression(conditions[0])}; }}"
+                )
+                return f"list_comprehension({container_expr}, {transform_lambda}, {condition_lambda})"
+            return f"list_comprehension({container_expr}, {transform_lambda})"
+
         if isinstance(iter_expr, ast.Call) and isinstance(iter_expr.func, ast.Name) and iter_expr.func.id == "range":
             # Range-based comprehension
             range_args = [self._convert_expression(arg) for arg in iter_expr.args]
@@ -1657,11 +1726,11 @@ class MultiGenPythonToCppConverter:
             container_expr = self._convert_expression(iter_expr)
 
             # Check if target is a tuple (e.g., for k, v in dict.items())
-            if isinstance(target, ast.Tuple) and len(target.elts) == 2:
+            items_names = self._items_unpack_names(target, iter_expr)
+            if items_names is not None:
                 # Tuple unpacking for pairs - use temporary pair and .first/.second
                 # Note: C++17 doesn't support structured bindings in lambda parameters
-                k_name = target.elts[0].id if isinstance(target.elts[0], ast.Name) else "k"
-                v_name = target.elts[1].id if isinstance(target.elts[1], ast.Name) else "v"
+                k_name, v_name = items_names
                 # Use pair.first and pair.second instead of structured bindings
                 key_val_lambda = f"[](const auto& __pair) {{ const auto& {k_name} = __pair.first; const auto& {v_name} = __pair.second; return std::make_pair({self._convert_expression(key_expr)}, {self._convert_expression(value_expr)}); }}"
 
@@ -1688,6 +1757,8 @@ class MultiGenPythonToCppConverter:
         target = expr.generators[0].target
         iter_expr = expr.generators[0].iter
         conditions = expr.generators[0].ifs
+        if isinstance(target, ast.Tuple):
+            raise UnsupportedFeatureError("Tuple unpacking is not supported in this comprehension")
 
         if isinstance(iter_expr, ast.Call) and isinstance(iter_expr.func, ast.Name) and iter_expr.func.id == "range":
             # Range-based comprehension
@@ -2045,10 +2116,6 @@ class MultiGenPythonToCppConverter:
 
     def _get_aug_op(self, op: ast.operator) -> str:
         """Get augmented assignment operator (just the operator part, without =)."""
-        # Handle FloorDiv specially for C++
-        if isinstance(op, ast.FloorDiv):
-            return "/"
-
         # Use standard binary operator mapping from converter_utils
         # (augmented assignment operators are the same as binary operators)
         op_str = get_standard_binary_operator(op)

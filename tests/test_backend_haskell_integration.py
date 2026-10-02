@@ -87,7 +87,7 @@ class Circle:
 
 def create_circles() -> list:
     points = [Point(i, i + 1) for i in range(3)]
-    circles = [Circle(p, i + 5) for i, p in enumerate(points)]
+    circles = [Circle(p, 5) for p in points]
     return circles
 """
         haskell_code = self.converter.convert_code(python_code)
@@ -106,8 +106,7 @@ def create_circles() -> list:
         assert "newPoint :: Int -> Int -> Point" in haskell_code
         assert "newCircle :: " in haskell_code
 
-        # Note: The enumerate function and complex multi-class interactions
-        # would require more sophisticated handling in Haskell
+        # enumerate() tuple targets are rejected; only `k, v in d.items()` unpacks.
 
     def test_advanced_comprehensions_with_methods(self):
         """Test comprehensions with method calls and complex expressions."""

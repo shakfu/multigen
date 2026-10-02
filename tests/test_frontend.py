@@ -646,6 +646,71 @@ def calculate(x: int) -> int:
         assert any(path.visited_lines[-1] == 5 for path in report.execution_paths)
         assert any("return_value" in path.final_state.metadata for path in report.execution_paths)
 
+    @staticmethod
+    def _symbolic_report(code: str):
+        function = ast.parse(code).body[0]
+        context = AnalysisContext(
+            source_code=code,
+            ast_node=function,
+            analysis_result=analyze_python_code(code),
+            analysis_level=AnalysisLevel.INTERMEDIATE,
+        )
+        return SymbolicExecutor().analyze(context)
+
+    @pytest.mark.parametrize(
+        "loop",
+        ["for i in range(n):\n        total += i", "while total < n:\n        total += 1"],
+        ids=["for", "while"],
+    )
+    def test_symbolic_executor_continues_after_loop(self, loop):
+        """Every loop exit must reach the statements after the loop."""
+        code = f"""
+def f(n: int) -> int:
+    total = 0
+    {loop}
+    result = total * 2
+    return result
+"""
+        report = self._symbolic_report(code)
+
+        assert report.success
+        assert report.execution_paths
+        assert all(path.visited_lines[-1] == 7 for path in report.execution_paths)
+        assert all("return_value" in path.final_state.metadata for path in report.execution_paths)
+        assert any("loop" in note for note in report.approximations)
+
+    def test_symbolic_executor_runs_loop_else(self):
+        """A loop that terminates normally runs its else block before continuing."""
+        code = """
+def f(n: int) -> int:
+    while n > 0:
+        n -= 1
+    else:
+        n = 7
+    return n
+"""
+        report = self._symbolic_report(code)
+
+        assert all(path.visited_lines[-2:] == [6, 7] for path in report.execution_paths)
+
+    def test_symbolic_executor_flags_unmodeled_loop_body(self):
+        """Control flow inside a loop body is skipped, so the report must say so."""
+        code = """
+def f(n: int) -> int:
+    for i in range(n):
+        if i > 3:
+            break
+    return n
+"""
+        report = self._symbolic_report(code)
+
+        assert any("line 3: loop body control flow not modeled" == note for note in report.approximations)
+
+    def test_symbolic_executor_straight_line_is_exhaustive(self):
+        report = self._symbolic_report("def f(x: int) -> int:\n    y = x + 1\n    return y\n")
+
+        assert report.approximations == []
+
     def test_bounds_checker_basic(self):
         """Test BoundsChecker on simple code."""
         code = """

@@ -95,4 +95,4 @@ def nested_test(n: int) -> int:
         c_code = self.converter.convert_code(python_code)
 
         assert "for (int i = 0; i < n; i += 1)" in c_code
-        assert "if (((i % 2) == 0))" in c_code
+        assert "if ((multigen_mod_int(i, 2) == 0))" in c_code

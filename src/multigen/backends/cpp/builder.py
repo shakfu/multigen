@@ -17,16 +17,45 @@ class CppBuilder(AbstractBuilder):
         self.default_flags = ["-std=c++17", "-Wall", "-O2"]
         self.runtime_sources: list[str] = []
         self.runtime_headers_dir: Optional[str] = None
+        self._extra_include_dirs: list[str] = []
+        self._libraries: list[str] = []
+
+    def apply_build_options(
+        self,
+        compiler: Optional[str] = None,
+        compiler_flags: Optional[list[str]] = None,
+        include_dirs: Optional[list[str]] = None,
+        libraries: Optional[list[str]] = None,
+    ) -> set[str]:
+        """Adopt compiler, flags, include dirs and libraries for both build modes."""
+        applied: set[str] = set()
+        if compiler:
+            self.compiler = compiler
+            applied.add("compiler")
+        if compiler_flags:
+            self.default_flags.extend(compiler_flags)
+            applied.add("compiler_flags")
+        if include_dirs:
+            self._extra_include_dirs = list(include_dirs)
+            applied.add("include_dirs")
+        if libraries:
+            self._libraries = list(libraries)
+            applied.add("libraries")
+        return applied
 
     def get_build_filename(self) -> str:
         """Get the build file name (Makefile for C++)."""
         return "Makefile"
 
     def generate_build_file(self, source_files: list[str], target_name: str) -> str:
-        """Generate a Makefile for the C++ project using makefilegen."""
-        include_dirs: list[str] = []
-        if self.runtime_headers_dir:
-            include_dirs.append(self.runtime_headers_dir)
+        """Generate a Makefile for the C++ project using makefilegen.
+
+        Raises:
+            ValueError: If a name or path contains characters unsafe in a Makefile
+        """
+        # Generated code includes "runtime/multigen_cpp_runtime.hpp", so search the runtime's parent.
+        runtime_dir = self.runtime_headers_dir or self._get_runtime_dir()
+        include_dirs = ([str(Path(runtime_dir).parent)] if runtime_dir else []) + self._extra_include_dirs
 
         # Extract flags and standard from default_flags
         flags = [f for f in self.default_flags if not f.startswith("-std=")]
@@ -36,16 +65,20 @@ class CppBuilder(AbstractBuilder):
                 std = f[5:]
                 break
 
+        # Absolute paths: the CLI moves the Makefile out of the source directory.
+        sources = [str(Path(f).resolve()) for f in source_files]
         generator = MakefileGenerator(
             name=target_name,
-            source_dir=".",
+            source_dir=str(Path(sources[0]).parent) if sources else ".",
             build_dir="build",
             flags=flags,
             include_dirs=include_dirs,
+            libraries=self._libraries,
             compiler=self.compiler,
             std=std,
             use_stc=False,
             project_type="MultiGen",
+            sources=sources,
         )
 
         return generator.generate_makefile()
@@ -60,6 +93,7 @@ class CppBuilder(AbstractBuilder):
 
         # Build the compilation command
         cmd = [self.compiler] + self.get_compile_flags() + [str(paths.source_path), "-o", str(paths.executable_path)]
+        cmd.extend(f"-l{lib}" for lib in self._libraries)
 
         # Execute compilation using base class helper
         result = self._run_command(cmd)
@@ -155,6 +189,7 @@ install(TARGETS {target_name} DESTINATION bin)
         flags = self.default_flags.copy()
         if self.runtime_headers_dir:
             flags.append(f"-I{self.runtime_headers_dir}")
+        flags.extend(f"-I{d}" for d in self._extra_include_dirs)
         return flags
 
     def _detect_runtime_sources(self, source_files: list[str]) -> list[str]:

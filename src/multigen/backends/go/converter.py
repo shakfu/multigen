@@ -6,6 +6,7 @@ from typing import Any, Optional
 from ..converter_utils import (
     escape_string_for_c_family,
     extract_format_spec,
+    find_in_place_mutated_params,
     format_spec_to_printf,
     get_augmented_assignment_operator,
     get_standard_binary_operator,
@@ -46,6 +47,8 @@ class MultiGenPythonToGoConverter:
         self.current_function: Optional[str] = None  # Track current function context
         self.declared_vars: set[str] = set()  # Track declared variables in current function
         self.function_return_types: dict[str, str] = {}  # Track function return types
+        # function -> per-position flag: slice param passed as a pointer
+        self._slice_ref_params: dict[str, list[bool]] = {}
         self._try_counter = 0  # Unique suffixes for try-block temporaries
         # (result var, flag var, carries a value) for each enclosing try closure
         self._try_return_stack: list[tuple[str, str, bool]] = []
@@ -124,6 +127,16 @@ class MultiGenPythonToGoConverter:
                 else:
                     # Default to int if no annotation
                     self.function_return_types[item.name] = "int"
+
+        # A callee's append reallocates its own slice header; the caller would
+        # keep the old length. Mutated slice params are passed by pointer.
+        mutated = find_in_place_mutated_params(node)
+        for item in node.body:
+            if isinstance(item, ast.FunctionDef):
+                self._slice_ref_params[item.name] = [
+                    arg.arg in mutated.get(item.name, set()) and self._infer_parameter_type(arg, item).startswith("[]")
+                    for arg in item.args.args
+                ]
 
         # Convert functions
         functions = []
@@ -362,14 +375,23 @@ class MultiGenPythonToGoConverter:
         """Convert method augmented assignment with proper obj handling."""
         value_expr = self._convert_method_expression(stmt.value, class_name)
 
+        if isinstance(stmt.op, (ast.FloorDiv, ast.Mod)):
+            target: Optional[str] = None
+            if isinstance(stmt.target, ast.Name):
+                target = stmt.target.id
+            elif (
+                isinstance(stmt.target, ast.Attribute)
+                and isinstance(stmt.target.value, ast.Name)
+                and stmt.target.value.id == "self"
+            ):
+                target = f"obj.{self._to_camel_case(stmt.target.attr)}"
+            if target is not None:
+                return f"    {target} = {self._floor_op_call(stmt.op, target, value_expr)}"
+
         # Get augmented assignment operator from converter_utils
         op = get_augmented_assignment_operator(stmt.op)
         if op is None:
-            # Handle Go-specific operators
-            if isinstance(stmt.op, ast.FloorDiv):
-                op = "/="  # Go integer division is already floor division
-            else:
-                op = "/*UNKNOWN_OP*/"
+            op = "/*UNKNOWN_OP*/"
 
         if isinstance(stmt.target, ast.Name):
             return f"    {stmt.target.id} {op} {value_expr}"
@@ -425,9 +447,8 @@ class MultiGenPythonToGoConverter:
             # Handle Go-specific operators
             if isinstance(expr.op, ast.Pow):
                 return f"math.Pow({left}, {right})"
-            elif isinstance(expr.op, ast.FloorDiv):
-                # Go integer division is already floor division
-                return f"({left} / {right})"
+            elif isinstance(expr.op, (ast.FloorDiv, ast.Mod)):
+                return self._floor_op_call(expr.op, left, right)
 
             # Use standard operator mapping from converter_utils
             op = get_standard_binary_operator(expr.op)
@@ -436,6 +457,9 @@ class MultiGenPythonToGoConverter:
             return f"({left} {op} {right})"
         elif isinstance(expr, ast.Compare):
             return self._convert_method_compare(expr, class_name)
+        elif isinstance(expr, ast.BoolOp):
+            op = " && " if isinstance(expr.op, ast.And) else " || "
+            return "(" + op.join(self._convert_method_expression(v, class_name) for v in expr.values) + ")"
         elif isinstance(expr, ast.Name):
             return expr.id
         elif isinstance(expr, ast.Constant):
@@ -572,6 +596,9 @@ class MultiGenPythonToGoConverter:
 
         # Build parameter list
         params = []
+        ref_prologue: list[str] = []
+        flags = self._slice_ref_params.get(node.name, [])
+        ref_args = {arg.arg for arg, flag in zip(node.args.args, flags) if flag}
         for arg in node.args.args:
             param_type = self._infer_parameter_type(arg, node)
 
@@ -579,7 +606,12 @@ class MultiGenPythonToGoConverter:
             if arg.arg in nested_vars and param_type == "[]int":
                 param_type = "[][]int"
 
-            params.append(f"{arg.arg} {param_type}")
+            if arg.arg in ref_args:
+                params.append(f"{arg.arg}__ref *{param_type}")
+                ref_prologue.append(f"    {arg.arg} := *{arg.arg}__ref")
+                ref_prologue.append(f"    defer func() {{ *{arg.arg}__ref = {arg.arg} }}()")
+            else:
+                params.append(f"{arg.arg} {param_type}")
 
         params_str = ", ".join(params)
 
@@ -665,6 +697,8 @@ class MultiGenPythonToGoConverter:
             gen_prefix = f"    __mgen_result := []{gen_element_type}{{}}\n"
 
         body = self._convert_statements(node.body)
+        if ref_prologue:
+            body = "\n".join(ref_prologue) + "\n" + body
 
         # For generators, add return at end
         if is_generator:
@@ -1582,18 +1616,22 @@ class MultiGenPythonToGoConverter:
                 self.variable_types[stmt.target.id] = var_type
             return f"    var {target_id} {var_type} = {default_value}"
 
+    def _floor_op_call(self, op: ast.operator, left: str, right: str) -> str:
+        """Return the runtime call for Python // or %; Go / and % truncate toward zero."""
+        func = "multigen.FloorDiv" if isinstance(op, ast.FloorDiv) else "multigen.Mod"
+        return f"{func}({left}, {right})"
+
     def _convert_aug_assignment(self, stmt: ast.AugAssign) -> str:
         """Convert augmented assignment."""
         value_expr = self._convert_expression(stmt.value)
 
+        if isinstance(stmt.op, (ast.FloorDiv, ast.Mod)) and isinstance(stmt.target, ast.Name):
+            return f"    {stmt.target.id} = {self._floor_op_call(stmt.op, stmt.target.id, value_expr)}"
+
         # Get augmented assignment operator from converter_utils
         op = get_augmented_assignment_operator(stmt.op)
         if op is None:
-            # Handle Go-specific operators
-            if isinstance(stmt.op, ast.FloorDiv):
-                op = "/="  # Go integer division is already floor division
-            else:
-                op = "/*UNKNOWN_OP*/"
+            op = "/*UNKNOWN_OP*/"
 
         if isinstance(stmt.target, ast.Name):
             return f"    {stmt.target.id} {op} {value_expr}"
@@ -1652,12 +1690,89 @@ class MultiGenPythonToGoConverter:
                 return (
                     f"    for {target_name} := 0; {target_name} < 0; {target_name}++ {{\n{body}\n    }}"  # Empty loop
                 )
+        elif (items := self._match_items_unpack(stmt.target, stmt.iter)) is not None:
+            return self._convert_for_items(stmt, *items)
         else:
             # Iteration over container
+            if not isinstance(stmt.target, ast.Name):
+                raise UnsupportedFeatureError(f"Unsupported for-loop target: {ast.unparse(stmt.target)}")
             container_expr = self._convert_expression(stmt.iter)
-            target_name = stmt.target.id if isinstance(stmt.target, ast.Name) else "item"
+            target_name = stmt.target.id
             body = self._convert_statements(stmt.body)
             return f"    for _, {target_name} := range {container_expr} {{\n{body}\n    }}"
+
+    def _convert_for_items(self, stmt: ast.For, key_var: str, value_var: str, map_expr: ast.expr) -> str:
+        """Convert `for k, v in m.items()` to `for k, v := range m`."""
+        # Go's := scopes k and v to the loop; Python rebinds function-level names.
+        for name in (key_var, value_var):
+            if name in self.variable_types:
+                raise UnsupportedFeatureError(f"Loop variable '{name}' in .items() loop shadows a function variable")
+        key_type, value_type = self._map_key_value_types(map_expr)
+        used = self._names_used(stmt.body)
+        key_name = key_var if key_var in used else "_"
+        value_name = value_var if value_var in used else "_"
+        container_expr = self._convert_expression(map_expr)
+
+        # Expose loop variable types to the body, then drop them at loop exit.
+        self.variable_types[key_var] = key_type
+        self.variable_types[value_var] = value_type
+        try:
+            body = self._convert_statements(stmt.body)
+        finally:
+            self.variable_types.pop(key_var, None)
+            self.variable_types.pop(value_var, None)
+
+        if key_name == value_name == "_":
+            return f"    for range {container_expr} {{\n{body}\n    }}"
+        return f"    for {key_name}, {value_name} := range {container_expr} {{\n{body}\n    }}"
+
+    def _match_items_unpack(self, target: ast.expr, iter_expr: ast.expr) -> Optional[tuple[str, str, ast.expr]]:
+        """Return (key, value, map expr) for the target/iterator shape `k, v in m.items()`, else None."""
+        if (
+            isinstance(target, ast.Tuple)
+            and len(target.elts) == 2
+            and isinstance(target.elts[0], ast.Name)
+            and isinstance(target.elts[1], ast.Name)
+            and target.elts[0].id != target.elts[1].id
+            and isinstance(iter_expr, ast.Call)
+            and isinstance(iter_expr.func, ast.Attribute)
+            and iter_expr.func.attr == "items"
+            and not iter_expr.args
+            and not iter_expr.keywords
+        ):
+            return target.elts[0].id, target.elts[1].id, iter_expr.func.value
+        return None
+
+    def _map_key_value_types(self, map_expr: ast.expr) -> tuple[str, str]:
+        """Split the inferred Go map type of map_expr into (key type, value type)."""
+        map_type = self._infer_type_from_value(map_expr)
+        if map_type.startswith("map["):
+            depth = 0
+            for i in range(3, len(map_type)):
+                if map_type[i] == "[":
+                    depth += 1
+                elif map_type[i] == "]":
+                    depth -= 1
+                    if depth == 0:
+                        key_type, value_type = map_type[4:i], map_type[i + 1 :]
+                        if key_type and value_type:
+                            return key_type, value_type
+                        break
+        raise UnsupportedFeatureError(f"Cannot infer map type for .items() source: {ast.unparse(map_expr)}")
+
+    @staticmethod
+    def _names_used(nodes: list[Any]) -> set[str]:
+        """Return every identifier referenced in nodes."""
+        return {n.id for node in nodes for n in ast.walk(node) if isinstance(n, ast.Name)}
+
+    @staticmethod
+    def _kv_unpack(key_var: str, value_var: str, used: set[str]) -> str:
+        """Return the `k, v := kv.Key, kv.Value; ` prefix for a KV lambda, with `_` for unused names."""
+        key_name = key_var if key_var in used else "_"
+        value_name = value_var if value_var in used else "_"
+        if key_name == value_name == "_":
+            return ""
+        return f"{key_name}, {value_name} := kv.Key, kv.Value; "
 
     def _convert_expression_statement(self, stmt: ast.Expr) -> str:
         """Convert expression statement."""
@@ -1689,6 +1804,10 @@ class MultiGenPythonToGoConverter:
             return self._convert_unaryop(expr)
         elif isinstance(expr, ast.Compare):
             return self._convert_compare(expr)
+        elif isinstance(expr, ast.BoolOp):
+            # Exact for bool operands; Go rejects && on anything else at compile time.
+            op = " && " if isinstance(expr.op, ast.And) else " || "
+            return "(" + op.join(self._convert_expression(v) for v in expr.values) + ")"
         elif isinstance(expr, ast.Call):
             return self._convert_call(expr)
         elif isinstance(expr, ast.Attribute):
@@ -1736,9 +1855,8 @@ class MultiGenPythonToGoConverter:
         # Handle Go-specific operators
         if isinstance(expr.op, ast.Pow):
             return f"math.Pow({left}, {right})"
-        elif isinstance(expr.op, ast.FloorDiv):
-            # Go integer division is already floor division
-            return f"({left} / {right})"
+        elif isinstance(expr.op, (ast.FloorDiv, ast.Mod)):
+            return self._floor_op_call(expr.op, left, right)
 
         # Use standard operator mapping from converter_utils
         op = get_standard_binary_operator(expr.op)
@@ -1859,6 +1977,14 @@ class MultiGenPythonToGoConverter:
                     args_str = ", ".join(args)
                     return f"New{func_name}({args_str})"
                 else:
+                    for index, by_ref in enumerate(self._slice_ref_params.get(func_name, [])):
+                        if not by_ref or index >= len(expr.args):
+                            continue
+                        if not isinstance(expr.args[index], ast.Name):
+                            raise UnsupportedFeatureError(
+                                f"'{func_name}' mutates argument {index + 1}; pass a variable, not an expression"
+                            )
+                        args[index] = f"&{args[index]}"
                     args_str = ", ".join(args)
                     return f"{func_name}({args_str})"
 
@@ -2049,14 +2175,31 @@ class MultiGenPythonToGoConverter:
             else:
                 # No condition
                 return f"multigen.ListComprehensionFromRange[{result_type}]({range_call}, {transform_lambda})"
+        elif (items := self._match_items_unpack(target, iter_expr)) is not None:
+            key_var, value_var, map_expr = items
+            key_type, value_type = self._map_key_value_types(map_expr)
+            kv_type = f"multigen.KV[{key_type}, {value_type}]"
+            container_expr = f"multigen.MapItems({self._convert_expression(map_expr)})"
+            transform_expr = self._convert_expression(element_expr)
+            unpack = self._kv_unpack(key_var, value_var, self._names_used([element_expr]))
+            transform_lambda = f"func(kv {kv_type}) {result_type} {{ {unpack}return {transform_expr} }}"
+
+            if conditions:
+                condition_expr = self._convert_expression(conditions[0])
+                unpack = self._kv_unpack(key_var, value_var, self._names_used([conditions[0]]))
+                condition_lambda = f"func(kv {kv_type}) bool {{ {unpack}return {condition_expr} }}"
+                return f"multigen.ListComprehensionWithFilter[{kv_type}, {result_type}]({container_expr}, {transform_lambda}, {condition_lambda})"
+            return f"multigen.ListComprehension[{kv_type}, {result_type}]({container_expr}, {transform_lambda})"
         else:
             # Container iteration - need to infer source type
+            if not isinstance(target, ast.Name):
+                raise UnsupportedFeatureError(f"Unsupported comprehension target: {ast.unparse(target)}")
             source_type = self._infer_type_from_value(iter_expr)
             # Extract element type from slice type (e.g., []int -> int)
             element_type = source_type[2:] if source_type.startswith("[]") else "interface{}"
 
             container_expr = self._convert_expression(iter_expr)
-            target_name = target.id if isinstance(target, ast.Name) else "x"
+            target_name = target.id
             transform_expr = self._convert_expression(element_expr)
             transform_lambda = f"func({target_name} {element_type}) {result_type} {{ return {transform_expr} }}"
 
@@ -2095,41 +2238,34 @@ class MultiGenPythonToGoConverter:
 
             return f"multigen.DictComprehensionFromRange[{key_type}, {value_type}]({range_call}, {transform_lambda})"
         else:
-            # Handle tuple unpacking for dict iteration: {k: v for k, v in dict.items()}
-            if isinstance(target, ast.Tuple) and len(target.elts) == 2:
-                # Tuple unpacking from .items()
-                key_var = target.elts[0].id if isinstance(target.elts[0], ast.Name) else "k"
-                value_var = target.elts[1].id if isinstance(target.elts[1], ast.Name) else "v"
-
-                # Convert dict.items() to multigen.MapItems() call that returns []KV struct
-                container_expr = self._convert_expression(iter_expr)
+            # Tuple unpacking over dict.items(): {k: v for k, v in d.items()}
+            items = self._match_items_unpack(target, iter_expr)
+            if items is not None:
+                key_var, value_var, map_expr = items
+                src_key_type, src_value_type = self._map_key_value_types(map_expr)
+                kv_type = f"multigen.KV[{src_key_type}, {src_value_type}]"
+                container_expr = f"multigen.MapItems({self._convert_expression(map_expr)})"
                 key_transform = self._convert_expression(key_expr)
                 value_transform = self._convert_expression(value_expr)
+                unpack = self._kv_unpack(key_var, value_var, self._names_used([key_expr, value_expr]))
+                transform_lambda = f"func(kv {kv_type}) ({key_type}, {value_type}) {{ {unpack}return {key_transform}, {value_transform} }}"
 
-                # For Go, we need to convert map to slice of key-value pairs
-                # The multigen.MapItems() function will handle this
-                transform_lambda = f"func(kv multigen.KV[{key_type}, {value_type}]) ({key_type}, {value_type}) {{ {key_var}, {value_var} := kv.Key, kv.Value; return {key_transform}, {value_transform} }}"
-
-                # Check if we need to handle filtering
                 conditions = expr.generators[0].ifs
                 if conditions:
                     condition_expr = self._convert_expression(conditions[0])
-                    # Detect which variables are used in the condition
-                    key_used = key_var in condition_expr
-                    value_used = value_var in condition_expr
-                    key_assign = key_var if key_used else "_"
-                    value_assign = value_var if value_used else "_"
-                    filter_lambda = f"func(kv multigen.KV[{key_type}, {value_type}]) bool {{ {key_assign}, {value_assign} := kv.Key, kv.Value; return {condition_expr} }}"
-                    return f"multigen.DictComprehensionWithFilter[multigen.KV[{key_type}, {value_type}], {key_type}, {value_type}]({container_expr}, {transform_lambda}, {filter_lambda})"
-                else:
-                    return f"multigen.DictComprehension[multigen.KV[{key_type}, {value_type}], {key_type}, {value_type}]({container_expr}, {transform_lambda})"
+                    unpack = self._kv_unpack(key_var, value_var, self._names_used([conditions[0]]))
+                    filter_lambda = f"func(kv {kv_type}) bool {{ {unpack}return {condition_expr} }}"
+                    return f"multigen.DictComprehensionWithFilter[{kv_type}, {key_type}, {value_type}]({container_expr}, {transform_lambda}, {filter_lambda})"
+                return f"multigen.DictComprehension[{kv_type}, {key_type}, {value_type}]({container_expr}, {transform_lambda})"
             else:
                 # Non-tuple unpacking case
+                if not isinstance(target, ast.Name):
+                    raise UnsupportedFeatureError(f"Unsupported comprehension target: {ast.unparse(target)}")
                 source_type = self._infer_type_from_value(iter_expr)
                 element_type = source_type[2:] if source_type.startswith("[]") else "interface{}"
 
                 container_expr = self._convert_expression(iter_expr)
-                target_name = target.id if isinstance(target, ast.Name) else "x"
+                target_name = target.id
                 key_transform = self._convert_expression(key_expr)
                 value_transform = self._convert_expression(value_expr)
                 transform_lambda = f"func({target_name} {element_type}) ({key_type}, {value_type}) {{ return {key_transform}, {value_transform} }}"
@@ -2349,6 +2485,9 @@ class MultiGenPythonToGoConverter:
                     loop_var_types[target.id] = element_type
                 else:
                     loop_var_types[target.id] = "interface{}"
+        elif (items := self._match_items_unpack(target, iter_expr)) is not None:
+            key_var, value_var, map_expr = items
+            loop_var_types[key_var], loop_var_types[value_var] = self._map_key_value_types(map_expr)
         return loop_var_types
 
     def _infer_comprehension_element_type(self, expr: ast.expr, loop_var_types: dict[str, str]) -> str:

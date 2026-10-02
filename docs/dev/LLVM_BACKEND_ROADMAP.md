@@ -255,7 +255,7 @@ The LLVM backend generates LLVM IR from Python code and compiles to native execu
 - Memory overhead for JIT infrastructure
 - Limited deployment options
 
-**Status**: Currently using AOT for production-quality binaries. JIT could be explored as an alternative mode for development/testing.
+**Status**: Currently using AOT for standalone binaries. JIT could be explored as an alternative mode for development/testing.
 
 ---
 
@@ -300,7 +300,7 @@ The LLVM backend generates LLVM IR from Python code and compiles to native execu
 
 ### v0.2.0 (Target: 4-6 weeks)
 
-**Goal**: Production-ready LLVM backend
+**Goal**: LLVM backend at parity with the other backends
 
 - [ ] Multi-pass type inference (fixes wordcount completely)
 - [ ] Tuple support (required for dict.items())
@@ -442,4 +442,4 @@ The LLVM backend generates LLVM IR from Python code and compiles to native execu
 
 **Last Updated**: 2025-10-10
 **Backend Version**: v0.1.80
-**Status**: Production-ready - 7/7 benchmarks passing (100%)
+**Status**: 7/7 benchmarks passing (100%)

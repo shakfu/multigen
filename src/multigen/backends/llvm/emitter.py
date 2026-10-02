@@ -3,9 +3,9 @@
 import ast
 from typing import Any, Optional
 
-from ...frontend.static_ir import build_ir_from_code
 from ..base import AbstractEmitter
 from ..preferences import BackendPreferences
+from .ir_builder import build_llvm_ir_from_code
 from .ir_to_llvm import IRToLLVMConverter
 
 
@@ -29,7 +29,7 @@ class LLVMEmitter(AbstractEmitter):
             LLVM IR as text string
         """
         # Build Static IR from Python source
-        ir_module = build_ir_from_code(source_code)
+        ir_module = build_llvm_ir_from_code(source_code)
 
         # Convert Static IR to LLVM IR
         llvm_module = self.converter.visit_module(ir_module)

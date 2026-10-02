@@ -258,7 +258,7 @@ def count_primes_up_to(n: int) -> int:
         assert "bool is_prime(int n)" in cpp_code
         assert "if ((n < 2))" in cpp_code
         assert "for (int i = 2; i < n; i++)" in cpp_code
-        assert "if (((n % i) == 0))" in cpp_code
+        assert "if ((multigen::pymod(n, i) == 0))" in cpp_code
 
         # Note: Complex list operations would need more sophisticated handling
         assert "find_primes(n)" in cpp_code

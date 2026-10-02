@@ -8,7 +8,7 @@ import ast
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from ..base import AnalysisContext, AnalysisLevel, AnalysisReport, BaseAnalyzer
 
@@ -169,6 +169,8 @@ class SymbolicExecutionReport(AnalysisReport):
     potential_errors: list[str] = field(default_factory=list)
     coverage_info: dict[str, Any] = field(default_factory=dict)
     symbolic_constraints: list[str] = field(default_factory=list)
+    # Reasons the paths under-approximate the program; empty means exhaustive.
+    approximations: list[str] = field(default_factory=list)
 
 
 class SymbolicExecutor(BaseAnalyzer):
@@ -179,6 +181,8 @@ class SymbolicExecutor(BaseAnalyzer):
         self._path_counter = 0
         self._max_paths = 100  # Limit to prevent explosion
         self._max_depth = 50  # Maximum recursion depth
+        self._max_while_iterations = 3
+        self._approximations: list[str] = []
 
     def analyze(self, context: AnalysisContext) -> SymbolicExecutionReport:
         """Perform symbolic execution analysis on the given context."""
@@ -187,6 +191,7 @@ class SymbolicExecutor(BaseAnalyzer):
         try:
             # Initialize symbolic execution
             self._path_counter = 0
+            self._approximations = []
             execution_paths = []
 
             # Create initial symbolic state
@@ -232,6 +237,7 @@ class SymbolicExecutor(BaseAnalyzer):
                 potential_errors=potential_errors,
                 coverage_info=coverage_info,
                 symbolic_constraints=self._collect_all_constraints(execution_paths),
+                approximations=list(self._approximations),
             )
 
         except Exception as e:
@@ -276,6 +282,7 @@ class SymbolicExecutor(BaseAnalyzer):
                     is_complete=False,
                 )
                 path.add_potential_error("Path truncated due to depth limit")
+                self._approximations.append(f"path {self._path_counter} truncated at depth {self._max_depth}")
                 completed_paths.append(path)
                 self._path_counter += 1
                 continue
@@ -311,6 +318,9 @@ class SymbolicExecutor(BaseAnalyzer):
                 path.add_potential_error(f"Execution error: {str(e)}")
                 completed_paths.append(path)
                 self._path_counter += 1
+
+        if worklist:
+            self._approximations.append(f"path budget of {self._max_paths} exhausted")
 
         return completed_paths
 
@@ -404,17 +414,28 @@ class SymbolicExecutor(BaseAnalyzer):
 
         return results
 
+    def _loop_exit(self, loop_node: Union[ast.While, ast.For]) -> Optional[ast.AST]:
+        """Return the statement a loop continues at when it terminates normally."""
+        return loop_node.orelse[0] if loop_node.orelse else self._next_nodes.get(loop_node)
+
+    def _note_loop_body(self, loop_node: Union[ast.While, ast.For]) -> None:
+        """Record when a loop body contains statements the inline executor skips."""
+        if any(not isinstance(stmt, (ast.Assign, ast.AugAssign, ast.Expr, ast.Pass)) for stmt in loop_node.body):
+            self._approximations.append(f"line {loop_node.lineno}: loop body control flow not modeled")
+
     def _execute_while(
         self, while_node: ast.While, state: SymbolicState, path_history: list[int]
     ) -> list[tuple[Optional[ast.AST], SymbolicState, list[int]]]:
         """Execute a while loop with bounded unrolling."""
         results: list[tuple[Optional[ast.AST], SymbolicState, list[int]]] = []
-
-        # For simplicity, we'll do limited loop unrolling
-        max_iterations = 3
+        exit_node = self._loop_exit(while_node)
+        self._note_loop_body(while_node)
+        self._approximations.append(
+            f"line {while_node.lineno}: while loop unrolled to {self._max_while_iterations} iterations"
+        )
 
         current_state = state.copy()
-        for _iteration in range(max_iterations):
+        for _iteration in range(self._max_while_iterations):
             # Check loop condition
             condition_value = self._evaluate_expression(while_node.test, current_state)
             condition_expr = condition_value.symbolic_expr
@@ -422,7 +443,7 @@ class SymbolicExecutor(BaseAnalyzer):
             # If condition can be false, add exit path
             exit_state = current_state.copy()
             exit_state.add_path_condition(f"not ({condition_expr})")
-            results.append((None, exit_state, path_history))
+            results.append((exit_node, exit_state, path_history))
 
             # Continue with loop body
             continue_state = current_state.copy()
@@ -440,8 +461,13 @@ class SymbolicExecutor(BaseAnalyzer):
     def _execute_for(
         self, for_node: ast.For, state: SymbolicState, path_history: list[int]
     ) -> list[tuple[Optional[ast.AST], SymbolicState, list[int]]]:
-        """Execute a for loop with bounded iterations."""
-        # Simplified for loop handling
+        """Execute a for loop as zero iterations or one symbolic iteration."""
+        exit_node = self._loop_exit(for_node)
+        self._note_loop_body(for_node)
+        self._approximations.append(f"line {for_node.lineno}: for loop body executed at most once")
+
+        # Empty iterable: the body never runs.
+        empty_state = state.copy()
         loop_state = state.copy()
 
         # Set up loop variable
@@ -453,12 +479,11 @@ class SymbolicExecutor(BaseAnalyzer):
             )
             loop_state.set_variable(for_node.target.id, loop_var)
 
-        # Execute loop body once (simplified)
         if for_node.body:
             for stmt in for_node.body:
                 loop_state = self._execute_simple_statement(stmt, loop_state)
 
-        return [(None, loop_state, path_history)]
+        return [(exit_node, empty_state, path_history), (exit_node, loop_state, path_history)]
 
     def _execute_assign(
         self, assign_node: ast.Assign, state: SymbolicState, path_history: list[int]

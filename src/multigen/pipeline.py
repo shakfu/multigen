@@ -67,6 +67,7 @@ try:
     from .frontend.python_constraints import PythonConstraintChecker
     from .frontend.static_profile import DEFAULT_PROFILE, get_profile
     from .frontend.static_validation import StaticValidator
+    from .frontend.verifiers.theorem_prover import ProofStatus
 
     FRONTEND_AVAILABLE = True
 except ImportError:
@@ -130,6 +131,8 @@ class PipelineConfig:
     target_language: str = "c"
     output_dir: Optional[str] = None
     build_mode: BuildMode = BuildMode.NONE
+    # Build overrides; None or empty uses the backend default. A backend that
+    # cannot honour a supplied override fails the build phase.
     compiler: Optional[str] = None
     compiler_flags: Optional[list[str]] = None
     include_dirs: Optional[list[str]] = None
@@ -153,10 +156,6 @@ class PipelineConfig:
             self.include_dirs = []
         if self.libraries is None:
             self.libraries = []
-        if self.compiler is None:
-            # Set default compiler based on target language
-            compiler_defaults = {"c": "gcc", "rust": "rustc", "go": "go", "cpp": "g++"}
-            self.compiler = compiler_defaults.get(self.target_language, "gcc")
 
 
 @dataclass
@@ -571,24 +570,27 @@ class MultiGenPipeline:
                                     else:
                                         result.warnings.append(error_msg)
 
-                                # In strict mode, halt on first unsafe function
-                                if self.config.strict_verification:
-                                    result.success = False
-                                    result.errors.append(
-                                        f"[FORMAL_VERIFICATION] Code generation halted due to verification failures in '{proof.function_name}'. "
-                                        f"Fix unsafe memory accesses or disable strict_verification mode."
-                                    )
-                                    self.log.error(f"Verification failed in strict mode: {proof.summary}")
-                                    return False
-
-                            # Add verification recommendations. Undecided
-                            # accesses land here as warnings: they were neither
-                            # proved safe nor shown to be violations.
-                            for recommendation in proof.recommendations:
-                                if self.config.strict_verification and not proof.is_safe:
+                            # Strict mode requires a proof. An undecided access
+                            # fails here; non-strict mode only warns about it.
+                            if self.config.strict_verification and not proof.is_proved:
+                                for proof_result in proof.proof_results:
+                                    if proof_result.status not in (ProofStatus.PROVED, ProofStatus.DISPROVED):
+                                        result.errors.append(
+                                            f"[FORMAL_VERIFICATION] Unproved in '{proof.function_name}': "
+                                            f"{proof_result.error_message or proof_result.proof_property.description}"
+                                        )
+                                for recommendation in proof.recommendations:
                                     result.errors.append(f"[FORMAL_VERIFICATION] {recommendation}")
-                                else:
-                                    result.warnings.append(f"[FORMAL_VERIFICATION] {recommendation}")
+                                result.success = False
+                                result.errors.append(
+                                    f"[FORMAL_VERIFICATION] Code generation halted due to verification failures in '{proof.function_name}'. "
+                                    f"Fix or bound the memory accesses, or disable strict_verification mode."
+                                )
+                                self.log.error(f"Verification failed in strict mode: {proof.summary}")
+                                return False
+
+                            for recommendation in proof.recommendations:
+                                result.warnings.append(f"[FORMAL_VERIFICATION] {recommendation}")
 
                             self.log.debug(f"Verification complete: {proof.summary}")
 
@@ -1110,6 +1112,31 @@ class MultiGenPipeline:
                 return False
 
             source_file_path = Path(source_file)
+
+            config = self.config
+            requested = {
+                name
+                for name, value in (
+                    ("compiler", config.compiler),
+                    ("compiler_flags", config.compiler_flags),
+                    ("include_dirs", config.include_dirs),
+                    ("libraries", config.libraries),
+                )
+                if value
+            }
+            applied = self.builder.apply_build_options(
+                compiler=config.compiler or None,
+                compiler_flags=config.compiler_flags or None,
+                include_dirs=config.include_dirs or None,
+                libraries=config.libraries or None,
+            )
+            unsupported = requested - applied
+            if unsupported:
+                result.success = False
+                result.errors.append(
+                    f"The {self.config.target_language} builder does not support: {', '.join(sorted(unsupported))}"
+                )
+                return False
 
             if self.config.build_mode == BuildMode.MAKEFILE:
                 # Generate build file using backend

@@ -1,19 +1,16 @@
 # MultiGen Backend Comprehensive Comparison
 
-**Last Updated**: October 15, 2025
-**Version**: v0.1.83
-**Backends**: 7 (C, C++, Rust, Go, Haskell, OCaml, LLVM)
+**Last Updated**: October 3, 2026
+**Version**: v0.2.0
+**Backends**: 8 (C, C++, Rust, Go, Haskell, OCaml, LLVM, TypeScript)
 
 ---
 
 ## Executive Summary
 
-MultiGen supports **7 backends** with varying levels of maturity:
+MultiGen supports **8 backends**. All eight pass 7/7 benchmarks, each checked against CPython's output: 56/56 runs on macOS arm64 with all eight toolchains installed.
 
-- **6 Production-Ready**: C++, C, Rust, Go, OCaml, LLVM (all 7/7 benchmarks)
-- **1 Functionally Complete**: Haskell (6/7 benchmarks, 86%)
-
-**Overall Benchmark Success**: 48/49 runs (98% success rate)
+The feature tables below predate the TypeScript backend and have no TypeScript column. For measured per-backend support, including TypeScript, run `make capabilities` (`backend_capabilities.json`).
 
 ---
 
@@ -155,53 +152,59 @@ MultiGen supports **7 backends** with varying levels of maturity:
 
 ## Performance Metrics (from benchmark suite)
 
+Averages over the 7 benchmarks from one run on macOS arm64. Run times vary between runs by up to 10x for the fastest backends; treat the ranking as approximate.
+
 ### Execution Time (Average)
 
-| Rank | Backend | Avg Runtime | Notes |
-|------|---------|-------------|-------|
-| 1 | **Go** | 64.5ms |  Fastest execution |
-| 2 | **LLVM** | 152.9ms | 2nd fastest, smallest binaries |
-| 3 | **Rust** | 249.3ms | Good balance |
-| 4 | **C++** | 254.9ms | Close to C |
-| 5 | **C** | 256.2ms | Expected performance |
-| 6 | **OCaml** | 287.2ms | Functional overhead |
-| 7 | **Haskell** | 288.5ms | Pure functional |
+| Rank | Backend | Avg Runtime |
+|------|---------|-------------|
+| 1 | **C++** | 268.7ms |
+| 2 | **LLVM** | 276.9ms |
+| 3 | **C** | 286.1ms |
+| 4 | **Rust** | 304.5ms |
+| 5 | **OCaml** | 391.1ms |
+| 6 | **Go** | 407.0ms |
+| 7 | **Haskell** | 550.6ms |
+| 8 | **TypeScript** | 993.6ms |
 
 ### Compilation Time (Average)
 
-| Rank | Backend | Avg Compile | Notes |
-|------|---------|-------------|-------|
-| 1 | **Go** | 82.0ms |  Fastest compilation |
-| 2 | **Rust** | 218.8ms | Good for safety guarantees |
-| 3 | **OCaml** | 258.1ms | Fast functional compiler |
-| 4 | **LLVM** | 330.7ms | IR generation overhead |
-| 5 | **C** | 384.1ms | Template expansion |
-| 6 | **C++** | 396.4ms | STL compilation |
-| 7 | **Haskell** | 536.9ms | Type inference overhead |
+| Rank | Backend | Avg Compile |
+|------|---------|-------------|
+| 1 | **Go** | 178.5ms |
+| 2 | **Rust** | 237.2ms |
+| 3 | **OCaml** | 305.6ms |
+| 4 | **LLVM** | 330.7ms |
+| 5 | **C** | 404.6ms |
+| 6 | **C++** | 464.5ms |
+| 7 | **TypeScript** | 690.8ms |
+| 8 | **Haskell** | 1035.8ms |
 
 ### Binary Size (Average)
 
-| Rank | Backend | Avg Size | Notes |
-|------|---------|----------|-------|
-| 1 | **C++** | 36.1KB |  Smallest binaries |
-| 2 | **LLVM** | 37.0KB | Almost as small as C++ |
-| 3 | **C** | 65.6KB | Template code |
-| 4 | **Rust** | 446.1KB | Safety metadata |
-| 5 | **OCaml** | 811.2KB | Runtime included |
-| 6 | **Go** | 2.3MB | Full runtime |
-| 7 | **Haskell** | 19.3MB | GHC runtime + libraries |
+| Rank | Backend | Avg Size |
+|------|---------|----------|
+| 1 | **C++** | 36.1KB |
+| 2 | **LLVM** | 53.7KB |
+| 3 | **C** | 94.9KB |
+| 4 | **Rust** | 468.5KB |
+| 5 | **OCaml** | 831.2KB |
+| 6 | **Go** | 2.3MB |
+| 7 | **Haskell** | 19.8MB |
+| 8 | **TypeScript** | 64.5MB |
 
 ### Generated Code Size (Lines of Code)
 
-| Rank | Backend | Avg LOC | Notes |
-|------|---------|---------|-------|
-| 1 | **OCaml** | 27 |  Most concise |
-| 2 | **Haskell** | 27 | Tied with OCaml |
-| 3 | **Rust** | 36 | Compact Rust code |
-| 4 | **Go** | 37 | Simple, readable |
-| 5 | **C++** | 49 | STL verbosity |
-| 6 | **C** | 75 | Manual memory management |
-| 7 | **LLVM** | 310 | IR verbosity |
+| Rank | Backend | Avg LOC |
+|------|---------|---------|
+| 1 | **OCaml** | 27 |
+| 2 | **Rust** | 37 |
+| 3 | **Go** | 38 |
+| 4 | **TypeScript** | 38 |
+| 5 | **C++** | 51 |
+| 6 | **Haskell** | 65 |
+| 7 | **C** | 76 |
+| 8 | **LLVM** | 327 |
 
 ---
 
@@ -219,8 +222,8 @@ MultiGen supports **7 backends** with varying levels of maturity:
 
 **Weaknesses:**
 
-- [X] Slower compilation (396ms)
-- [X] Missing dict methods (keys, items)
+- [X] Slower compilation (465ms)
+- [X] Missing dict methods (keys)
 - [X] No list operations (insert, remove)
 
 **Best For:** Production deployments requiring small binaries and C++ ecosystem integration
@@ -240,8 +243,8 @@ MultiGen supports **7 backends** with varying levels of maturity:
 
 **Weaknesses:**
 
-- [X] Slowest compilation (384ms)
-- [X] Largest source code (75 LOC avg)
+- [X] Compilation 405ms
+- [X] Verbose generated code (76 LOC avg)
 - [X] Manual memory management
 
 **Best For:** Systems programming, embedded, maximum control
@@ -256,13 +259,13 @@ MultiGen supports **7 backends** with varying levels of maturity:
 - [x] HashMap type inference (function call detection)
 - [x] Auto dereferencing/cloning
 - [x] Memory safety guarantees
-- [x] Fast compilation (218ms)
+- [x] Fast compilation (237ms)
 
 **Weaknesses:**
 
-- [X] Larger binaries (446KB)
+- [X] Larger binaries (469KB)
 - [X] Missing container methods
-- [X] No dict.keys/values/items
+- [X] No dict.keys/values
 
 **Best For:** Safety-critical applications, modern Rust codebases
 
@@ -272,8 +275,7 @@ MultiGen supports **7 backends** with varying levels of maturity:
 
 **Strengths:**
 
-- [x] **Fastest execution** (64.5ms average)
-- [x] **Fastest compilation** (82ms)
+- [x] **Fastest compilation** (179ms)
 - [x] Generics (Go 1.18+)
 - [x] Reflection-based comprehensions
 - [x] Idiomatic Go patterns
@@ -281,7 +283,7 @@ MultiGen supports **7 backends** with varying levels of maturity:
 
 **Weaknesses:**
 
-- [X] **Largest binaries** (2.3MB)
+- [X] Large binaries (2.3MB, Go runtime included)
 - [X] No bool conversion
 - [X] Sets via maps (not true sets)
 
@@ -298,13 +300,12 @@ MultiGen supports **7 backends** with varying levels of maturity:
 - [x] Strongest type system
 - [x] Native set operations (union, intersection, difference)
 - [x] dict.keys/values/items support
-- [x] Most concise code (27 LOC)
 
 **Weaknesses:**
 
-- [X] **Largest binaries** (19.3MB)
-- [X] Slowest compilation (536ms)
-- [X] 6/7 benchmarks (quicksort fails on mutation)
+- [X] Large binaries (19.8MB, GHC runtime)
+- [X] Slowest compilation (1036ms)
+- [X] In-place list mutation is refused; the quicksort benchmark uses a functional variant (`quicksort_haskell.py`)
 - [X] Limited type inference for containers
 
 **Best For:** Functional programming projects, academic research, provably correct code
@@ -316,7 +317,7 @@ MultiGen supports **7 backends** with varying levels of maturity:
 **Strengths:**
 
 - [x] **Most concise code** (27 LOC)
-- [x] **Fastest compile time** among functional languages (258ms)
+- [x] **Fastest compile time** among functional languages (306ms)
 - [x] Mutable references system with smart scoping
 - [x] Type-aware generation
 - [x] Sophisticated mutation detection
@@ -326,7 +327,7 @@ MultiGen supports **7 backends** with varying levels of maturity:
 
 - [X] Uses association lists (not hash tables)
 - [X] Limited nested container support
-- [X] No dict.keys/values/items
+- [X] No dict.keys/values
 - [X] Basic set support via lists
 
 **Best For:** Functional programming with mutations, OCaml ecosystem integration
@@ -337,8 +338,8 @@ MultiGen supports **7 backends** with varying levels of maturity:
 
 **Strengths:**
 
-- [x] **2nd fastest execution** (152.9ms)
-- [x] **2nd smallest binaries** (37KB)
+- [x] **2nd fastest execution** (277ms) in the latest run
+- [x] **2nd smallest binaries** (54KB)
 - [x] Direct IR generation (no intermediate C/C++)
 - [x] Dual compilation modes (AOT + JIT)
 - [x] JIT: 7.7x faster development cycle
@@ -350,13 +351,33 @@ MultiGen supports **7 backends** with varying levels of maturity:
 
 **Weaknesses:**
 
-- [X] Verbose IR (310 LOC average)
+- [X] Verbose IR (327 LOC average)
 - [X] Manual memory management (~8,300 lines C runtime)
 - [X] Newest backend (less mature)
 - [X] Limited OOP support
-- [X] No dict.keys/values/items
+- [X] `dict.items()` only over `dict[int, int]`
 
 **Best For:** Research, compiler development, cross-platform targets, fast iteration (JIT), string-heavy applications
+
+---
+
+### TypeScript Backend
+
+**Strengths:**
+
+- [x] Native `class`, template-literal f-strings, array-method comprehensions
+- [x] `Map`/`Set` containers keep key types, insertion order and `.size`
+- [x] Python semantics via a 197-line runtime (`floorDiv`, `pyMod`, `split`, truthiness)
+- [x] Concise code (38 LOC average)
+
+**Weaknesses:**
+
+- [X] **Largest binaries** (64.5MB, Deno runtime embedded)
+- [X] Slowest execution in the latest run (994ms)
+- [X] `int` is a float64 `number`: exact only below 2**53
+- [X] Builds with `deno compile --no-check`, so TypeScript type errors are not caught
+
+**Best For:** JavaScript/Deno ecosystems, prototyping
 
 ---
 
@@ -364,29 +385,30 @@ MultiGen supports **7 backends** with varying levels of maturity:
 
 ### Overall Success Rates
 
-| Backend | Success Rate | Benchmarks Passing | Status |
-|---------|--------------|-------------------|--------|
-| **C++** | 100% (7/7) | All | [x] Production |
-| **C** | 100% (7/7) | All | [x] Production |
-| **Rust** | 100% (7/7) | All | [x] Production |
-| **Go** | 100% (7/7) | All | [x] Production |
-| **OCaml** | 100% (7/7) | All | [x] Production |
-| **LLVM** | 100% (7/7) | All | [x] Production |
-| **Haskell** | 86% (6/7) | quicksort fails | [!] Functionally Complete |
+| Backend | Success Rate | Benchmarks Passing |
+|---------|--------------|-------------------|
+| **C++** | 100% (7/7) | All |
+| **C** | 100% (7/7) | All |
+| **Rust** | 100% (7/7) | All |
+| **Go** | 100% (7/7) | All |
+| **OCaml** | 100% (7/7) | All |
+| **LLVM** | 100% (7/7) | All |
+| **Haskell** | 100% (7/7) | All |
+| **TypeScript** | 100% (7/7) | All |
 
 ### Benchmark Breakdown
 
-| Benchmark | C++ | C | Rust | Go | Haskell | OCaml | LLVM |
-|-----------|-----|---|------|----|----|-------|------|
-| fibonacci | [x] | [x] | [x] | [x] | [x] | [x] | [x] |
-| matmul | [x] | [x] | [x] | [x] | [x] | [x] | [x] |
-| quicksort | [x] | [x] | [x] | [x] | [X] | [x] | [x] |
-| list_ops | [x] | [x] | [x] | [x] | [x] | [x] | [x] |
-| dict_ops | [x] | [x] | [x] | [x] | [x] | [x] | [x] |
-| set_ops | [x] | [x] | [x] | [x] | [x] | [x] | [x] |
-| wordcount | [x] | [x] | [x] | [x] | [x] | [x] | [x] |
+| Benchmark | C++ | C | Rust | Go | Haskell | OCaml | LLVM | TypeScript |
+|-----------|-----|---|------|----|----|-------|------|------------|
+| fibonacci | [x] | [x] | [x] | [x] | [x] | [x] | [x] | [x] |
+| matmul | [x] | [x] | [x] | [x] | [x] | [x] | [x] | [x] |
+| quicksort | [x] | [x] | [x] | [x] | [x] | [x] | [x] | [x] |
+| list_ops | [x] | [x] | [x] | [x] | [x] | [x] | [x] | [x] |
+| dict_ops | [x] | [x] | [x] | [x] | [x] | [x] | [x] | [x] |
+| set_ops | [x] | [x] | [x] | [x] | [x] | [x] | [x] | [x] |
+| wordcount | [x] | [x] | [x] | [x] | [x] | [x] | [x] | [x] |
 
-**Haskell quicksort failure**: "Function 'quicksort' mutates array in-place" - Conflicts with pure functional semantics
+**Haskell quicksort**: in-place mutation is refused, so the benchmark runner selects the functional variant `quicksort_haskell.py`.
 
 ---
 
@@ -454,9 +476,6 @@ MultiGen supports **7 backends** with varying levels of maturity:
 
 ### Not Implemented
 
-- [X] Exception handling (try/except/finally)
-- [X] Generators and yield statements
-- [X] Context managers (with statement)
 - [X] Decorators
 - [X] Async/await
 - [X] Metaclasses
@@ -465,9 +484,11 @@ MultiGen supports **7 backends** with varying levels of maturity:
 
 ### Partially Implemented
 
+- [!] Exception handling, generators (eager), context managers: see `docs/supported_syntax.md`
+
 - [!] Slicing (basic support, not full Python semantics)
 - [!] List methods (append only, no insert/remove/pop in most)
-- [!] Dict methods (no keys/values/items in most)
+- [!] Dict methods (`items()` unpacking on all backends; keys/values missing in several)
 - [!] Set operations (basic only, no operators)
 
 ---
@@ -478,7 +499,7 @@ MultiGen supports **7 backends** with varying levels of maturity:
 
 **Best Choice: C++ or LLVM**
 
-- Smallest binaries (36-37KB)
+- Smallest binaries (36-54KB)
 - Good performance
 - No runtime dependencies
 - Mature ecosystems
@@ -487,8 +508,7 @@ MultiGen supports **7 backends** with varying levels of maturity:
 
 **Best Choice: Go**
 
-- Fastest compilation (82ms)
-- Fastest execution (64ms)
+- Fastest compilation (179ms)
 - Simple code generation
 - Large binaries acceptable in cloud
 
@@ -507,7 +527,7 @@ MultiGen supports **7 backends** with varying levels of maturity:
 
 - Pure functional semantics (Haskell)
 - Hybrid functional/imperative (OCaml)
-- Concise code (27 LOC)
+- Concise code (OCaml: 27 LOC average)
 - Strong type systems
 
 ### For Embedded/Systems
@@ -541,7 +561,6 @@ MultiGen supports **7 backends** with varying levels of maturity:
 - [ ] `list.extend(other)` - All backends
 - [ ] `dict.keys()` - C++, C, Rust, OCaml, LLVM
 - [ ] `dict.values()` - C, Rust, OCaml, LLVM
-- [ ] `dict.items()` - C++, C, Rust, OCaml, LLVM
 - [ ] `set.remove(item)` - C++, Rust, Haskell, OCaml, LLVM
 - [ ] `set.clear()` - C++, Rust, Go, Haskell, OCaml, LLVM
 
@@ -559,9 +578,6 @@ MultiGen supports **7 backends** with varying levels of maturity:
 
 ### Long Term (v0.3.x+)
 
-- [ ] Exception handling (try/except)
-- [ ] Generators and yield
-- [ ] Context managers (with)
 - [ ] Advanced slicing
 - [ ] Set operators (|, &, -)
 - [ ] Tuple unpacking improvements
@@ -570,15 +586,16 @@ MultiGen supports **7 backends** with varying levels of maturity:
 
 ## Conclusion
 
-MultiGen offers **7 production-quality backends** with different trade-offs:
+MultiGen offers **8 backends** with different trade-offs:
 
-- **Go**: Best for cloud/microservices (fast execution, fast compilation)
+- **Go**: Best for cloud/microservices (fast compilation)
 - **C++/LLVM**: Best for embedded/systems (small binaries)
 - **Rust**: Best for safety-critical (memory safety)
 - **C**: Best for maximum control (complete runtime)
 - **Haskell/OCaml**: Best for functional programming
 - **LLVM**: Best for research/experimentation (JIT mode)
+- **TypeScript**: Best for JavaScript/Deno ecosystems
 
-**Overall Quality**: 1559 tests passing, strict type checking, design pattern implementations achieving 79% complexity reduction. Benchmark pass rates are measured against CPython's output; see the README.
+**Overall Quality**: 1691 tests passing, strict type checking, design pattern implementations achieving 79% complexity reduction. Benchmark pass rates are measured against CPython's output; see the README.
 
-**Maturity Level**: see the benchmark table in the README and the open defects in TODO.md; no backend translates the full supported subset without known gaps.
+**Maturity Level**: all eight backends pass 7/7 benchmarks; see the open defects in TODO.md. No backend translates the full supported subset without known gaps.

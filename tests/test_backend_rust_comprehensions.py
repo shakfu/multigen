@@ -1,5 +1,8 @@
 """Tests for Rust backend comprehensions support."""
 
+import pytest
+
+from multigen.backends.errors import UnsupportedFeatureError
 from multigen.backends.rust.converter import MultiGenPythonToRustConverter
 
 
@@ -46,7 +49,7 @@ def test_list_comp_if() -> list:
         assert "Comprehensions::list_comprehension_with_filter" in rust_code
         assert "new_range(10).collect()" in rust_code
         # Should contain condition closure
-        assert "|x| ((x % 2) == 0)" in rust_code
+        assert "|x| (py_mod(x, 2) == 0)" in rust_code
 
     def test_list_comprehension_range_start_stop(self):
         """Test list comprehension with range(start, stop)."""
@@ -173,7 +176,7 @@ def test_set_comp_if() -> set:
 
         assert "Comprehensions::set_comprehension_with_filter" in rust_code
         assert "new_range(10).collect()" in rust_code
-        assert "|x| ((x % 3) == 0)" in rust_code
+        assert "|x| (py_mod(x, 3) == 0)" in rust_code
 
     def test_set_comprehension_with_expression(self):
         """Test set comprehension with expression transformation."""
@@ -195,7 +198,7 @@ def test_set_dedup() -> set:
         rust_code = self.converter.convert_code(python_code)
 
         assert "Comprehensions::set_comprehension" in rust_code
-        assert "|x| (x % 3)" in rust_code
+        assert "|x| py_mod(x, 3)" in rust_code
 
 
 class TestRustComprehensionsAdvanced:
@@ -294,3 +297,67 @@ def test_complex_conditions() -> list:
 
         # This would require ternary operator support which is complex
         assert "Comprehensions::list_comprehension" in rust_code
+
+
+class TestRustDictItemsUnpacking:
+    """Test `k, v in d.items()` unpacking in loops and comprehensions."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.converter = MultiGenPythonToRustConverter()
+
+    ITEMS = "d.iter().map(|(k, v)| (k.clone(), v.clone()))"
+
+    def test_items_for_loop(self):
+        """Test for loop over d.items() binds owned k, v."""
+        python_code = """
+def loop_sum(d: dict[int, int]) -> int:
+    total: int = 0
+    for k, v in d.items():
+        total += k * v
+    return total
+
+def main() -> int:
+    d: dict[int, int] = {x: x * 2 for x in range(5)}
+    print(loop_sum(d))
+    return 0
+"""
+        rust_code = self.converter.convert_code(python_code)
+
+        assert f"for (k, v) in {self.ITEMS} {{" in rust_code
+        assert "loop_sum(&d)" in rust_code
+
+    def test_items_dict_comprehension_with_filter(self):
+        """Test dict comprehension over d.items() with a condition."""
+        python_code = """
+def filtered(d: dict[int, int]) -> dict[int, int]:
+    return {k: v for k, v in d.items() if v > 20}
+"""
+        rust_code = self.converter.convert_code(python_code)
+
+        assert (
+            f"{self.ITEMS}.filter_map(|(k, v)| if (v > 20) {{ Some((k, v)) }} else {{ None }})"
+            ".collect::<std::collections::HashMap<_, _>>()"
+        ) in rust_code
+
+    def test_items_list_comprehension(self):
+        """Test list comprehension over d.items()."""
+        python_code = """
+def pairs(d: dict[int, int]) -> list[int]:
+    return [k + v for k, v in d.items()]
+"""
+        rust_code = self.converter.convert_code(python_code)
+
+        assert f"{self.ITEMS}.map(|(k, v)| (k + v)).collect::<Vec<_>>()" in rust_code
+
+    def test_other_tuple_targets_rejected(self):
+        """Test tuple unpacking over anything but d.items() fails closed."""
+        python_code = """
+def f(xs: list[int]) -> int:
+    t: int = 0
+    for a, b in xs:
+        t += a
+    return t
+"""
+        with pytest.raises(UnsupportedFeatureError):
+            self.converter.convert_code(python_code)

@@ -24,6 +24,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
+- **`for k, v in d.items()`** in for loops and list, dict and set comprehensions, on all eight backends. The validator admits exactly two names unpacking a no-argument `.items()` call; every other tuple stays rejected. It was the last benchmark blocker: all eight backends now pass 7/7 (`dict_ops` needed it everywhere; Haskell also gained guarded-sum and dict-insert folds, which `set_ops` needed).
+
 - **Structured validation diagnostics** -- validation reported bare strings, which callers could print but not act on
 
   - `Diagnostic` carries a stable rule id, severity, source span, offending node type, remediation, and supporting evidence
@@ -70,6 +72,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Changed
 
+- **Comprehensions with a second `for` clause are refused by the validator.** No backend translated one: four refused, three emitted code that did not build, and TypeScript failed at runtime.
+
 - **The subset validator is an allowlist.** A construct no rule classifies is rejected rather than passed through. `async def`, `await`, the walrus operator, `nonlocal`, and `del` were previously accepted and handed to a backend.
 
 - **Each construct is classified by exactly one rule.** Four rules claimed `ast.ClassDef` and all four fired on every class; matchers now decide which rule governs a given node.
@@ -91,6 +95,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Undecidable verification results are reported as undecided.** `BoundsProver` and `CorrectnessProver` distinguish PROVED, DISPROVED, and UNKNOWN: safety is now "no counterexample was proved", and `AlgorithmProof.failed_properties` lists only genuine counterexamples. Formal verification also logs the scope it actually covers (memory bounds).
 
 - `ValidationPhaseResult` carries the profile and structured diagnostics alongside the existing fields.
+
+- **Build options are applied or refused.** `PipelineConfig.compiler`, `compiler_flags`, `include_dirs` and `libraries` were accepted and ignored, so `--compiler clang` still ran gcc. The C and C++ builders apply them in both build modes. For other backends the build phase fails and names the option. `PipelineConfig` no longer fills in a default `compiler`.
+
+- **Strict verification requires a proof.** It halted only on a disproof, so an undecided access (`a[i]` with symbolic `i`) proceeded to generation. Strict mode now fails unless every property is PROVED; non-strict mode still warns. `MemorySafetyProof.is_proved` exposes the distinction. The prover has no `len()` model yet, so strict mode rejects nearly every non-literal subscript (TODO R-7).
 
 ### Fixed
 
@@ -150,6 +158,52 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 - Documentation links and `mkdocs.yml` navigation entries used lowercase filenames that do not resolve on case-sensitive systems; `mkdocs build --strict` now succeeds.
 
+- **`build --makefile` output did not build** for C, C++ or LLVM. The CLI moves the build file from `build/src/` to `build/`, but the Makefiles found sources relative to themselves: C linked no `main`, C++ globbed `*.c`, LLVM named the `.ll` by basename. Sources are now listed by absolute path. The CLI also renamed unknown backends' build files to `Makefile` (`deno.json`, `dune-project`, the Cabal file); it now keeps the builder's name.
+
+- **C Makefiles compiled as C99 without POSIX declarations.** STC appended `-std=c99` to `CFLAGS`, overriding `STD = -std=c11`, and the Makefile lacked the `-D_POSIX_C_SOURCE=200809L` that direct builds pass.
+
+- **C vectors wrote through a failed allocation.** `*_grow` returned `void`, so `*_push` stored into `data[size++]` after `realloc` failed, or into NULL after a failed init. Growth now reports failure and push stores nothing. Growth and `reserve` also refuse a byte count that overflows `size_t`. Covers `vec_int`, `vec_float`, `vec_double`, `vec_vec_int`, `vec_cstr` and the `vec_T` template.
+
+- **C int `//` and `%` truncated toward zero.** `-7 // 2` gave -3 and `-7 % 2` gave -1, where Python gives -4 and 1. Both now call `multigen_floordiv_int` / `multigen_mod_int`, which raise a catchable ZeroDivisionError instead of SIGFPE. Operands not provably int keep C `/`.
+
+- **Symbolic execution stopped at the first loop.** Loop exits had no continuation, so statements after a loop, including the return, were never analysed. Exits now continue at the loop's `else` block or the next statement, and `for` adds a zero-iteration path. `SymbolicExecutionReport.approximations` lists each under-approximation; empty means the paths are exhaustive.
+
+- **C++ functions sorted a copy of their list argument.** Container parameters were passed by value, so `quicksort(arr, lo, hi)` left the caller's list untouched and the benchmark printed 100 instead of 5. A list, dict or set parameter the function mutates in place, directly or through another module function, is now taken by reference. A parameter the function rebinds stays by value, since the caller never sees the new object.
+
+- **C++ `//` and `%` truncated toward zero** for negative operands, under a comment claiming C++ division already floors. Both now call `multigen::floordiv` / `multigen::pymod`, templates that pick integer or `std::floor`/`std::fmod` arithmetic at compile time and throw `ZeroDivisionError`. Float `//` was true division and is fixed by the same change.
+
+- **Haskell silently dropped loops in pure functions** whose body matched no fold strategy, emitting a comment; `set_ops` compiled and printed 34 instead of 234. The converter now refuses such loops.
+
+- **Haskell `main` failed to compile when it ended in a binding.** `return x` in `main` is dropped, leaving a `do` block whose last statement is a `let`. A trailing `return ()` is now emitted. An empty `main` printed `No statements`; it now does nothing.
+
+- **The list validator compared AST node classes, not element types.** `[-7, 7]` was rejected (a `UnaryOp` beside a `Constant`) while `[1, "a"]` was accepted (two `Constant` nodes). Literals now compare by value type.
+
+- **C++ and Go dropped every comprehension filter after the first.** `[x for x in r if a if b]` applied only `a`. Multiple `if` clauses are now normalized to one `and` before any backend sees them; Python evaluates both forms with the same short-circuit.
+
+- **Go and OCaml rejected `and` and `or` everywhere** ("Unsupported expression: BoolOp"). Both now emit `&&` / `||`, which is exact for bool operands and fails to compile for others.
+
+- **LLVM silently deleted statements its IR builder could not model**: a `for k, v in ...` loop vanished and the function returned 0. Sub-builders returned `None` and callers filtered it out; the same path dropped `for`/`while ... else` branches and some assignments. The shared IR builder now refuses any statement it cannot model.
+
+- **LLVM `map_int_int` iterated in hash-slot order and ignored non-empty literals.** `.values()` over keys inserted as 5, 3, 9, 1 printed them reordered, and `{1: 1, 2: 2}` built an empty map. The map now records insertion order, literals are inserted, and mutating a dict during its own iteration exits with Python's RuntimeError.
+
+- **Comprehension converters invented loop names for targets they did not understand** (`x`, `item`, or `k`/`v` substituted for non-name tuple elements) in C, C++, Rust, Go, Haskell, OCaml and TypeScript. Unsupported targets now raise.
+
+- **C typed `dict[K, float]` parameters as `map_K_int`**, truncating values without error. They now map to `map_K_double`.
+
+- **Rust passed maps by value to functions taking `&HashMap`** when the immutability analysis returned UNKNOWN, so `loop_sum(d)` did not compile. The call site now matches the callee's signature.
+
+- **`//` and `%` truncated toward zero in Rust, Go, OCaml and LLVM**, as they did in C and C++. `-7 // 2` gave -3 and `7 % -2` gave 1. Each backend now floors: Rust `py_floordiv`/`py_mod` (a trait, since `div_euclid`/`rem_euclid` differ from Python for a negative divisor), Go generic `multigen.FloorDiv`/`multigen.Mod`, OCaml runtime operators `///` and `%%`, and an LLVM `select` on the remainder's sign. A cross-backend test checks all eight against CPython.
+
+- **C and Go lost growth of a list argument.** C passes `vec_*` and `map_*` structs by value, so a callee's `push` or insert never reached the caller; Go lost `append` the same way. A container parameter the function mutates in place is now passed by pointer: C copies it in and writes it back before each return, Go with a deferred write-back. Rust missed transitive mutation (`f(a)` calling `g(a)` which mutates), producing `&Vec` where `&mut` was needed; it now uses the same analysis.
+
+- **Haskell `main` could not rebind a variable.** `x = x + 1` emitted `let x = (x + 1)`, which is recursive and never terminates; `x -= 1` emitted a bare `x = ...` that does not parse. Both now bind with `x <- return (...)`, which shadows instead of recursing.
+
+- **Haskell rejected literals used only through `printValue`**, e.g. `print(7 // -2)`: the literal's type was ambiguous. Generated modules enable `ExtendedDefaultRules`.
+
+- **Haskell put `print` calls from non-`main` functions in a `where` clause**, which does not compile. They are now refused.
+
+- **LLVM failed on any program with more than one `print` call** (`DuplicatedNameError: printf`). The builtin cache was checked under `print` but stored under `printf`. The benchmarks each print once, which hid it.
+
 ### Removed
 
 - The duplicate `MGEN_TRY` / `MGEN_EXCEPT` / `MGEN_FINALLY` / `MGEN_END_TRY` family from `multigen_python_ops.h`. Nothing emitted it and it broke the family that is emitted.
@@ -157,6 +211,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - `StaticPythonSubsetValidator.validation_cache` (never read) and `last_validation_error` (per-instance state consumed by whichever later node failed next).
 
 - `FunctionSpecializer._apply_constant_folding` and `_apply_type_specialization`: empty placeholders whose names were nonetheless reported in `optimizations_applied`.
+
+### Security
+
+- **Generated Makefiles executed Make syntax from filenames.** The source stem became the Make target verbatim, so `x$(shell cmd).py` ran `cmd` at `make` time. Names, paths and flags are now checked against an allowlist, and generation fails on anything else. Allowlisting over escaping: `$$` reaches recipes as `$`, which the shell then expands.
 
 ## [0.2.0]
 

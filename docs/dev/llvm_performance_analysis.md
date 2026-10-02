@@ -274,7 +274,7 @@ Go         2.3MB    2.4MB    2.4MB   0.3KB
 **Comparison**:
 
 - **Rust**: Memory safety at **compile-time** (strongest guarantees)
-- **LLVM**: Memory safety via **runtime verification** (production-tested)
+- **LLVM**: Memory safety via **runtime verification** (ASAN-tested)
 - **C/C++**: No guarantees without manual testing
 
 ---
@@ -389,7 +389,7 @@ multigen build --target llvm program.py
    - Great for string-heavy workloads
 
 4. **Memory Safety** (ASAN verified)
-   - Production-tested with 0 leaks
+   - ASAN-tested with 0 leaks
    - Runtime verification infrastructure
 
 5. **Dual Compilation Modes**
@@ -540,7 +540,7 @@ The LLVM backend delivers **exceptional performance** for a compiler backend:
 - **2nd fastest execution** (competitive with C/Rust)
 - **2nd smallest binaries** (near C++ efficiency)
 - **Memory-safe** (ASAN verified)
-- **Production-ready** (7/7 benchmarks passing)
+- 7/7 benchmarks passing
 
 **Best Use Cases**:
 

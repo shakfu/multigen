@@ -1079,21 +1079,26 @@ class MultiGenPythonToTypeScriptConverter:
             source = f"{source}.filter(({var}) => {cond})"
         return source
 
+    def _comp_binding(self, target: ast.expr) -> str:
+        """Return the arrow-function parameter for a comprehension target: `x` or `[k, v]`."""
+        if isinstance(target, ast.Name):
+            return target.id
+        if isinstance(target, ast.Tuple):
+            names = [e.id for e in target.elts if isinstance(e, ast.Name)]
+            if len(names) == len(target.elts) == 2:
+                return f"[{names[0]}, {names[1]}]"
+        raise UnsupportedFeatureError(f"Unsupported comprehension target: {ast.unparse(target)}")
+
     def _convert_list_comprehension(self, expr: ast.ListComp) -> str:
         gen = expr.generators[0]
-        var = gen.target.id if isinstance(gen.target, ast.Name) else "x"
+        var = self._comp_binding(gen.target)
         source = self._comp_source(gen.iter, gen.ifs, var)
         element = self._convert_expression(expr.elt)
         return f"{source}.map(({var}) => {element})"
 
     def _convert_dict_comprehension(self, expr: ast.DictComp) -> str:
         gen = expr.generators[0]
-        if isinstance(gen.target, ast.Tuple) and len(gen.target.elts) == 2:
-            k = gen.target.elts[0].id if isinstance(gen.target.elts[0], ast.Name) else "k"
-            v = gen.target.elts[1].id if isinstance(gen.target.elts[1], ast.Name) else "v"
-            binding = f"[{k}, {v}]"
-        else:
-            binding = gen.target.id if isinstance(gen.target, ast.Name) else "x"
+        binding = self._comp_binding(gen.target)
         source = self._comp_source(gen.iter, gen.ifs, binding)
         key = self._convert_expression(expr.key)
         value = self._convert_expression(expr.value)
@@ -1101,7 +1106,7 @@ class MultiGenPythonToTypeScriptConverter:
 
     def _convert_set_comprehension(self, expr: ast.SetComp) -> str:
         gen = expr.generators[0]
-        var = gen.target.id if isinstance(gen.target, ast.Name) else "x"
+        var = self._comp_binding(gen.target)
         source = self._comp_source(gen.iter, gen.ifs, var)
         element = self._convert_expression(expr.elt)
         return f"new Set({source}.map(({var}) => {element}))"

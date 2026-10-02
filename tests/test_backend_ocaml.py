@@ -469,6 +469,24 @@ def square_dict(arr: list) -> dict:
         ocaml_code = self.converter.convert_code(python_code)
         assert "Hashtbl" in ocaml_code or "dict_comprehension" in ocaml_code
 
+    def test_list_comprehension_items_unpacking(self):
+        """Test k, v unpacking over dict.items() binds a tuple pattern."""
+        python_code = """
+def pair_sums(d: dict[int, int]) -> list[int]:
+    return [k + v for k, v in d.items()]
+"""
+        ocaml_code = self.converter.convert_code(python_code)
+        assert "list_comprehension d (fun (k, v) -> (k + v))" in ocaml_code
+
+    def test_comprehension_tuple_target_without_items_rejected(self):
+        """Test tuple targets over anything but dict.items() raise."""
+        python_code = """
+def firsts(pairs: list) -> list:
+    return [a for a, b in pairs]
+"""
+        with pytest.raises(UnsupportedFeatureError):
+            self.converter.convert_code(python_code)
+
     def test_set_comprehension(self):
         """Test set comprehension conversion."""
         python_code = """

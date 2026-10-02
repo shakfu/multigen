@@ -38,6 +38,16 @@ class TestStaticValidator:
 
         assert offenders == {}
 
+    @pytest.mark.parametrize(
+        "literal,valid",
+        [("[-7, 7]", True), ("[1.5, -2.5]", True), ("[1, 2]", True), ("[1, 'a']", False), ("[True, 1]", False)],
+    )
+    def test_list_homogeneity_compares_element_types(self, literal, valid):
+        """-7 is a UnaryOp node, but it is an int like 7; 1 and 'a' are both Constant nodes."""
+        code = f"def f() -> int:\n    a = {literal}\n    return len(a)\n"
+
+        assert StaticValidator().validate_code(code).is_valid is valid
+
     def test_merges_findings_from_several_analyses(self):
         code = (
             "from enum import Enum\n\n\nclass S(Enum):\n    IDLE = 0\n\n\ndef f(x, y: int) -> int:\n    return x + y\n"

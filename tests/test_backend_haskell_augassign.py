@@ -1,5 +1,8 @@
 """Tests for Haskell backend augmented assignment support."""
 
+import pytest
+
+from multigen.backends.errors import UnsupportedFeatureError
 from multigen.backends.haskell.converter import MultiGenPythonToHaskellConverter
 
 
@@ -256,17 +259,9 @@ def test_nested_augassign(matrix: list) -> int:
                 total *= 2
     return total
 """
-        haskell_code = self.converter.convert_code(python_code)
-
-        # Nested loops and conditionals generate complex structures
-        # May generate fold or may skip with comment in pure functions
-        assert "total" in haskell_code
-        assert (
-            "foldl" in haskell_code
-            or "foldr" in haskell_code
-            or "for loop" in haskell_code
-            or "not converted" in haskell_code
-        )
+        # No fold strategy covers this body. Dropping the loop would return 0.
+        with pytest.raises(UnsupportedFeatureError, match="matches no fold pattern"):
+            self.converter.convert_code(python_code)
 
     def test_augmented_assignment_with_builtin_functions(self):
         """Test augmented assignment with built-in function results."""

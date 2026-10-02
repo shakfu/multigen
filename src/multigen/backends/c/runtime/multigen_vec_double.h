@@ -9,6 +9,7 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include "multigen_error_handling.h"
@@ -28,16 +29,21 @@ typedef struct {
 } vec_double;
 
 // Internal helper function
-static void vec_double_grow(vec_double* vec) {
+static bool vec_double_grow(vec_double* vec) {
+    if (vec->capacity > SIZE_MAX / VEC_DOUBLE_GROWTH_FACTOR / sizeof(double)) {
+        MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Vector capacity overflow");
+        return false;
+    }
     // Handle first allocation if capacity is 0
     size_t new_capacity = (vec->capacity == 0) ? VEC_DOUBLE_DEFAULT_CAPACITY : vec->capacity * VEC_DOUBLE_GROWTH_FACTOR;
     double* new_data = realloc(vec->data, new_capacity * sizeof(double));
     if (!new_data) {
         MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Failed to grow vector");
-        return;
+        return false;
     }
     vec->data = new_data;
     vec->capacity = new_capacity;
+    return true;
 }
 
 /**
@@ -67,7 +73,9 @@ static void vec_double_push(vec_double* vec, double value) {
     }
 
     if (vec->size >= vec->capacity) {
-        vec_double_grow(vec);
+        if (!vec_double_grow(vec)) {
+            return;
+        }
     }
 
     vec->data[vec->size++] = value;
@@ -156,6 +164,11 @@ static void vec_double_reserve(vec_double* vec, size_t new_capacity) {
 
     if (new_capacity <= vec->capacity) {
         return; // Already have enough capacity
+    }
+
+    if (new_capacity > SIZE_MAX / sizeof(double)) {
+        MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Vector capacity overflow");
+        return;
     }
 
     double* new_data = realloc(vec->data, new_capacity * sizeof(double));

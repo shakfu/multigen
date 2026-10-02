@@ -1,12 +1,13 @@
 """Enhanced Rust code emitter for MultiGen with comprehensive Python language support."""
 
 import ast
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from ...frontend.immutability_analyzer import ImmutabilityAnalyzer, MutabilityClass
 from ..converter_utils import (
     escape_string_for_rust,
     extract_format_spec,
+    find_in_place_mutated_params,
     get_augmented_assignment_operator,
     get_standard_binary_operator,
     get_standard_comparison_operator,
@@ -51,6 +52,7 @@ class MultiGenPythonToRustConverter:
         self._try_return_depth = 0  # Nesting depth of catch_unwind closures being emitted
         self.variable_types: dict[str, str] = {}  # Track variable types in current function scope
         self.function_mut_params: dict[str, set[str]] = {}  # Track mutable parameters for each function
+        self._function_defs: dict[str, dict[str, ast.FunctionDef]] = {}  # Top-level function by name, then param
         self.immutability_analyzer = ImmutabilityAnalyzer()  # Backend-agnostic immutability analysis
         self.mutability_info: dict[str, dict[str, MutabilityClass]] = {}  # Immutability analysis results
         self._type_inference_engine: Optional[Any] = None  # Lazy-initialized type inference engine
@@ -94,6 +96,15 @@ class MultiGenPythonToRustConverter:
 
             # Run immutability analysis on the module (backend-agnostic)
             self.mutability_info = self.immutability_analyzer.analyze_module(tree)
+            # Top-level functions by name and parameter, for call-site reference selection.
+            self._function_defs = {
+                f.name: {a.arg: f for a in f.args.args} for f in tree.body if isinstance(f, ast.FunctionDef)
+            }
+            # The analyzer is per-function; a param passed to a mutating callee
+            # must be &mut too, or the call does not type-check.
+            for func_name, params in find_in_place_mutated_params(tree).items():
+                for param in params:
+                    self.mutability_info.setdefault(func_name, {})[param] = MutabilityClass.MUTABLE
 
             return self._convert_module(tree)
         except UnsupportedFeatureError:
@@ -407,14 +418,23 @@ class MultiGenPythonToRustConverter:
         """Convert method augmented assignment with proper self handling."""
         value_expr = self._convert_method_expression(stmt.value, class_name)
 
+        if isinstance(stmt.op, (ast.FloorDiv, ast.Mod)):
+            target: Optional[str] = None
+            if isinstance(stmt.target, ast.Name):
+                target = stmt.target.id
+            elif (
+                isinstance(stmt.target, ast.Attribute)
+                and isinstance(stmt.target.value, ast.Name)
+                and stmt.target.value.id == "self"
+            ):
+                target = f"self.{self._to_snake_case(stmt.target.attr)}"
+            if target is not None:
+                return f"        {target} = {self._floor_op_call(stmt.op, target, value_expr)};"
+
         # Get augmented assignment operator from converter_utils
         op = get_augmented_assignment_operator(stmt.op)
         if op is None:
-            # Handle Rust-specific operators
-            if isinstance(stmt.op, ast.FloorDiv):
-                op = "/="  # Rust integer division is already floor division
-            else:
-                op = "/*UNKNOWN_OP*/"
+            op = "/*UNKNOWN_OP*/"
 
         if isinstance(stmt.target, ast.Name):
             return f"        {stmt.target.id} {op} {value_expr};"
@@ -468,10 +488,8 @@ class MultiGenPythonToRustConverter:
             left = self._convert_method_expression(expr.left, class_name)
             right = self._convert_method_expression(expr.right, class_name)
 
-            # Handle Rust-specific operators
-            if isinstance(expr.op, ast.FloorDiv):
-                # Rust integer division is already floor division
-                return f"({left} / {right})"
+            if isinstance(expr.op, (ast.FloorDiv, ast.Mod)):
+                return self._floor_op_call(expr.op, left, right)
 
             # Use standard operator mapping from converter_utils
             op = get_standard_binary_operator(expr.op)
@@ -1316,14 +1334,13 @@ class MultiGenPythonToRustConverter:
         """Convert augmented assignment."""
         value_expr = self._convert_expression(stmt.value)
 
+        if isinstance(stmt.op, (ast.FloorDiv, ast.Mod)) and isinstance(stmt.target, ast.Name):
+            return f"    {stmt.target.id} = {self._floor_op_call(stmt.op, stmt.target.id, value_expr)};"
+
         # Get augmented assignment operator from converter_utils
         op = get_augmented_assignment_operator(stmt.op)
         if op is None:
-            # Handle Rust-specific operators
-            if isinstance(stmt.op, ast.FloorDiv):
-                op = "/="  # Rust integer division is already floor division
-            else:
-                op = "/*UNKNOWN_OP*/"
+            op = "/*UNKNOWN_OP*/"
 
         if isinstance(stmt.target, ast.Name):
             return f"    {stmt.target.id} {op} {value_expr};"
@@ -1380,9 +1397,16 @@ class MultiGenPythonToRustConverter:
 
             body = self._convert_statements(stmt.body)
             return f"    for {target} in {loop_expr} {{\n{body}\n    }}"
+        items = self._dict_items_iter(stmt.target, stmt.iter)
+        if items is not None:
+            key_var, value_var, items_iter = items
+            body = self._convert_statements(stmt.body)
+            return f"    for ({key_var}, {value_var}) in {items_iter} {{\n{body}\n    }}"
         else:
             # General iteration
-            target = stmt.target.id if isinstance(stmt.target, ast.Name) else "item"
+            if not isinstance(stmt.target, ast.Name):
+                raise UnsupportedFeatureError(f"For-loop target not supported: {ast.unparse(stmt.target)}")
+            target = stmt.target.id
             iter_expr = self._convert_expression(stmt.iter)
             body = self._convert_statements(stmt.body)
             return f"    for {target} in {iter_expr} {{\n{body}\n    }}"
@@ -1465,15 +1489,19 @@ class MultiGenPythonToRustConverter:
         # Handle Rust-specific operators
         if isinstance(expr.op, ast.Pow):
             return f"{left}.pow({right} as u32)"
-        elif isinstance(expr.op, ast.FloorDiv):
-            # Rust integer division is already floor division
-            return f"({left} / {right})"
+        elif isinstance(expr.op, (ast.FloorDiv, ast.Mod)):
+            return self._floor_op_call(expr.op, left, right)
 
         # Use standard operator mapping from converter_utils
         op = get_standard_binary_operator(expr.op)
         if op is None:
             op = "/*UNKNOWN_OP*/"
         return f"({left} {op} {right})"
+
+    def _floor_op_call(self, op: ast.operator, left: str, right: str) -> str:
+        """Return the runtime call for Python // or %; Rust / and % truncate toward zero."""
+        func = "py_floordiv" if isinstance(op, ast.FloorDiv) else "py_mod"
+        return f"{func}({left}, {right})"
 
     def _convert_unaryop(self, expr: ast.UnaryOp) -> str:
         """Convert unary operations."""
@@ -1819,8 +1847,13 @@ class MultiGenPythonToRustConverter:
                                             modified_args.append(f"&mut {arg}")
                                         elif mutability in (MutabilityClass.READ_ONLY, MutabilityClass.IMMUTABLE):
                                             modified_args.append(f"&{arg}")
+                                        elif param_name in self._function_defs.get(func_name, {}):
+                                            # UNKNOWN: the callee signature takes & or &mut by mutation check.
+                                            callee = self._function_defs[func_name][param_name]
+                                            mutated = self._parameter_is_mutated(param_name, callee)
+                                            modified_args.append(f"&mut {arg}" if mutated else f"&{arg}")
                                         else:
-                                            # UNKNOWN or already a reference - pass as is
+                                            # Already a reference - pass as is
                                             modified_args.append(arg)
                                     elif var_type == "String" and mutability in (
                                         MutabilityClass.READ_ONLY,
@@ -1916,6 +1949,10 @@ class MultiGenPythonToRustConverter:
         iter_expr = expr.generators[0].iter
         conditions = expr.generators[0].ifs
 
+        items_chain = self._dict_items_comprehension(expr, [element_expr])
+        if items_chain is not None:
+            return f"{items_chain}.collect::<Vec<_>>()"
+
         if isinstance(iter_expr, ast.Call) and isinstance(iter_expr.func, ast.Name) and iter_expr.func.id == "range":
             # Range-based comprehension
             range_args = [self._convert_expression(arg) for arg in iter_expr.args]
@@ -1963,31 +2000,11 @@ class MultiGenPythonToRustConverter:
         iter_expr = expr.generators[0].iter
         conditions = expr.generators[0].ifs
 
-        # Handle tuple unpacking for dict iteration: {k: v for k, v in dict.items()}
-        if isinstance(target, ast.Tuple) and len(target.elts) == 2:
-            # Tuple unpacking pattern
-            key_var = target.elts[0].id if isinstance(target.elts[0], ast.Name) else "k"
-            value_var = target.elts[1].id if isinstance(target.elts[1], ast.Name) else "v"
-            target_pattern = f"&({key_var}, {value_var})"
-
-            # Convert the iterator expression (should be dict.items() which converts to &dict)
-            container_expr = self._convert_expression(iter_expr)
-            key_transform = self._convert_expression(key_expr)
-            value_transform = self._convert_expression(value_expr)
-
-            # Convert HashMap to Vec of tuples for iteration
-            # container_expr from .items() is "&dict", so we have a dict reference
-            # We need to iter() it and collect to Vec (owned)
-            # Remove the & prefix if present, then add proper iteration
-            dict_expr = container_expr[1:] if container_expr.startswith("&") else container_expr
-            vec_expr = f"{dict_expr}.iter().map(|(k, v)| (*k, *v)).collect::<Vec<_>>()"
-
-            if conditions:
-                condition_expr = self._convert_expression(conditions[0])
-                # Function expects Vec<T> (owned)
-                return f"Comprehensions::dict_comprehension_with_filter({vec_expr}, |{target_pattern}| ({key_transform}, {value_transform}), |{target_pattern}| {condition_expr})"
-            else:
-                return f"Comprehensions::dict_comprehension({vec_expr}, |{target_pattern}| ({key_transform}, {value_transform}))"
+        items_chain = self._dict_items_comprehension(expr, [key_expr, value_expr])
+        if items_chain is not None:
+            return f"{items_chain}.collect::<std::collections::HashMap<_, _>>()"
+        if not isinstance(target, ast.Name):
+            raise UnsupportedFeatureError(f"Comprehension target not supported: {ast.unparse(target)}")
 
         if isinstance(iter_expr, ast.Call) and isinstance(iter_expr.func, ast.Name) and iter_expr.func.id == "range":
             # Range-based comprehension
@@ -2024,6 +2041,51 @@ class MultiGenPythonToRustConverter:
                 return f"Comprehensions::dict_comprehension_with_filter({container_expr}, |{target_name}| ({key_transform}, {value_transform}), |{target_name}| {condition_expr})"
             else:
                 return f"Comprehensions::dict_comprehension({container_expr}, |{target_name}| ({key_transform}, {value_transform}))"
+
+    def _dict_items_iter(self, target: ast.expr, iter_expr: ast.expr) -> Optional[tuple[str, str, str]]:
+        """Return (key, value, Rust iterator of owned pairs) for `k, v in d.items()`.
+
+        Returns None when the iterable is not a `.items()` call.
+        Raises UnsupportedFeatureError for any other `.items()` shape or target.
+        """
+        if not (
+            isinstance(iter_expr, ast.Call)
+            and isinstance(iter_expr.func, ast.Attribute)
+            and iter_expr.func.attr == "items"
+        ):
+            return None
+        if not (
+            not iter_expr.args
+            and not iter_expr.keywords
+            and isinstance(target, ast.Tuple)
+            and len(target.elts) == 2
+            and all(isinstance(e, ast.Name) for e in target.elts)
+        ):
+            raise UnsupportedFeatureError(
+                f"Only `k, v in d.items()` unpacking is supported: {ast.unparse(target)} in {ast.unparse(iter_expr)}"
+            )
+        key_var, value_var = (e.id for e in target.elts if isinstance(e, ast.Name))
+        dict_expr = self._convert_expression(iter_expr.func.value)
+        # Clone each entry so the loop or closure body sees owned values, as in Python.
+        return key_var, value_var, f"{dict_expr}.iter().map(|(k, v)| (k.clone(), v.clone()))"
+
+    def _dict_items_comprehension(self, expr: Union[ast.ListComp, ast.DictComp], elts: list[ast.expr]) -> Optional[str]:
+        """Return an uncollected iterator chain for a comprehension over `d.items()`, else None."""
+        gen = expr.generators[0]
+        items = self._dict_items_iter(gen.target, gen.iter)
+        if items is None:
+            return None
+        if len(expr.generators) > 1 or gen.is_async:
+            raise UnsupportedFeatureError(f"Nested comprehension over .items() not supported: {ast.unparse(expr)}")
+        key_var, value_var, items_iter = items
+        parts = [self._convert_expression(e) for e in elts]
+        result = parts[0] if len(parts) == 1 else f"({', '.join(parts)})"
+        pattern = f"|({key_var}, {value_var})|"
+        if not gen.ifs:
+            return f"{items_iter}.map({pattern} {result})"
+        conds = [self._convert_expression(c) for c in gen.ifs]
+        condition = conds[0] if len(conds) == 1 else " && ".join(f"({c})" for c in conds)
+        return f"{items_iter}.filter_map({pattern} if {condition} {{ Some({result}) }} else {{ None }})"
 
     def _convert_set_comprehension(self, expr: ast.SetComp) -> str:
         """Convert set comprehensions."""

@@ -66,6 +66,7 @@ reported but not fatal, and **rejected** when it fails validation.
 | Variable Declarations | 1 - fundamental | FULLY_SUPPORTED | accepted | accepted | Annotated variable declarations |
 | Context Managers | 2 - structured | PARTIALLY_SUPPORTED | accepted | accepted | Basic with statement for file I/O (single context manager). Single context manager only; File operations only; Requires 'as' binding |
 | Data Classes | 2 - structured | FULLY_SUPPORTED | accepted | accepted | Dataclasses mapped to C structs |
+| Dict Items Unpacking | 2 - structured | FULLY_SUPPORTED | accepted | accepted | `for k, v in d.items()` in loops and comprehensions; no tuple value is built |
 | Enumerations | 2 - structured | PLANNED | rejected | rejected | Python enums mapped to C enums |
 | Exception Handling | 2 - structured | PARTIALLY_SUPPORTED | accepted | accepted | try/except/else/finally for explicitly raised exceptions. Operations do not raise: a ZeroDivisionError or IndexError crashes instead of reaching the handler. No exception chaining (raise ... from ...) |
 | Generator Expressions | 2 - structured | FULLY_SUPPORTED | accepted | accepted | Generator expressions normalized to list comprehensions (eager collection) |
@@ -75,7 +76,7 @@ reported but not fatal, and **rejected** when it fails validation.
 | Tuples | 2 - structured | NOT_SUPPORTED | rejected | rejected | Tuple values are not translatable; tuples in type annotations are |
 | Union Types | 2 - structured | EXPERIMENTAL | warned | rejected | Union types as tagged unions |
 | Yield From | 2 - structured | PARTIALLY_SUPPORTED | accepted | accepted | yield from for extending accumulator with iterable (eager collection). Function calls, range(), and variables only; No .send() or .throw() |
-| Comprehensions | 3 - advanced | FULLY_SUPPORTED | accepted | accepted | List, dict, and set comprehensions converted to C loops with STC containers |
+| Comprehensions | 3 - advanced | FULLY_SUPPORTED | accepted | accepted | List, dict, and set comprehensions converted to C loops with STC containers. One `for` clause per comprehension |
 | Generic Types | 3 - advanced | PARTIALLY_SUPPORTED | accepted | accepted | Generic types via monomorphization (not supported by the LLVM backend) |
 | Pattern Matching | 3 - advanced | PLANNED | rejected | rejected | Python 3.10+ match statements |
 | Duck Typing | 4 - unsupported | NOT_SUPPORTED | rejected | rejected | Duck typing requires runtime type checks |

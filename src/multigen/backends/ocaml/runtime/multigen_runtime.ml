@@ -10,6 +10,17 @@ exception Zero_division_error of string
 exception Index_error of string
 exception Runtime_error of string
 
+(* Python // and %: round toward negative infinity. OCaml's / and mod truncate toward zero. *)
+let ( /// ) a b =
+  if b = 0 then raise (Zero_division_error "integer division or modulo by zero");
+  let q = a / b in
+  if a mod b <> 0 && (a < 0) <> (b < 0) then q - 1 else q
+
+let ( %% ) a b =
+  if b = 0 then raise (Zero_division_error "integer division or modulo by zero");
+  let r = a mod b in
+  if r <> 0 && (r < 0) <> (b < 0) then r + b else r
+
 (* String operations module *)
 module StrOps = struct
   let upper s = String.uppercase_ascii s

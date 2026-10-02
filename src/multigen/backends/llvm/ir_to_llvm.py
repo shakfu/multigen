@@ -5,7 +5,7 @@ and generate corresponding LLVM IR instructions.
 """
 
 import ast
-from typing import Optional, Union
+from typing import Callable, Optional, Union
 
 from llvmlite import ir  # type: ignore[import-untyped]
 
@@ -39,6 +39,7 @@ from ...frontend.static_ir import (
     IRYield,
     IRYieldFrom,
 )
+from .ir_builder import IRDictItemsFor, items_unpack_names
 from .runtime_decls import LLVMRuntimeDeclarations
 
 
@@ -281,29 +282,12 @@ class IRToLLVMConverter(IRVisitor):
                 return self.builder.sub(left, right, name="sub_tmp")
             elif node.operator == "*":
                 return self.builder.mul(left, right, name="mul_tmp")
-            elif node.operator == "/" or node.operator == "//":
+            elif node.operator == "/":
                 return self.builder.sdiv(left, right, name="div_tmp")
+            elif node.operator == "//":
+                return self._floored_divmod(left, right)[0]
             elif node.operator == "%":
-                # Python modulo uses floored division, C uses truncated division
-                # To convert: if remainder and divisor have different signs, add divisor to remainder
-                c_rem = self.builder.srem(left, right, name="c_rem")
-
-                # Check if signs differ: (c_rem < 0) != (right < 0)
-                zero = ir.Constant(ir.IntType(64), 0)
-                rem_neg = self.builder.icmp_signed("<", c_rem, zero, name="rem_neg")
-                divisor_neg = self.builder.icmp_signed("<", right, zero, name="divisor_neg")
-                signs_differ = self.builder.xor(rem_neg, divisor_neg, name="signs_differ")
-
-                # Check if remainder is non-zero
-                rem_nonzero = self.builder.icmp_signed("!=", c_rem, zero, name="rem_nonzero")
-
-                # Adjust if signs differ AND remainder is non-zero
-                need_adjust = self.builder.and_(signs_differ, rem_nonzero, name="need_adjust")
-
-                # result = need_adjust ? (c_rem + right) : c_rem
-                adjusted = self.builder.add(c_rem, right, name="adjusted")
-                result = self.builder.select(need_adjust, adjusted, c_rem, name="mod_tmp")
-                return result
+                return self._floored_divmod(left, right)[1]
             elif node.operator == "<<":
                 return self.builder.shl(left, right, name="shl_tmp")
             elif node.operator == ">>":
@@ -560,8 +544,18 @@ class IRToLLVMConverter(IRVisitor):
             # Initialize it by calling map_init_ptr()
             self.builder.call(map_init_ptr_func, [map_ptr], name="")
 
-            # TODO: If dict has initial key-value pairs, set them here
-            # For now, we only support empty dict literals: {}
+            # Insert literal pairs in source order, refusing pairs the map type cannot hold.
+            if node.value:
+                is_str_map = "map_str_int" in str(map_type)
+                map_set_func = self.runtime.get_function("map_str_int_set" if is_str_map else "map_int_int_set")
+                for key_expr, value_expr in node.value:
+                    key = key_expr.accept(self)
+                    value = value_expr.accept(self)
+                    if key.type != map_set_func.args[1].type or value.type != map_set_func.args[2].type:
+                        raise UnsupportedFeatureError(
+                            f"LLVM backend cannot store a {key.type}: {value.type} pair in {map_type}"
+                        )
+                    self.builder.call(map_set_func, [map_ptr, key, value], name="")
 
             # Return the pointer
             return map_ptr
@@ -646,6 +640,11 @@ class IRToLLVMConverter(IRVisitor):
 
         ast_node = node.ast_node
 
+        # Each converter below applies only the first filter of a generator.
+        for generator in getattr(ast_node, "generators", []):
+            if len(generator.ifs) > 1:
+                raise UnsupportedFeatureError("LLVM backend supports at most one `if` filter per comprehension")
+
         # Determine comprehension type
         if isinstance(ast_node, ast.ListComp):
             return self._visit_list_comprehension(node, ast_node)
@@ -683,6 +682,15 @@ class IRToLLVMConverter(IRVisitor):
             raise NotImplementedError("Only single generator in comprehensions supported")
 
         generator = ast_node.generators[0]
+
+        if items_unpack_names(generator.target, generator.iter) is not None:
+
+            def emit_element() -> None:
+                assert self.builder is not None
+                self.builder.call(vec_int_push_func, [result_ptr, self._convert_ast_expr(ast_node.elt)], name="")
+
+            self._emit_comprehension_items_loop(generator, emit_element)
+            return result_ptr
 
         # Determine iteration type: range() or list iteration
         is_range_iter = (
@@ -933,6 +941,121 @@ class IRToLLVMConverter(IRVisitor):
 
         return vec_ptr
 
+    def _emit_dict_items_loop(
+        self,
+        dict_ptr: ir.Value,
+        key_ptr: ir.Value,
+        value_ptr: ir.Value,
+        emit_body: Callable[[ir.Block, ir.Block], None],
+    ) -> None:
+        """Emit a loop storing each key and value of a dict[int, int], in insertion order.
+
+        `emit_body(continue_block, exit_block)` emits the loop body at the current position.
+        """
+        if self.builder is None or self.current_function is None:
+            raise RuntimeError("Builder not initialized")
+        if "map_int_int" not in str(dict_ptr.type):
+            raise UnsupportedFeatureError(
+                f"LLVM backend supports .items() iteration only over dict[int, int], got {dict_ptr.type}"
+            )
+
+        i64 = ir.IntType(64)
+        size0 = self.builder.call(self.runtime.get_function("map_int_int_size"), [dict_ptr], name="items_size0")
+        idx_ptr = self.builder.alloca(i64, name="items_idx")
+        self.builder.store(ir.Constant(i64, 0), idx_ptr)
+
+        cond_block = self.current_function.append_basic_block(name="items.cond")
+        body_block = self.current_function.append_basic_block(name="items.body")
+        inc_block = self.current_function.append_basic_block(name="items.inc")
+        exit_block = self.current_function.append_basic_block(name="items.exit")
+        self.builder.branch(cond_block)
+
+        # Python raises RuntimeError if the dict changes size while iterated.
+        self.builder.position_at_end(cond_block)
+        self.builder.call(self.runtime.get_function("map_int_int_check_size"), [dict_ptr, size0])
+        idx_val = self.builder.load(idx_ptr, name="items_idx_val")
+        bound = self.builder.call(self.runtime.get_function("map_int_int_capacity"), [dict_ptr], name="items_bound")
+        cond = self.builder.icmp_signed("<", idx_val, bound, name="items_cond")
+        self.builder.cbranch(cond, body_block, exit_block)
+
+        self.builder.position_at_end(body_block)
+        key = self.builder.call(self.runtime.get_function("map_int_int_entry_key"), [dict_ptr, idx_val], name="key")
+        value = self.builder.call(
+            self.runtime.get_function("map_int_int_entry_value"), [dict_ptr, idx_val], name="value"
+        )
+        self.builder.store(key, key_ptr)
+        self.builder.store(value, value_ptr)
+        emit_body(inc_block, exit_block)
+        if not self.builder.block.is_terminated:
+            self.builder.branch(inc_block)
+
+        self.builder.position_at_end(inc_block)
+        self.builder.store(self.builder.add(idx_val, ir.Constant(i64, 1), name="items_inc"), idx_ptr)
+        self.builder.branch(cond_block)
+
+        self.builder.position_at_end(exit_block)
+
+    def _emit_comprehension_items_loop(self, generator: ast.comprehension, emit_element: Callable[[], None]) -> None:
+        """Emit a comprehension over `k, v in d.items()`, with its filter, scoping k and v to it."""
+        if self.builder is None:
+            raise RuntimeError("Builder not initialized")
+        match = items_unpack_names(generator.target, generator.iter)
+        if match is None:
+            raise UnsupportedFeatureError("Dict .items() comprehensions require `k, v` unpacking")
+        key_name, value_name, dict_node = match
+        dict_ptr = self._convert_ast_expr(dict_node)
+
+        i64 = ir.IntType(64)
+        key_ptr = self.builder.alloca(i64, name=key_name)
+        value_ptr = self.builder.alloca(i64, name=value_name)
+        saved = {name: self.var_symtab.get(name) for name in (key_name, value_name)}
+        self.var_symtab[key_name] = key_ptr
+        self.var_symtab[value_name] = value_ptr
+
+        def emit_body(continue_block: ir.Block, exit_block: ir.Block) -> None:
+            assert self.builder is not None and self.current_function is not None
+            if generator.ifs:
+                then_block = self.current_function.append_basic_block(name="items_filter_then")
+                self.builder.cbranch(self._convert_ast_expr(generator.ifs[0]), then_block, continue_block)
+                self.builder.position_at_end(then_block)
+            emit_element()
+
+        self._emit_dict_items_loop(dict_ptr, key_ptr, value_ptr, emit_body)
+
+        for name, old in saved.items():
+            if old is None:
+                self.var_symtab.pop(name, None)
+            else:
+                self.var_symtab[name] = old
+
+    def visit_dict_items_for(self, node: IRDictItemsFor) -> None:
+        """Convert `for k, v in d.items()` to a loop over the dict in insertion order."""
+        if self.builder is None:
+            raise RuntimeError("Builder not initialized - must be inside a function")
+        dict_ptr = node.dict_expr.accept(self)
+
+        # k and v stay bound after the loop, as in Python.
+        target_ptrs = []
+        for var in (node.key_var, node.value_var):
+            ptr = self.global_symtab.get(var.name) or self.var_symtab.get(var.name)
+            if ptr is None:
+                ptr = self.builder.alloca(self._convert_type(var.ir_type), name=var.name)
+                self.var_symtab[var.name] = ptr
+            target_ptrs.append(ptr)
+
+        def emit_body(continue_block: ir.Block, exit_block: ir.Block) -> None:
+            assert self.builder is not None
+            self.loop_exit_stack.append(exit_block)
+            self.loop_continue_stack.append(continue_block)
+            for stmt in node.body:
+                if self.builder.block.is_terminated:
+                    break
+                stmt.accept(self)
+            self.loop_exit_stack.pop()
+            self.loop_continue_stack.pop()
+
+        self._emit_dict_items_loop(dict_ptr, target_ptrs[0], target_ptrs[1], emit_body)
+
     def _visit_dict_comprehension_items(
         self,
         ast_node: ast.DictComp,
@@ -945,125 +1068,16 @@ class IRToLLVMConverter(IRVisitor):
 
         Example: {k: v for k, v in source_dict.items() if condition}
         """
-        if self.builder is None or self.current_function is None:
+        if self.builder is None:
             raise RuntimeError("Builder not initialized")
 
-        # Get the source dict being iterated over
-        # generator.iter is ast.Call to .items()
-        # generator.iter.func is ast.Attribute with .items
-        # generator.iter.func.value is the dict variable
-        assert isinstance(generator.iter, ast.Call)
-        assert isinstance(generator.iter.func, ast.Attribute)
-        source_dict_ast = generator.iter.func.value
-        source_dict_ptr = self._convert_ast_expr(source_dict_ast)
-
-        # Determine source dict type (map_int_int or map_str_int)
-        # For now, assume both source and result use same type based on key_type
-        if key_type == "int":
-            capacity_func = self.runtime.get_function("map_int_int_capacity")
-            is_occupied_func = self.runtime.get_function("map_int_int_entry_is_occupied")
-            entry_key_func = self.runtime.get_function("map_int_int_entry_key")
-            entry_value_func = self.runtime.get_function("map_int_int_entry_value")
-        else:
-            raise NotImplementedError("String-keyed dict .items() iteration not yet implemented")
-
-        # Get capacity of source dict
-        capacity = self.builder.call(capacity_func, [source_dict_ptr], name="source_capacity")
-
-        # Create loop variable for iterating through capacity
-        i64 = ir.IntType(64)
-        loop_var = self.builder.alloca(i64, name="items_iter_idx")
-        self.builder.store(ir.Constant(i64, 0), loop_var)
-
-        # Create loop blocks
-        loop_cond_block = self.current_function.append_basic_block(name="items_loop_cond")
-        loop_body_block = self.current_function.append_basic_block(name="items_loop_body")
-        entry_check_block = self.current_function.append_basic_block(name="items_entry_check")
-        loop_increment_block = self.current_function.append_basic_block(name="items_loop_inc")
-        loop_end_block = self.current_function.append_basic_block(name="items_loop_end")
-
-        # Branch to loop condition
-        self.builder.branch(loop_cond_block)
-
-        # Loop condition: idx < capacity
-        self.builder.position_at_end(loop_cond_block)
-        idx_val = self.builder.load(loop_var, name="idx_val")
-        cond = self.builder.icmp_signed("<", idx_val, capacity, name="items_cond")
-        self.builder.cbranch(cond, loop_body_block, loop_end_block)
-
-        # Loop body: check if entry is occupied
-        self.builder.position_at_end(loop_body_block)
-        is_occupied = self.builder.call(is_occupied_func, [source_dict_ptr, idx_val], name="is_occupied")
-        zero_i32 = ir.Constant(ir.IntType(32), 0)
-        occupied_cond = self.builder.icmp_signed("!=", is_occupied, zero_i32, name="occupied_cond")
-        self.builder.cbranch(occupied_cond, entry_check_block, loop_increment_block)
-
-        # Entry is occupied - extract key and value
-        self.builder.position_at_end(entry_check_block)
-        entry_key = self.builder.call(entry_key_func, [source_dict_ptr, idx_val], name="entry_key")
-        entry_value = self.builder.call(entry_value_func, [source_dict_ptr, idx_val], name="entry_value")
-
-        # Handle tuple unpacking for (k, v)
-        # generator.target should be ast.Tuple with two elements
-        if isinstance(generator.target, ast.Tuple) and len(generator.target.elts) == 2:
-            key_var_name = generator.target.elts[0].id if isinstance(generator.target.elts[0], ast.Name) else "k"
-            val_var_name = generator.target.elts[1].id if isinstance(generator.target.elts[1], ast.Name) else "v"
-
-            # Allocate and store key and value in symbol table
-            key_alloca = self.builder.alloca(i64, name=key_var_name)
-            val_alloca = self.builder.alloca(i64, name=val_var_name)
-            self.builder.store(entry_key, key_alloca)
-            self.builder.store(entry_value, val_alloca)
-
-            old_key_var = self.var_symtab.get(key_var_name)
-            old_val_var = self.var_symtab.get(val_var_name)
-            self.var_symtab[key_var_name] = key_alloca
-            self.var_symtab[val_var_name] = val_alloca
-        else:
-            raise NotImplementedError("Dict .items() requires tuple unpacking: for k, v in ...")
-
-        # Handle optional filter condition
-        if generator.ifs:
-            filter_cond_expr = self._convert_ast_expr(generator.ifs[0])
-            filter_then_block = self.current_function.append_basic_block(name="items_filter_then")
-
-            self.builder.cbranch(filter_cond_expr, filter_then_block, loop_increment_block)
-            self.builder.position_at_end(filter_then_block)
-
-            # Evaluate key and value expressions, then insert
+        def emit_element() -> None:
+            assert self.builder is not None
             result_key = self._convert_ast_expr(ast_node.key)
             result_value = self._convert_ast_expr(ast_node.value)
             self.builder.call(map_set_func, [result_ptr, result_key, result_value], name="")
-            self.builder.branch(loop_increment_block)
-        else:
-            # No filter - just insert
-            result_key = self._convert_ast_expr(ast_node.key)
-            result_value = self._convert_ast_expr(ast_node.value)
-            self.builder.call(map_set_func, [result_ptr, result_key, result_value], name="")
-            self.builder.branch(loop_increment_block)
 
-        # Increment loop variable
-        self.builder.position_at_end(loop_increment_block)
-        # Restore symbol table for next iteration
-        if isinstance(generator.target, ast.Tuple):
-            if old_key_var is not None:
-                self.var_symtab[key_var_name] = old_key_var
-            else:
-                self.var_symtab.pop(key_var_name, None)
-
-            if old_val_var is not None:
-                self.var_symtab[val_var_name] = old_val_var
-            else:
-                self.var_symtab.pop(val_var_name, None)
-
-        # Actually increment and loop back
-        incremented = self.builder.add(idx_val, ir.Constant(i64, 1), name="idx_inc")
-        self.builder.store(incremented, loop_var)
-        self.builder.branch(loop_cond_block)
-
-        # Continue after loop
-        self.builder.position_at_end(loop_end_block)
-
+        self._emit_comprehension_items_loop(generator, emit_element)
         return result_ptr
 
     def _visit_dict_comprehension(self, node: IRComprehension, ast_node: ast.DictComp) -> ir.Value:
@@ -1408,8 +1422,10 @@ class IRToLLVMConverter(IRVisitor):
                 return self.builder.sub(left, right, name="sub_tmp")
             elif isinstance(ast_expr.op, ast.Mult):
                 return self.builder.mul(left, right, name="mul_tmp")
+            elif isinstance(ast_expr.op, ast.FloorDiv):
+                return self._floored_divmod(left, right)[0]
             elif isinstance(ast_expr.op, ast.Mod):
-                return self.builder.srem(left, right, name="mod_tmp")
+                return self._floored_divmod(left, right)[1]
             else:
                 raise NotImplementedError(f"Binary op {type(ast_expr.op).__name__} not implemented")
         elif isinstance(ast_expr, ast.Compare):
@@ -1539,6 +1555,31 @@ class IRToLLVMConverter(IRVisitor):
 
         return result_ptr
 
+    def _floored_divmod(self, left: ir.Value, right: ir.Value) -> tuple[ir.Value, ir.Value]:
+        """Return Python's (left // right, left % right) for signed integers.
+
+        sdiv and srem truncate toward zero. When the remainder is non-zero and
+        its sign differs from the divisor's, Python's quotient is one lower and
+        its remainder one divisor higher.
+        """
+        assert self.builder is not None
+        quotient = self.builder.sdiv(left, right, name="c_div")
+        remainder = self.builder.srem(left, right, name="c_rem")
+        zero = ir.Constant(remainder.type, 0)
+        rem_neg = self.builder.icmp_signed("<", remainder, zero, name="rem_neg")
+        divisor_neg = self.builder.icmp_signed("<", right, zero, name="divisor_neg")
+        signs_differ = self.builder.xor(rem_neg, divisor_neg, name="signs_differ")
+        rem_nonzero = self.builder.icmp_signed("!=", remainder, zero, name="rem_nonzero")
+        adjust = self.builder.and_(signs_differ, rem_nonzero, name="need_adjust")
+        one = ir.Constant(quotient.type, 1)
+        floor_q = self.builder.select(
+            adjust, self.builder.sub(quotient, one, name="q_minus_1"), quotient, name="floordiv_tmp"
+        )
+        floor_r = self.builder.select(
+            adjust, self.builder.add(remainder, right, name="r_plus_d"), remainder, name="mod_tmp"
+        )
+        return floor_q, floor_r
+
     def _get_or_create_builtin(self, name: str, arg_types: list[ir.Type]) -> ir.Function:
         """Get or create a builtin function declaration.
 
@@ -1555,8 +1596,9 @@ class IRToLLVMConverter(IRVisitor):
 
         # Create builtin function declarations
         if name == "print":
-            # print() uses printf internally
-            # For simplicity, we'll handle integer printing first
+            # print() uses printf internally; it is cached under "printf", not "print".
+            if "printf" in self.func_symtab:
+                return self.func_symtab["printf"]
             # Signature: int printf(i8*, ...)
             printf_ty = ir.FunctionType(ir.IntType(32), [ir.IntType(8).as_pointer()], var_arg=True)
             printf_func = ir.Function(self.module, printf_ty, name="printf")

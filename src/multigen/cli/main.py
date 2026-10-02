@@ -547,17 +547,12 @@ Optimization: -O0 (none), -O1 (basic), -O2 (moderate, default), -O3 (aggressive)
         self.copy_runtime_libraries(build_dir, target)
 
         # Configure pipeline
-        include_dirs = []
-        if target == "c":
-            include_dirs = [str(build_dir / "src")]  # Add runtime include path for C
-
         config = PipelineConfig(
             optimization_level=self.get_optimization_level(args.optimization),
             output_dir=str(build_dir / "src"),
             build_mode=build_mode,
             target_language=target,
             compiler=getattr(args, "compiler", None),  # Use backend default if not specified
-            include_dirs=include_dirs,
             backend_preferences=preferences,
             validation_profile=getattr(args, "profile", None) or DEFAULT_PROFILE.name,
         )
@@ -607,8 +602,7 @@ Optimization: -O0 (none), -O1 (basic), -O2 (moderate, default), -O3 (aggressive)
                     build_file_key = "build_file"
                     if build_file_key in result.output_files:
                         build_file_src = Path(result.output_files[build_file_key])
-                        build_file_name = self._get_build_file_name(target)
-                        build_file_dest = build_dir / build_file_name
+                        build_file_dest = build_dir / build_file_src.name
                         if build_file_src != build_file_dest:
                             shutil.move(str(build_file_src), str(build_file_dest))
                             result.output_files[build_file_key] = str(build_file_dest)
@@ -663,16 +657,6 @@ Optimization: -O0 (none), -O1 (basic), -O2 (moderate, default), -O3 (aggressive)
             # Regular exceptions get standard formatting
             self.log.error(f"Pipeline error: {e}")
             return 1
-
-    def _get_build_file_name(self, target_language: str) -> str:
-        """Get the appropriate build file name for the target language."""
-        build_file_names = {
-            "c": "Makefile",
-            "cpp": "Makefile",
-            "rust": "Cargo.toml",
-            "go": "go.mod",
-        }
-        return build_file_names.get(target_language, "Makefile")
 
     def clean_command(self, args: argparse.Namespace) -> int:
         """Execute clean command."""

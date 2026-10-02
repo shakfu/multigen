@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-The Z3 integration transforms multigen from "code translator" to "**verified code translator**" with mathematical safety guarantees. The combination of Z3 formal verification + strict mode creates a production-ready safety net that prevents buffer overflows before they reach compilation or production.
+The Z3 integration transforms multigen from "code translator" to "**verified code translator**" with mathematical safety guarantees. The combination of Z3 formal verification + strict mode creates a safety net that prevents buffer overflows before they reach compilation or production.
 
 **Value proposition**: Mathematical certainty about memory safety vs. best-effort translation.
 
@@ -33,7 +33,7 @@ The Z3 integration transforms multigen from "code translator" to "**verified cod
 - **Counterexamples** when unsafe: "Fails when i=5, arr_len=5"
 - Universal quantification: proves safety for **all possible inputs**, not just test cases
 
-### 2. Strict Mode: Production-Ready Safety
+### 2. Strict Mode: Fail-Closed Safety
 
 The combination of Z3 + strict_verification creates a **safety net for critical code**:
 
@@ -156,7 +156,7 @@ We also:
 
 1. **Mathematical proof** of array bounds safety
 2. **Prevents buffer overflows** (security + safety)
-3. **Production-ready strict mode**
+3. **Fail-closed strict mode**
 4. **Professional credibility** (formal verification capability)
 5. **Future foundation** for more verification:
    - Null pointer safety
@@ -368,7 +368,7 @@ if not result.success:
 
 **Yes, absolutely.**
 
-The Z3 integration transforms multigen from "interesting translator" to "**production-grade verified translator**".
+The Z3 integration transforms multigen from "interesting translator" to "**verified translator**".
 
 The strict verification mode (v0.1.69) is particularly powerful - it's the difference between:
 

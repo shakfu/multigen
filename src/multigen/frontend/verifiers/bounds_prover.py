@@ -76,9 +76,14 @@ class MemorySafetyProof:
     confidence: float  # 0.0 to 1.0
 
     @property
+    def is_proved(self) -> bool:
+        """Report whether every property was proved, not merely left undisproved."""
+        return all(result.status == ProofStatus.PROVED for result in self.proof_results)
+
+    @property
     def summary(self) -> str:
         """Human-readable summary of the proof."""
-        status = "SAFE" if self.is_safe else "UNSAFE"
+        status = "UNSAFE" if not self.is_safe else "SAFE" if self.is_proved else "UNKNOWN"
         return f"{self.function_name}: {self.safety_type.value} - {status} (confidence: {self.confidence:.2f})"
 
 
@@ -132,8 +137,8 @@ class BoundsProver:
         overflow_results = self._verify_buffer_overflow_safety()
         all_proof_results.extend(overflow_results)
 
-        # Safety means no counterexample was proved. Treating an undecided
-        # access as unsafe would reject correct code on missing information.
+        # No counterexample was proved. Undecided accesses leave this True;
+        # strict callers must also check is_proved.
         is_safe = not any(result.status == ProofStatus.DISPROVED for result in all_proof_results)
 
         # Find unsafe accesses

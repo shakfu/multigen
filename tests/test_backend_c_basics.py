@@ -261,7 +261,7 @@ def mod_test(a: int, b: int) -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "return (a % b);" in c_code
+        assert "return multigen_mod_int(a, b);" in c_code
 
 
 class TestPy2CErrorHandling:
@@ -328,7 +328,6 @@ def func2(y: int) -> int:
         ("-", "-"),
         ("*", "*"),
         ("/", "/"),
-        ("%", "%"),
         ("==", "=="),
         ("!=", "!="),
         ("<", "<"),
@@ -348,6 +347,20 @@ def test_op(a: int, b: int) -> int:
 
     c_code = converter.convert_code(python_code)
     assert f"a {c_op} b" in c_code
+
+
+@pytest.mark.parametrize("python_op,helper", [("//", "multigen_floordiv_int"), ("%", "multigen_mod_int")])
+def test_int_floor_operator_conversion(python_op, helper):
+    """Int // and % floor like Python, so they call runtime helpers instead of C / and %."""
+    converter = MultiGenPythonToCConverter()
+
+    python_code = f"""
+def test_op(a: int, b: int) -> int:
+    return a {python_op} b
+"""
+
+    c_code = converter.convert_code(python_code)
+    assert f"{helper}(a, b)" in c_code
 
 
 @pytest.mark.parametrize(

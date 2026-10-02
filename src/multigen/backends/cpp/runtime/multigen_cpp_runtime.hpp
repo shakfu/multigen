@@ -21,6 +21,8 @@
 #include <cmath>
 #include <stdexcept>
 #include <memory>
+#include <limits>
+#include <type_traits>
 
 namespace multigen {
 
@@ -76,6 +78,54 @@ class RuntimeError : public std::runtime_error {
 public:
     explicit RuntimeError(const std::string& msg = "RuntimeError") : std::runtime_error(msg) {}
 };
+
+// ============================================================================
+// Python // and %: round toward negative infinity, not zero
+// ============================================================================
+
+template <typename A, typename B>
+auto floordiv(A a, B b) {
+    using T = std::common_type_t<A, B>;
+    if (b == 0) {
+        throw ZeroDivisionError("integer division or modulo by zero");
+    }
+    if constexpr (std::is_integral_v<T>) {
+        T x = a, y = b;
+        if constexpr (std::is_signed_v<T>) {
+            if (x == std::numeric_limits<T>::min() && y == -1) {
+                throw RuntimeError("integer overflow in floor division");
+            }
+        }
+        T q = x / y;
+        if ((x % y != 0) && ((x < 0) != (y < 0))) {
+            --q;
+        }
+        return q;
+    } else {
+        return std::floor(static_cast<T>(a) / static_cast<T>(b));
+    }
+}
+
+template <typename A, typename B>
+auto pymod(A a, B b) {
+    using T = std::common_type_t<A, B>;
+    if (b == 0) {
+        throw ZeroDivisionError("integer division or modulo by zero");
+    }
+    T r;
+    if constexpr (std::is_integral_v<T>) {
+        if (b == -1) {
+            return T(0);  // INT_MIN % -1 is undefined in C++
+        }
+        r = static_cast<T>(a) % static_cast<T>(b);
+    } else {
+        r = std::fmod(static_cast<T>(a), static_cast<T>(b));
+    }
+    if (r != 0 && ((r < 0) != (b < 0))) {
+        r += b;
+    }
+    return r;
+}
 
 // ============================================================================
 // String Operations (Python str methods)

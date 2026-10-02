@@ -254,7 +254,7 @@ def count_primes_up_to(n: int) -> int:
         assert "func is_prime(n int) bool" in go_code
         assert "if (n < 2)" in go_code
         assert "for i := 2; i < n; i++" in go_code
-        assert "if ((n % i) == 0)" in go_code
+        assert "if (multigen.Mod(n, i) == 0)" in go_code
 
         # Note: Complex list operations would need more sophisticated handling
         assert "find_primes(n)" in go_code

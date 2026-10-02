@@ -203,6 +203,40 @@ func (s StringOps) SplitSep(str, sep string) []string {
 // Global StringOps instance
 var StrOps = StringOps{}
 
+// Python // and %: round toward negative infinity, not zero.
+// Go's / and % truncate toward zero.
+
+// FloorDiv implements Python a // b
+func FloorDiv[T int | int32 | int64 | float64](a, b T) T {
+	if b == 0 {
+		panic(NewZeroDivisionError("integer division or modulo by zero"))
+	}
+	q := a / b
+	if f, ok := any(q).(float64); ok {
+		return T(math.Floor(f))
+	}
+	if q*b != a && (a < 0) != (b < 0) {
+		q--
+	}
+	return q
+}
+
+// Mod implements Python a % b
+func Mod[T int | int32 | int64 | float64](a, b T) T {
+	if b == 0 {
+		panic(NewZeroDivisionError("integer division or modulo by zero"))
+	}
+	if f, ok := any(a).(float64); ok {
+		g := any(b).(float64)
+		r := math.Mod(f, g)
+		if r != 0 && (r < 0) != (g < 0) {
+			r += g
+		}
+		return T(r)
+	}
+	return a - FloorDiv(a, b)*b
+}
+
 // Generic built-in functions
 
 // Abs returns absolute value for numeric types

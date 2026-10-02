@@ -1,7 +1,7 @@
 # Haskell Backend Limitations and Workarounds
 
-**Last Updated**: December 27, 2025
-**MultiGen Version**: v0.1.85+
+**Last Updated**: October 3, 2026
+**MultiGen Version**: v0.2.0
 
 ---
 
@@ -11,7 +11,7 @@ The Haskell backend successfully translates most Python code to idiomatic Haskel
 However, due to fundamental differences between Python's imperative paradigm and
 Haskell's pure functional paradigm, some patterns require alternative approaches.
 
-**Current Status**: 6/7 benchmarks passing (86%)
+**Current Status**: 7/7 benchmarks passing. Quicksort uses the functional variant `quicksort_haskell.py`, which the benchmark runner selects for this backend.
 
 ---
 
@@ -196,13 +196,13 @@ def sum_recursive(arr: list) -> int:
 |-----------|--------|-------|
 | fibonacci | PASS | Pure recursion |
 | matmul | PASS | Nested comprehensions |
-| quicksort | FAIL | Requires functional approach |
+| quicksort | PASS | Functional variant (`quicksort_haskell.py`) |
 | wordcount | PASS | Dict comprehensions |
 | list_ops | PASS | Functional list operations |
 | dict_ops | PASS | Functional dict operations |
 | set_ops | PASS | Functional set operations |
 
-**Overall**: 6/7 (86%)
+**Overall**: 7/7
 
 ---
 

@@ -63,7 +63,7 @@ def test_floor_div_assign(x: int) -> int:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "x /= 3" in go_code
+        assert "x = multigen.FloorDiv(x, 3)" in go_code
 
     def test_modulo_assignment(self):
         """Test %= operator."""
@@ -74,7 +74,7 @@ def test_mod_assign(x: int) -> int:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "x %= 4" in go_code
+        assert "x = multigen.Mod(x, 4)" in go_code
 
     def test_bitwise_or_assignment(self):
         """Test |= operator."""

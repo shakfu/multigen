@@ -1,18 +1,21 @@
 # Backend Guide
 
-MultiGen supports 7 production-ready backends, each with different characteristics and use cases.
+MultiGen supports 8 backends, each with different characteristics and use cases. All eight pass 7/7 benchmarks against CPython's output.
 
 ## Backend Overview
 
-| Backend  | Benchmarks | Compile Time | Binary Size | Runtime   |
-|----------|------------|-------------|-------------|-----------|
-| C        | 7/7 (100%) | 390ms       | 95KB        | 2,500 LOC |
-| C++      | 7/7 (100%) | 435ms       | 36KB        | 357 LOC   |
-| Rust     | 7/7 (100%) | ~1500ms     | 443KB       | 304 LOC   |
-| Go       | 7/7 (100%) | 190ms       | 2365KB      | 413 LOC   |
-| Haskell  | 7/7 (100%) | 156ms       | 19734KB     | 214 LOC   |
-| OCaml    | 7/7 (100%) | 234ms       | 826KB       | 216 LOC   |
-| LLVM     | 7/7 (100%) | 310ms       | 49KB        | 8,300 LOC |
+| Backend    | Benchmarks | Compile Time | Binary Size | Runtime   |
+|------------|------------|-------------|-------------|-----------|
+| C          | 7/7 (100%) | 405ms       | 95KB        | 2,500 LOC |
+| C++        | 7/7 (100%) | 465ms       | 36KB        | 357 LOC   |
+| Rust       | 7/7 (100%) | 237ms       | 469KB       | 304 LOC   |
+| Go         | 7/7 (100%) | 179ms       | 2.3MB       | 413 LOC   |
+| Haskell    | 7/7 (100%) | 1036ms      | 19.8MB      | 214 LOC   |
+| OCaml      | 7/7 (100%) | 306ms       | 831KB       | 216 LOC   |
+| LLVM       | 7/7 (100%) | 331ms       | 54KB        | 8,300 LOC |
+| TypeScript | 7/7 (100%) | 691ms       | 64.5MB      | 197 LOC   |
+
+Compile times and binary sizes are averages over the 7 benchmarks from one run on macOS arm64.
 
 ## C Backend
 
@@ -133,6 +136,22 @@ multigen convert -t llvm example.py
 multigen build -t llvm example.py -O aggressive
 ```
 
+## TypeScript Backend
+
+**Best for**: JavaScript/Deno ecosystems, prototyping
+
+Features:
+
+- Standalone binaries via `deno compile`
+- `T[]`, `Map<K, V>` and `Set<T>` containers (insertion order, key types and `.size` preserved)
+- Native `class`, template-literal f-strings, array-method comprehensions
+- Runtime shims for Python semantics: floor division, modulo sign, `split`/`strip`, truthiness
+- Single-module runtime (197 lines)
+
+```bash
+multigen convert -t typescript example.py
+```
+
 ## Choosing a Backend
 
 **For embedded systems**: Use **C** (smallest binary, maximum portability)
@@ -146,6 +165,8 @@ multigen build -t llvm example.py -O aggressive
 **For functional projects**: Use **Haskell** or **OCaml** (pure functional)
 
 **For native performance**: Use **LLVM** (optimization passes, cross-compilation)
+
+**For JavaScript/Deno**: Use **TypeScript** (largest binaries: the Deno runtime is embedded)
 
 ## Common Features
 
@@ -179,6 +200,11 @@ All backends support:
 **LLVM**:
 
 - List and string slicing not yet supported (requires IR-level changes)
+
+**TypeScript**:
+
+- `int` is a float64 `number`: exact only below 2**53
+- Built with `--no-check`, so TypeScript type errors are not caught
 
 **All backends**:
 

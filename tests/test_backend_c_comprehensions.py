@@ -48,7 +48,7 @@ def test_list_comp_condition() -> list:
 
         assert "vec_int" in c_code
         assert "for (int x = 0; x < 10; x += 1)" in c_code
-        assert "if (((x % 2) == 0))" in c_code
+        assert "if ((multigen_mod_int(x, 2) == 0))" in c_code
 
     def test_list_comprehension_with_range_start_stop(self):
         """Test list comprehension with range(start, stop)."""
@@ -145,7 +145,7 @@ def test_dict_comp_condition() -> dict:
 
         assert "map_int_int" in c_code
         assert "for (int x = 0; x < 5; x += 1)" in c_code
-        assert "if (((x % 2) == 1))" in c_code
+        assert "if ((multigen_mod_int(x, 2) == 1))" in c_code
         assert "(x * x)" in c_code
 
     def test_dict_comprehension_with_range_parameters(self):
@@ -179,6 +179,85 @@ def test_multiple_generators() -> dict:
     return {x + y: x * y for x in range(2) for y in range(3)}
 """
         with pytest.raises(UnsupportedFeatureError, match="Multiple generators"):
+            self.converter.convert_code(python_code)
+
+
+class TestDictItemsUnpacking:
+    """Test `k, v in d.items()` in for loops and comprehensions."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.converter = MultiGenPythonToCConverter()
+
+    def test_for_loop_items(self):
+        """Loop declares typed key and value from the STC map iterator."""
+        python_code = """
+def loop_sum(d: dict[int, int]) -> int:
+    total: int = 0
+    for k, v in d.items():
+        total += k * v
+    return total
+"""
+        c_code = self.converter.convert_code(python_code)
+        assert "for (map_int_int_iter it = map_int_int_begin(&d); it.ref; map_int_int_next(&it))" in c_code
+        assert "int k = it.ref->first;" in c_code
+        assert "int v = it.ref->second;" in c_code
+        assert "typeof" not in c_code
+
+    def test_dict_comprehension_items(self):
+        """Dict comprehension over items() uses concrete types, not typeof."""
+        python_code = """
+def filtered(d: dict[int, int]) -> int:
+    f: dict[int, int] = {k: v for k, v in d.items() if v > 20}
+    return len(f)
+"""
+        c_code = self.converter.convert_code(python_code)
+        assert "int k = it.ref->first;" in c_code
+        assert "int v = it.ref->second;" in c_code
+        assert "if ((v > 20)) map_int_int_insert(&dict_result, k, v);" in c_code
+        assert "typeof" not in c_code
+
+    def test_list_comprehension_items(self):
+        """List comprehension over items() pushes the element expression."""
+        python_code = """
+def pair_list(d: dict[int, int]) -> list:
+    return [k + v for k, v in d.items()]
+"""
+        c_code = self.converter.convert_code(python_code)
+        assert "map_int_int_iter it = map_int_int_begin(&d)" in c_code
+        assert "vec_int_push(&result, (k + v));" in c_code
+
+    def test_items_string_keys_rejected(self):
+        """String-keyed maps use the fallback map type, which items() unpacking does not support."""
+        python_code = """
+def f(d: dict[str, int]) -> int:
+    t: int = 0
+    for k, v in d.items():
+        t += v
+    return t
+"""
+        with pytest.raises(UnsupportedFeatureError, match="dict.items"):
+            self.converter.convert_code(python_code)
+
+    def test_items_float_values_rejected_in_comprehension(self):
+        """Comprehension result types are inferred as int, so float values are rejected."""
+        python_code = """
+def f(d: dict[int, float]) -> list:
+    return [v for k, v in d.items()]
+"""
+        with pytest.raises(UnsupportedFeatureError, match="map_int_double"):
+            self.converter.convert_code(python_code)
+
+    def test_items_loop_variable_bound_outside_rejected(self):
+        """C scopes k to the loop, so a prior binding of k would keep its old value."""
+        python_code = """
+def f(d: dict[int, int]) -> int:
+    k: int = 0
+    for k, v in d.items():
+        pass
+    return k
+"""
+        with pytest.raises(UnsupportedFeatureError, match="bound outside the loop"):
             self.converter.convert_code(python_code)
 
 
@@ -235,17 +314,18 @@ def test_set_expr() -> set:
         c_code = self.converter.convert_code(python_code)
 
         assert "set_int" in c_code
-        assert "(x % 7)" in c_code
-        assert "if (((x % 2) == 0))" in c_code
+        assert "multigen_mod_int(x, 7)" in c_code
+        assert "if ((multigen_mod_int(x, 2) == 0))" in c_code
 
-    def test_set_comprehension_multiple_conditions_error(self):
-        """Test that multiple conditions raise appropriate error."""
+    def test_set_comprehension_multiple_conditions(self):
+        """Multiple `if` clauses are normalized to one conjunction, so both filters apply."""
         python_code = """
 def test_multiple_conditions() -> set:
     return {x for x in range(10) if x > 2 if x < 8}
 """
-        with pytest.raises(UnsupportedFeatureError, match="Multiple conditions"):
-            self.converter.convert_code(python_code)
+        c_code = self.converter.convert_code(python_code)
+
+        assert "if ((((x > 2)) && ((x < 8)))) set_int_insert(&set_result, x);" in c_code
 
 
 class TestComprehensionsIntegration:

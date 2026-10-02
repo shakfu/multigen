@@ -73,6 +73,7 @@ typedef struct {
  */
 
 #include "multigen_error_handling.h"
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -91,16 +92,21 @@ static vec_vec_int vec_vec_int_init(void) {
     return vec;
 }
 
-static void vec_vec_int_grow(vec_vec_int* vec) {
+static bool vec_vec_int_grow(vec_vec_int* vec) {
+    if (vec->capacity > SIZE_MAX / GROWTH_FACTOR / sizeof(vec_int)) {
+        MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Vector capacity overflow");
+        return false;
+    }
     // Handle first allocation if capacity is 0
     size_t new_capacity = (vec->capacity == 0) ? DEFAULT_CAPACITY : vec->capacity * GROWTH_FACTOR;
     vec_int* new_data = realloc(vec->data, new_capacity * sizeof(vec_int));
     if (!new_data) {
         MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Failed to grow 2D vector");
-        return;
+        return false;
     }
     vec->data = new_data;
     vec->capacity = new_capacity;
+    return true;
 }
 
 static void vec_vec_int_push(vec_vec_int* vec, vec_int row) {
@@ -110,7 +116,9 @@ static void vec_vec_int_push(vec_vec_int* vec, vec_int row) {
     }
 
     if (vec->size >= vec->capacity) {
-        vec_vec_int_grow(vec);
+        if (!vec_vec_int_grow(vec)) {
+            return;
+        }
     }
 
     // Copy the row into the array
@@ -191,6 +199,11 @@ static void vec_vec_int_reserve(vec_vec_int* vec, size_t new_capacity) {
 
     if (new_capacity <= vec->capacity) {
         return; // Already have enough capacity
+    }
+
+    if (new_capacity > SIZE_MAX / sizeof(vec_int)) {
+        MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Vector capacity overflow");
+        return;
     }
 
     vec_int* new_data = realloc(vec->data, new_capacity * sizeof(vec_int));

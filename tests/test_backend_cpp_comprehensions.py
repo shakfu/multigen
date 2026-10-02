@@ -1,6 +1,9 @@
 """Tests for Python comprehensions support in C++ backend."""
 
+import pytest
+
 from multigen.backends.cpp.converter import MultiGenPythonToCppConverter
+from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestListComprehensions:
@@ -46,7 +49,7 @@ def test_list_comp_if() -> list:
         assert "list_comprehension" in cpp_code
         assert "Range(10)" in cpp_code
         # Should contain condition lambda
-        assert "x % 2 == 0" in cpp_code or "x % 2" in cpp_code
+        assert "multigen::pymod(x, 2)" in cpp_code
 
     def test_list_comprehension_range_start_stop(self):
         """Test list comprehension with range(start, stop)."""
@@ -173,7 +176,7 @@ def test_set_comp_if() -> set:
 
         assert "set_comprehension" in cpp_code
         assert "Range(10)" in cpp_code
-        assert "((x % 3) == 0)" in cpp_code
+        assert "(multigen::pymod(x, 3) == 0)" in cpp_code
 
     def test_set_comprehension_with_expression(self):
         """Test set comprehension with expression transformation."""
@@ -195,7 +198,7 @@ def test_set_dedup() -> set:
         cpp_code = self.converter.convert_code(python_code)
 
         assert "set_comprehension" in cpp_code
-        assert "x % 3" in cpp_code
+        assert "multigen::pymod(x, 3)" in cpp_code
 
 
 class TestComprehensionsAdvanced:
@@ -270,3 +273,59 @@ def test_types() -> None:
         assert "list_comprehension" in cpp_code
         assert "dict_comprehension" in cpp_code
         assert "set_comprehension" in cpp_code
+
+
+class TestDictItemsUnpacking:
+    """Test `k, v in d.items()` unpacking in loops and comprehensions."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.converter = MultiGenPythonToCppConverter()
+
+    def test_for_loop_items(self):
+        """Loop over d.items() uses a structured binding."""
+        python_code = """
+def loop_sum(d: dict[int, int]) -> int:
+    total: int = 0
+    for k, v in d.items():
+        total += k * v
+    return total
+"""
+        cpp_code = self.converter.convert_code(python_code)
+
+        assert "for (const auto& [k, v] : d)" in cpp_code
+
+    def test_list_comprehension_items(self):
+        """List comprehension over d.items() binds k and v from the pair."""
+        python_code = """
+def pair_list(d: dict[int, int]) -> list[int]:
+    return [k + v for k, v in d.items() if v > 2]
+"""
+        cpp_code = self.converter.convert_code(python_code)
+
+        assert "list_comprehension(d, " in cpp_code
+        assert "const auto& k = __pair.first; const auto& v = __pair.second; return (k + v);" in cpp_code
+        assert "return (v > 2);" in cpp_code
+
+    def test_dict_comprehension_items(self):
+        """Dict comprehension over d.items() binds k and v from the pair."""
+        python_code = """
+def filtered(d: dict[int, int]) -> dict[int, int]:
+    return {k: v for k, v in d.items() if v > 20}
+"""
+        cpp_code = self.converter.convert_code(python_code)
+
+        assert "dict_comprehension(d, " in cpp_code
+        assert "const auto& k = __pair.first; const auto& v = __pair.second;" in cpp_code
+
+    def test_other_tuple_target_rejected(self):
+        """Tuple targets not over d.items() raise UnsupportedFeatureError."""
+        python_code = """
+def f(xs: list[int]) -> int:
+    total: int = 0
+    for a, b in xs:
+        total += a
+    return total
+"""
+        with pytest.raises(UnsupportedFeatureError):
+            self.converter.convert_code(python_code)

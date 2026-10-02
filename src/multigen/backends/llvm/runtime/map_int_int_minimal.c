@@ -24,6 +24,8 @@ typedef struct {
     map_int_entry* entries;
     size_t size;         // Number of key-value pairs
     size_t capacity;     // Total capacity
+    long long* order;    // Keys in insertion order, length size
+    size_t order_cap;    // Allocated length of order
 } map_int_int;
 
 // Simple hash function for integers
@@ -92,6 +94,8 @@ map_int_int map_int_int_init(void) {
     map.capacity = MAP_DEFAULT_CAPACITY;
     map.size = 0;
     map.entries = calloc(MAP_DEFAULT_CAPACITY, sizeof(map_int_entry));
+    map.order = NULL;
+    map.order_cap = 0;
 
     if (!map.entries) {
         map.capacity = 0;
@@ -133,6 +137,17 @@ void map_int_int_set(map_int_int* map, long long key, long long value) {
     int is_new_key = !entry->is_occupied;
 
     if (is_new_key) {
+        if (map->size == map->order_cap) {
+            size_t new_cap = map->order_cap ? map->order_cap * 2 : MAP_DEFAULT_CAPACITY;
+            long long* new_order = realloc(map->order, new_cap * sizeof(long long));
+            if (!new_order) {
+                fprintf(stderr, "map_int_int error: Failed to allocate insertion order\n");
+                exit(1);
+            }
+            map->order = new_order;
+            map->order_cap = new_cap;
+        }
+        map->order[map->size] = key;
         entry->key = key;
         entry->is_occupied = 1;
         map->size++;
@@ -185,36 +200,49 @@ void map_int_int_free(map_int_int* map) {
         map->size = 0;
         map->capacity = 0;
     }
+    if (map) {
+        free(map->order);
+        map->order = NULL;
+        map->order_cap = 0;
+    }
 }
 
-// Get capacity (total number of slots, including empty ones)
+// Iteration bound: positions run over keys in insertion order, as Python dicts do
 size_t map_int_int_capacity(map_int_int* map) {
     if (!map) {
         return 0;
     }
-    return map->capacity;
+    return map->size;
 }
 
-// Check if entry at index is occupied
+// Check if position index holds an entry
 int map_int_int_entry_is_occupied(map_int_int* map, size_t index) {
-    if (!map || !map->entries || index >= map->capacity) {
+    if (!map || !map->order || index >= map->size) {
         return 0;
     }
-    return map->entries[index].is_occupied;
+    return 1;
 }
 
-// Get key at specific index (caller must check is_occupied first)
+// Get the key inserted at position index
 long long map_int_int_entry_key(map_int_int* map, size_t index) {
-    if (!map || !map->entries || index >= map->capacity) {
+    if (!map || !map->order || index >= map->size) {
         return 0;
     }
-    return map->entries[index].key;
+    return map->order[index];
 }
 
-// Get value at specific index (caller must check is_occupied first)
+// Get the value of the key inserted at position index
 long long map_int_int_entry_value(map_int_int* map, size_t index) {
-    if (!map || !map->entries || index >= map->capacity) {
+    if (!map || !map->order || index >= map->size) {
         return 0;
     }
-    return map->entries[index].value;
+    return map_int_int_get(map, map->order[index]);
+}
+
+// Exit as Python's RuntimeError does when an iterated dict changes size
+void map_int_int_check_size(map_int_int* map, size_t expected) {
+    if (map_int_int_size(map) != expected) {
+        fprintf(stderr, "RuntimeError: dictionary changed size during iteration\n");
+        exit(1);
+    }
 }

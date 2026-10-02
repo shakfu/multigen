@@ -166,11 +166,9 @@ def test_print(message: str) -> None:
     print(message)
     print(42)
 """
-        haskell_code = self.converter.convert_code(python_code)
-
-        assert 'printValue "Hello"' in haskell_code
-        assert "printValue message" in haskell_code
-        assert "printValue 42" in haskell_code
+        # Outside main the function is pure; the old output put printValue in a where clause.
+        with pytest.raises(UnsupportedFeatureError, match="outside main"):
+            self.converter.convert_code(python_code)
 
     def test_ternary_expression(self):
         """Test ternary expression conversion."""
@@ -250,3 +248,100 @@ def main() -> None:
         assert "import MultiGenRuntime" in haskell_code
         assert "add :: Int -> Int -> Int" in haskell_code
         assert "main :: IO ()" in haskell_code
+
+
+class TestHaskellMainBlock:
+    """main's do block must be valid Haskell and print only what Python prints."""
+
+    def test_main_ending_in_binding_returns_unit(self):
+        """Dropping `return total` from main must not leave a do block ending in `let`."""
+        code = MultiGenPythonToHaskellConverter().convert_code(
+            "def main() -> int:\n    x: int = 1\n    print(x)\n    total: int = x + 1\n    return total\n"
+        )
+        main_block = code[code.index("main = do") :].splitlines()
+
+        assert main_block[-1].strip() == "return ()"
+
+    def test_empty_main_prints_nothing(self):
+        code = MultiGenPythonToHaskellConverter().convert_code("def main() -> int:\n    return 0\n")
+
+        assert "main = return ()" in code
+        assert "No statements" not in code
+
+
+class TestHaskellItemsUnpacking:
+    """`k, v in d.items()` binds a (k, v) pattern over Map.toList; other tuple targets are rejected."""
+
+    def convert(self, body: str) -> str:
+        return MultiGenPythonToHaskellConverter().convert_code(body)
+
+    def test_for_loop_folds_over_pairs(self):
+        code = self.convert(
+            "def f(d: dict[int, int]) -> int:\n    total: int = 0\n"
+            "    for k, v in d.items():\n        total += k * v\n    return total\n"
+        )
+
+        assert "total = foldl (\\acc (k, v) -> acc + ((k * v))) 0 ((items d))" in code
+
+    def test_dict_comprehension_pattern_and_monomorphic_signature(self):
+        code = self.convert(
+            "def f(d: dict[int, int]) -> int:\n"
+            "    g: dict[int, int] = {k: v for k, v in d.items() if v > 20}\n    return len(g)\n"
+        )
+
+        assert "dictComprehensionWithFilter (items d) (\\(k, v) -> (v > 20))" in code
+        # "Map" contains the letter a; it must not add a constraint on an unused type variable.
+        assert "f :: Map Int Int -> Int" in code
+
+    def test_list_comprehension_pattern(self):
+        code = self.convert("def f(d: dict[int, int]) -> list[int]:\n    return [k + v for k, v in d.items()]\n")
+
+        assert "listComprehension (items d) (\\(k, v) -> (k + v))" in code
+
+    def test_print_parenthesizes_call(self):
+        code = self.convert(
+            "def f(x: int) -> int:\n    return x\n\ndef main() -> int:\n    print(f(1))\n    return 0\n"
+        )
+
+        assert "printValue (f 1)" in code
+
+    @pytest.mark.parametrize(
+        "source",
+        [
+            "def f(xs: list[int]) -> int:\n    t: int = 0\n    for i, x in enumerate(xs):\n        t += x\n    return t\n",
+            "def f(xs: list[int]) -> list[int]:\n    return [i for i, x in enumerate(xs)]\n",
+            "def f(d: dict[int, int]) -> int:\n    t: int = 0\n    for k, v in d.items(1):\n        t += v\n    return t\n",
+        ],
+    )
+    def test_other_tuple_targets_rejected(self, source):
+        with pytest.raises(UnsupportedFeatureError):
+            self.convert(source)
+
+    def test_fold_step_reading_accumulator_rejected(self):
+        with pytest.raises(UnsupportedFeatureError):
+            self.convert(
+                "def f(n: int) -> int:\n    t: int = 1\n    for i in range(n):\n        t += t\n    return t\n"
+            )
+
+
+class TestHaskellDictLoops:
+    """Loops that insert into a dict or accumulate under an if fold into one binding."""
+
+    def test_dict_insert_and_guarded_sum(self):
+        code = MultiGenPythonToHaskellConverter().convert_code(
+            "def f() -> int:\n    d: dict = {}\n    for i in range(5):\n        d[i] = i * 3\n"
+            "    s: int = 0\n    for i in range(9):\n        if i in d:\n            s += d[i]\n    return s\n"
+        )
+
+        assert "d = foldl (\\acc i -> Map.insert (i) ((i * 3)) acc) Map.empty (rangeList (range 5))" in code
+        assert (
+            "s = foldl (\\acc i -> if (Map.member i d) then acc + ((d Map.! i)) else acc) 0 (rangeList (range 9))"
+            in code
+        )
+
+    def test_list_subscript_assignment_not_folded_as_dict(self):
+        with pytest.raises(UnsupportedFeatureError):
+            MultiGenPythonToHaskellConverter().convert_code(
+                "def f(n: int) -> int:\n    xs: list[int] = [0, 0]\n    for i in range(2):\n        xs[i] = n\n"
+                "    return xs[0]\n"
+            )

@@ -2,7 +2,7 @@
 
 **Date**: October 15, 2025
 **Version**: v0.1.82
-**Status**: [x] **PRODUCTION READY**
+**Status**: 0 leaks, 0 memory errors under ASAN
 
 ---
 
@@ -17,7 +17,7 @@ The LLVM backend has completed comprehensive memory safety verification using **
 - [x] **Automated testing infrastructure** deployed
 - [x] **CI/CD integration** ready
 
-This confirms the LLVM backend meets production-ready standards for memory safety, joining C, C++, Rust, Go, and OCaml as the **6th production-ready backend**.
+The LLVM backend showed no leaks or memory errors under ASAN across the benchmarks, as C, C++, Rust, Go and OCaml do.
 
 ---
 
@@ -271,7 +271,7 @@ Add to `.github/workflows/ci.yml`:
 | **LLVM** | **ASAN** | [x] **Verified** | **C runtime library** |
 | Haskell | Built-in | [x] Native | Garbage collected |
 
-**Conclusion**: LLVM backend meets the same memory safety standards as all production backends.
+**Conclusion**: LLVM backend meets the same memory safety checks as the other backends.
 
 ---
 
@@ -286,9 +286,9 @@ Add to `.github/workflows/ci.yml`:
 - No double-free vulnerabilities
 - No memory leak vulnerabilities
 
-### Production Readiness
+### Suitability
 
-The LLVM backend is **production-ready** for:
+The ASAN results support use in:
 
 - [x] Safety-critical applications
 - [x] Long-running services (no leaks)
@@ -328,14 +328,12 @@ The LLVM backend has successfully completed comprehensive memory safety verifica
 [x] **~8,300 lines** of verified runtime code
 [x] **Automated testing** infrastructure
 [x] **Full documentation** (3 guides, 500+ lines)
-[x] **Production-ready** status confirmed
 
 ### Impact
 
-- **6th production-ready backend** (joining C, C++, Rust, Go, OCaml)
+- **6th backend** with clean ASAN results (joining C, C++, Rust, Go, OCaml)
 - **Memory safety guarantees** at same level as other backends
 - **Industry-standard tooling** (ASAN) verification
-- **Ready for production deployment** in safety-critical applications
 
 ### Next Steps
 
@@ -351,8 +349,8 @@ The LLVM backend has successfully completed comprehensive memory safety verifica
 **Test Date**: October 15, 2025
 **Total Test Time**: ~14 seconds (all 7 benchmarks)
 
-**Status**: [x] **PRODUCTION READY - MEMORY SAFE**
+**Status**: 0 leaks, 0 memory errors under ASAN
 
 ---
 
-*This report confirms that the MultiGen LLVM backend meets industry standards for memory safety and is ready for production use.*
+*This report confirms that the MultiGen LLVM backend showed no leaks or memory errors under ASAN.*

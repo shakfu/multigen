@@ -73,6 +73,7 @@ typedef struct {
  */
 
 #include "multigen_error_handling.h"
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -91,16 +92,21 @@ static vec_cstr vec_cstr_init(void) {
     return vec;
 }
 
-static void vec_cstr_grow(vec_cstr* vec) {
+static bool vec_cstr_grow(vec_cstr* vec) {
+    if (vec->capacity > SIZE_MAX / GROWTH_FACTOR / sizeof(char*)) {
+        MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Vector capacity overflow");
+        return false;
+    }
     // Handle first allocation if capacity is 0
     size_t new_capacity = (vec->capacity == 0) ? DEFAULT_CAPACITY : vec->capacity * GROWTH_FACTOR;
     char** new_data = realloc(vec->data, new_capacity * sizeof(char*));
     if (!new_data) {
         MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Failed to grow string vector");
-        return;
+        return false;
     }
     vec->data = new_data;
     vec->capacity = new_capacity;
+    return true;
 }
 
 static void vec_cstr_push(vec_cstr* vec, const char* str) {
@@ -110,7 +116,9 @@ static void vec_cstr_push(vec_cstr* vec, const char* str) {
     }
 
     if (vec->size >= vec->capacity) {
-        vec_cstr_grow(vec);
+        if (!vec_cstr_grow(vec)) {
+            return;
+        }
     }
 
     // Duplicate the string to take ownership
@@ -204,6 +212,11 @@ static void vec_cstr_reserve(vec_cstr* vec, size_t new_capacity) {
 
     if (new_capacity <= vec->capacity) {
         return; // Already have enough capacity
+    }
+
+    if (new_capacity > SIZE_MAX / sizeof(char*)) {
+        MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Vector capacity overflow");
+        return;
     }
 
     char** new_data = realloc(vec->data, new_capacity * sizeof(char*));

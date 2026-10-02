@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <limits.h>
 #include "multigen_error_handling.h"
 
 #ifdef __cplusplus
@@ -47,6 +48,38 @@ int multigen_bool_cstring(const char* str);
  */
 int multigen_abs_int(int value);
 double multigen_abs_float(double value);
+
+/**
+ * Python // and % on ints: round toward negative infinity, not zero.
+ * Raise ZeroDivisionError on b == 0 and RuntimeError when INT_MIN // -1 overflows.
+ */
+static inline int multigen_floordiv_int(int a, int b) {
+    if (b == 0) {
+        mgen_throw(MGEN_ZERO_DIVISION_ERROR, "integer division or modulo by zero");
+    }
+    if (a == INT_MIN && b == -1) {
+        mgen_throw(MGEN_ERROR_RUNTIME, "integer overflow in floor division");
+    }
+    int q = a / b;
+    if ((a % b != 0) && ((a < 0) != (b < 0))) {
+        q--;
+    }
+    return q;
+}
+
+static inline int multigen_mod_int(int a, int b) {
+    if (b == 0) {
+        mgen_throw(MGEN_ZERO_DIVISION_ERROR, "integer division or modulo by zero");
+    }
+    if (b == -1) {
+        return 0;  // INT_MIN % -1 is undefined in C
+    }
+    int r = a % b;
+    if (r != 0 && ((r < 0) != (b < 0))) {
+        r += b;
+    }
+    return r;
+}
 
 /**
  * Python min() and max() for arrays

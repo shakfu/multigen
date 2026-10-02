@@ -5,6 +5,8 @@
 
 #include "multigen_vec_{{T_SUFFIX}}.h"
 #include "multigen_error_handling.h"
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -23,16 +25,21 @@ vec_{{T_SUFFIX}} vec_{{T_SUFFIX}}_init(void) {
     return vec;
 }
 
-static void vec_{{T_SUFFIX}}_grow(vec_{{T_SUFFIX}}* vec) {
+static bool vec_{{T_SUFFIX}}_grow(vec_{{T_SUFFIX}}* vec) {
+    if (vec->capacity > SIZE_MAX / GROWTH_FACTOR / sizeof({{T}})) {
+        MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Vector capacity overflow");
+        return false;
+    }
     // Handle first allocation if capacity is 0
     size_t new_capacity = (vec->capacity == 0) ? DEFAULT_CAPACITY : vec->capacity * GROWTH_FACTOR;
     {{T}}* new_data = realloc(vec->data, new_capacity * sizeof({{T}}));
     if (!new_data) {
         MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Failed to grow vector");
-        return;
+        return false;
     }
     vec->data = new_data;
     vec->capacity = new_capacity;
+    return true;
 }
 
 void vec_{{T_SUFFIX}}_push(vec_{{T_SUFFIX}}* vec, {{#T_IS_POINTER}}const {{/T_IS_POINTER}}{{T}} value) {
@@ -42,7 +49,9 @@ void vec_{{T_SUFFIX}}_push(vec_{{T_SUFFIX}}* vec, {{#T_IS_POINTER}}const {{/T_IS
     }
 
     if (vec->size >= vec->capacity) {
-        vec_{{T_SUFFIX}}_grow(vec);
+        if (!vec_{{T_SUFFIX}}_grow(vec)) {
+            return;
+        }
     }
 
 {{#T_NEEDS_COPY}}
@@ -149,6 +158,11 @@ void vec_{{T_SUFFIX}}_reserve(vec_{{T_SUFFIX}}* vec, size_t new_capacity) {
 
     if (new_capacity <= vec->capacity) {
         return; // Already have enough capacity
+    }
+
+    if (new_capacity > SIZE_MAX / sizeof({{T}})) {
+        MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Vector capacity overflow");
+        return;
     }
 
     {{T}}* new_data = realloc(vec->data, new_capacity * sizeof({{T}}));

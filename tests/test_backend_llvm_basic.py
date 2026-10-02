@@ -361,3 +361,78 @@ def main() -> int:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestLLVMDictItems:
+    """Test `k, v` unpacking over `d.items()` in loops and comprehensions."""
+
+    def _build_and_run(self, python_code: str, temp_dir: str):
+        import subprocess
+
+        backend = LLVMBackend()
+        ir_file = Path(temp_dir) / "items_prog.ll"
+        ir_file.write_text(backend.get_emitter().emit_module(python_code))
+        builder = backend.get_builder()
+        builder.llc_path = LLVM_LLC_PATH
+        builder.clang_path = LLVM_CLANG_PATH
+        assert builder.compile_direct(str(ir_file), temp_dir), "Compilation should succeed"
+        return subprocess.run([str(Path(temp_dir) / "items_prog")], capture_output=True, text=True)
+
+    @pytest.mark.skipif(not LLVM_TOOLS_AVAILABLE, reason="LLVM tools (llc, clang) not available")
+    def test_items_forms_follow_insertion_order(self):
+        """Loop, list comprehension and dict comprehension visit keys in insertion order."""
+        python_code = """
+def main() -> int:
+    d: dict[int, int] = {50: 1, 3: 2}
+    d[9] = 3
+    d[-7] = 4
+    total: int = 0
+    for k, v in d.items():
+        if v == 2:
+            continue
+        print(k)
+        total += k * v
+    print(total)
+    print(k)
+    xs: list[int] = [k * 10 + v for k, v in d.items() if v > 1]
+    for x in xs:
+        print(x)
+    f: dict[int, int] = {k: v for k, v in d.items() if v > 2}
+    n: int = len(f)
+    print(n)
+    return 0
+"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = self._build_and_run(python_code, temp_dir)
+        assert result.stdout.split() == ["50", "9", "-7", "49", "-7", "32", "93", "-66", "2"]
+
+    @pytest.mark.skipif(not LLVM_TOOLS_AVAILABLE, reason="LLVM tools (llc, clang) not available")
+    def test_items_loop_exits_when_dict_grows(self):
+        """Inserting into the iterated dict stops the program, as Python's RuntimeError does."""
+        python_code = """
+def main() -> int:
+    d: dict[int, int] = {1: 1, 2: 2}
+    for k, v in d.items():
+        d[k + 100] = v
+    return 0
+"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = self._build_and_run(python_code, temp_dir)
+        assert result.returncode == 1
+        assert "dictionary changed size during iteration" in result.stderr
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            "    for k in d:\n        print(k)\n",
+            "    for i in range(3):\n        print(i)\n    else:\n        print(9)\n",
+            "    for a, b in d:\n        print(a)\n",
+        ],
+    )
+    def test_untranslatable_loops_are_refused(self, body: str):
+        """Loops the IR cannot represent raise instead of vanishing from the output."""
+        from multigen.errors import UnsupportedFeatureError
+
+        python_code = "def main() -> int:\n    d: dict[int, int] = {1: 2}\n" + body + "    return 0\n"
+        with pytest.raises(UnsupportedFeatureError):
+            LLVMBackend().get_emitter().emit_module(python_code)

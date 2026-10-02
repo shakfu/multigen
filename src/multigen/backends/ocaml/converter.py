@@ -869,6 +869,10 @@ class MultiGenPythonToOCamlConverter:
             return self._convert_unary_operation(node)
         elif isinstance(node, ast.Compare):
             return self._convert_comparison(node)
+        elif isinstance(node, ast.BoolOp):
+            # Exact for bool operands; OCaml rejects && on anything else at compile time.
+            op = " && " if isinstance(node.op, ast.And) else " || "
+            return "(" + op.join(self._convert_expression(v) for v in node.values) + ")"
         elif isinstance(node, ast.Call):
             return self._convert_function_call(node)
         elif isinstance(node, ast.Attribute):
@@ -925,10 +929,11 @@ class MultiGenPythonToOCamlConverter:
         right = self._convert_expression(node.right)
 
         # Handle OCaml-specific operators
+        # Runtime operators: OCaml / and mod truncate toward zero; Python floors.
         if isinstance(node.op, ast.FloorDiv):
-            op = "/"  # OCaml doesn't have floor division
+            op = "///"
         elif isinstance(node.op, ast.Mod):
-            op = "mod"
+            op = "%%"
         elif isinstance(node.op, ast.Pow):
             op = "**"
         elif isinstance(node.op, ast.BitOr):
@@ -1236,6 +1241,33 @@ class MultiGenPythonToOCamlConverter:
         elements = [self._convert_expression(elt) for elt in node.elts]
         return "[" + "; ".join(elements) + "]"
 
+    def _comprehension_target(self, gen: ast.comprehension) -> str:
+        """Render a comprehension target as an OCaml lambda parameter pattern.
+
+        Raises:
+            UnsupportedFeatureError: If the target is not a name or ``k, v`` over ``d.items()``
+        """
+        target = gen.target
+        if isinstance(target, ast.Name):
+            return self._to_ocaml_var_name(target.id)
+        it = gen.iter
+        is_items_call = (
+            isinstance(it, ast.Call)
+            and isinstance(it.func, ast.Attribute)
+            and it.func.attr == "items"
+            and not it.args
+            and not it.keywords
+        )
+        if (
+            is_items_call
+            and isinstance(target, ast.Tuple)
+            and len(target.elts) == 2
+            and all(isinstance(elt, ast.Name) for elt in target.elts)
+        ):
+            names = [self._to_ocaml_var_name(elt.id) for elt in target.elts if isinstance(elt, ast.Name)]
+            return f"({names[0]}, {names[1]})"
+        raise UnsupportedFeatureError("Comprehension target must be a name, or two names unpacking dict.items()")
+
     def _convert_list_comprehension(self, node: ast.ListComp) -> str:
         """Convert Python list comprehension to OCaml."""
         expr = self._convert_expression(node.elt)
@@ -1244,7 +1276,7 @@ class MultiGenPythonToOCamlConverter:
             raise UnsupportedFeatureError("Multiple generators in comprehensions not supported")
 
         gen = node.generators[0]
-        target = self._to_ocaml_var_name(gen.target.id) if isinstance(gen.target, ast.Name) else "x"
+        target = self._comprehension_target(gen)
         iterable = self._convert_expression(gen.iter)
 
         # Wrap iterable in parentheses if it contains spaces (function calls)
@@ -1268,23 +1300,7 @@ class MultiGenPythonToOCamlConverter:
 
         gen = node.generators[0]
 
-        # Handle tuple unpacking: for k, v in dict.items()
-        if isinstance(gen.target, ast.Tuple):
-            # For dict comprehensions with unpacking, we expect (k, v) pattern
-            if len(gen.target.elts) == 2:
-                key_var = (
-                    self._to_ocaml_var_name(gen.target.elts[0].id) if isinstance(gen.target.elts[0], ast.Name) else "k"
-                )
-                value_var = (
-                    self._to_ocaml_var_name(gen.target.elts[1].id) if isinstance(gen.target.elts[1], ast.Name) else "v"
-                )
-                target = f"({key_var}, {value_var})"
-            else:
-                raise UnsupportedFeatureError("Dict comprehension with tuple unpacking requires exactly 2 elements")
-        elif isinstance(gen.target, ast.Name):
-            target = self._to_ocaml_var_name(gen.target.id)
-        else:
-            target = "x"
+        target = self._comprehension_target(gen)
 
         iterable = self._convert_expression(gen.iter)
 
@@ -1307,7 +1323,7 @@ class MultiGenPythonToOCamlConverter:
             raise UnsupportedFeatureError("Multiple generators in comprehensions not supported")
 
         gen = node.generators[0]
-        target = self._to_ocaml_var_name(gen.target.id) if isinstance(gen.target, ast.Name) else "x"
+        target = self._comprehension_target(gen)
         iterable = self._convert_expression(gen.iter)
 
         # Wrap iterable in parentheses if it contains spaces (function calls)
@@ -1472,9 +1488,9 @@ class MultiGenPythonToOCamlConverter:
     def _convert_operator(self, op_node: ast.operator) -> str:
         """Convert AST operator to OCaml operator string."""
         if isinstance(op_node, ast.FloorDiv):
-            return "/"  # OCaml doesn't have floor division
+            return "///"  # runtime operator; OCaml / truncates toward zero
         elif isinstance(op_node, ast.Mod):
-            return "mod"
+            return "%%"  # runtime operator; OCaml mod truncates toward zero
         elif isinstance(op_node, ast.Pow):
             return "**"
         elif isinstance(op_node, ast.BitOr):

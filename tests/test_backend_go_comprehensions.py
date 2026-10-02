@@ -1,5 +1,8 @@
 """Tests for Go backend comprehensions support."""
 
+import pytest
+
+from multigen.backends.errors import TypeMappingError
 from multigen.backends.go.converter import MultiGenPythonToGoConverter
 
 
@@ -49,7 +52,7 @@ def test_list_comp_if() -> list:
         )  # Either ListComprehension or ListComprehensionFromRangeWithFilter
         assert "multigen.NewRange(10)" in go_code
         # Should contain condition lambda
-        assert "(x % 2) == 0" in go_code
+        assert "(multigen.Mod(x, 2) == 0)" in go_code
 
     def test_list_comprehension_range_start_stop(self):
         """Test list comprehension with range(start, stop)."""
@@ -198,7 +201,7 @@ def test_set_dedup() -> set:
         go_code = self.converter.convert_code(python_code)
 
         assert "multigen.SetComprehension" in go_code
-        assert "(x % 3)" in go_code
+        assert "multigen.Mod(x, 3)" in go_code
 
 
 class TestGoComprehensionsAdvanced:
@@ -274,3 +277,72 @@ def test_multi_vars() -> list:
         # For now, just check that we get basic comprehension structure
         # Full nested comprehensions would be complex in Go
         assert "multigen.ListComprehension" in go_code
+
+
+class TestGoDictItemsUnpacking:
+    """Test `k, v in d.items()` in loops and comprehensions."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.converter = MultiGenPythonToGoConverter()
+
+    def test_for_loop_items(self):
+        """Loop unpacks directly from range over the map."""
+        python_code = """
+def loop_sum(d: dict[int, int]) -> int:
+    total: int = 0
+    for k, v in d.items():
+        total += k * v
+    return total
+"""
+        go_code = self.converter.convert_code(python_code)
+
+        assert "for k, v := range d {" in go_code
+        assert "item" not in go_code
+
+    def test_for_loop_items_unused_key(self):
+        """An unused loop name is emitted as `_`."""
+        python_code = """
+def value_sum(d: dict[str, int]) -> int:
+    total: int = 0
+    for k, v in d.items():
+        total += v
+    return total
+"""
+        go_code = self.converter.convert_code(python_code)
+
+        assert "for _, v := range d {" in go_code
+
+    def test_list_comprehension_items(self):
+        """List comprehension iterates MapItems with the source map's KV type."""
+        python_code = """
+def pair_list(d: dict[str, int]) -> list[str]:
+    return [k for k, v in d.items() if v > 1]
+"""
+        go_code = self.converter.convert_code(python_code)
+
+        assert "multigen.ListComprehensionWithFilter[multigen.KV[string, int], string](multigen.MapItems(d)" in go_code
+        assert "k, _ := kv.Key, kv.Value; return k" in go_code
+        assert "_, v := kv.Key, kv.Value; return (v > 1)" in go_code
+
+    def test_dict_comprehension_items_swaps_types(self):
+        """KV type follows the source map, not the result map."""
+        python_code = """
+def invert(d: dict[str, int]) -> dict[int, str]:
+    return {v: k for k, v in d.items()}
+"""
+        go_code = self.converter.convert_code(python_code)
+
+        assert "multigen.DictComprehension[multigen.KV[string, int], int, string]" in go_code
+
+    def test_items_loop_shadowing_rejected(self):
+        """Rebinding a function-level name through the loop fails closed."""
+        python_code = """
+def last_key(d: dict[int, int]) -> int:
+    k: int = 0
+    for k, v in d.items():
+        pass
+    return k
+"""
+        with pytest.raises(TypeMappingError, match="shadows a function variable"):
+            self.converter.convert_code(python_code)

@@ -5,6 +5,7 @@ reducing complexity from 69 to ~15-20.
 """
 
 import ast
+import re
 from typing import TYPE_CHECKING, Optional
 
 from .statement_visitor import FunctionBodyAnalyzer, MainFunctionVisitor, PureFunctionVisitor
@@ -35,7 +36,36 @@ def _detect_needed_constraints(node: ast.FunctionDef) -> set[str]:
     return constraints
 
 
+def _is_dict_annotation(annotation: Optional[ast.expr]) -> bool:
+    """Whether an annotation names dict, bare or subscripted."""
+    if isinstance(annotation, ast.Subscript):
+        annotation = annotation.value
+    return isinstance(annotation, ast.Name) and annotation.id in ("dict", "Dict")
+
+
+def _dict_variables(node: ast.FunctionDef) -> set[str]:
+    """Return names the function annotates as dict or binds to a dict literal or comprehension."""
+    names = {arg.arg for arg in node.args.args if _is_dict_annotation(arg.annotation)}
+    for sub in ast.walk(node):
+        if isinstance(sub, ast.AnnAssign) and isinstance(sub.target, ast.Name):
+            if _is_dict_annotation(sub.annotation) or isinstance(sub.value, (ast.Dict, ast.DictComp)):
+                names.add(sub.target.id)
+        elif isinstance(sub, ast.Assign) and len(sub.targets) == 1 and isinstance(sub.targets[0], ast.Name):
+            if isinstance(sub.value, (ast.Dict, ast.DictComp)):
+                names.add(sub.targets[0].id)
+    return names
+
+
 def convert_function_with_visitor(converter: "MultiGenPythonToHaskellConverter", node: ast.FunctionDef) -> str:
+    """Convert a Python function, with its dict variables known while converting it."""
+    converter.dict_vars = _dict_variables(node)
+    try:
+        return _convert_function(converter, node)
+    finally:
+        converter.dict_vars = set()
+
+
+def _convert_function(converter: "MultiGenPythonToHaskellConverter", node: ast.FunctionDef) -> str:
     """Convert Python function to Haskell using visitor pattern.
 
     This is a refactored version of _convert_function that delegates complexity
@@ -105,6 +135,15 @@ def _mutates_array_parameter(
     return len(mutated_params) > 0, mutated_params
 
 
+def _simple_target(stmt: ast.stmt) -> Optional[str]:
+    """Return the variable an assignment statement binds, if it is a plain name."""
+    if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Name):
+        return stmt.targets[0].id
+    if isinstance(stmt, (ast.AnnAssign, ast.AugAssign)) and isinstance(stmt.target, ast.Name):
+        return stmt.target.id
+    return None
+
+
 def _convert_main_function(converter: "MultiGenPythonToHaskellConverter", node: ast.FunctionDef) -> str:
     """Convert main function with IO do-notation.
 
@@ -126,6 +165,7 @@ def _convert_main_function(converter: "MultiGenPythonToHaskellConverter", node: 
     visitor.set_skip_bindings(skip_indices)
 
     do_lines = []
+    bound: set[str] = set()
     for idx, stmt in enumerate(node.body):
         # Skip initial bindings that are overridden
         if idx in skip_indices:
@@ -143,6 +183,17 @@ def _convert_main_function(converter: "MultiGenPythonToHaskellConverter", node: 
         if not converted_stmt:
             continue
 
+        target = _simple_target(stmt)
+        if target is not None:
+            name = converter._to_haskell_var_name(target)
+            if isinstance(stmt, ast.AugAssign) or name in bound:
+                # let is recursive, so `let x = x + 1` never terminates. A bind
+                # shadows x with a value computed from the previous x.
+                value = converted_stmt.split("=", 1)[1].strip()
+                do_lines.append(f"  {name} <- return ({value})")
+                continue
+            bound.add(name)
+
         # Categorize and add to do notation
         if isinstance(stmt, (ast.Assign, ast.AnnAssign)):
             do_lines.append(f"  let {converted_stmt}")
@@ -154,11 +205,15 @@ def _convert_main_function(converter: "MultiGenPythonToHaskellConverter", node: 
         else:
             do_lines.append(f"  {converted_stmt}")
 
+    # A do block cannot end in a let; Python discards main's return value.
+    if do_lines and do_lines[-1].strip().startswith("let"):
+        do_lines.append("  return ()")
+
     # Build main body
     signature = "main :: IO ()"
 
     if not do_lines:
-        body = 'main = printValue "No statements"'
+        body = "main = return ()"
     elif len(do_lines) == 1 and not do_lines[0].strip().startswith("let"):
         body = f"main = {do_lines[0].strip()}"
     else:
@@ -219,7 +274,8 @@ def _convert_pure_function(converter: "MultiGenPythonToHaskellConverter", node: 
     constraints = _detect_needed_constraints(node)
 
     # Add constraints if function uses polymorphic types ([a], a, etc.)
-    has_polymorphic = any("a" in t for t in ([return_type] + ([p[1] for p in params] if params else [])))
+    # Match the type variable `a` as a word; a substring test also matches "Map".
+    has_polymorphic = any(re.search(r"\ba\b", t) for t in ([return_type] + ([p[1] for p in params] if params else [])))
 
     if constraints and has_polymorphic:
         constraint_list = [f"{c} a" for c in sorted(constraints)]

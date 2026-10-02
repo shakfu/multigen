@@ -527,9 +527,10 @@ class EnhancedTypeInferenceEngine:
             if match:
                 key_type = match.group(1).strip()
                 val_type = match.group(2).strip()
-                # Map Python types to C type suffixes
-                key_suffix = "str" if key_type == "str" else "int"
-                val_suffix = "str" if val_type == "str" else "int"
+                # Map Python types to C type suffixes; float must not collapse to int
+                suffixes = {"str": "str", "float": "double"}
+                key_suffix = suffixes.get(key_type, "int")
+                val_suffix = suffixes.get(val_type, "int")
                 return f"map_{key_suffix}_{val_suffix}"
             return "map_str_int"  # Default fallback
         elif python_type.startswith(("set[", "Set[")):

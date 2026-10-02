@@ -59,7 +59,7 @@ For reference, current backend status (v0.1.52):
 
 - **C++**: 7/7 benchmarks (100%) - 422ms compile, 236ms execute, 36KB binary
 - **C**: 7/7 benchmarks (100%) - 658ms compile, 238ms execute, 82KB binary
-- **Rust**: 7/7 benchmarks (100%) - Production-ready
+- **Rust**: 7/7 benchmarks (100%)
 - **Go**: 7/7 benchmarks (100%) - 63ms compile, 42ms execute, 2365KB binary
 - **OCaml**: 7/7 benchmarks (100%) - 209ms compile, 167ms execute, 771KB binary
 - **Haskell**: 6/7 benchmarks (86%) - Functionally complete
@@ -720,7 +720,7 @@ entry:
 - [ ] Module imports
 - [ ] Comparable performance to C backend
 
-### Production Ready
+### Maturity Criteria
 
 - [ ] Comprehensive test coverage (>90%)
 - [ ] Documentation complete

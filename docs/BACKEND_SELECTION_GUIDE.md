@@ -1,8 +1,10 @@
 # Backend Selection Guide
 
-**Last Updated**: October 18, 2025
-**Version**: v0.1.98
-**MultiGen Backends**: 7 (6 production-ready, 1 functionally complete)
+**Last Updated**: October 3, 2026
+**Version**: v0.2.0
+**MultiGen Backends**: 8, all passing 7/7 benchmarks
+
+Performance figures are averages over the 7 benchmarks from one run on macOS arm64. Run times vary between runs; treat them as approximate.
 
 ---
 
@@ -18,17 +20,18 @@
 │  ├─ Rust project? → Use Rust
 │  ├─ Go project? → Use Go
 │  ├─ Haskell project? → Use Haskell
-│  └─ OCaml project? → Use OCaml
+│  ├─ OCaml project? → Use OCaml
+│  └─ TypeScript/Deno project? → Use TypeScript
 │
 ├─ Maximum performance critical?
 │  └─ Use LLVM (O3 optimization, 36% faster than O0)
 │     or C++ (STL optimizations, small binaries)
 │
 ├─ Smallest binary size?
-│  └─ Use C++ (36KB) or C (82KB)
+│  └─ Use C++ (36KB) or LLVM (54KB)
 │
 ├─ Fastest compilation?
-│  └─ Use Go (63ms) or LLVM (varies by optimization)
+│  └─ Use Go (179ms) or Rust (237ms)
 │
 └─ Learning functional programming?
    └─ Use Haskell or OCaml
@@ -36,7 +39,7 @@
 
 ---
 
-## Production-Ready Backends (7/7 Benchmarks [x])
+## Backends Passing 7/7 Benchmarks
 
 ### C++ Backend
 
@@ -53,8 +56,8 @@
 
 **Performance**:
 
-- Compile time: 422ms
-- Execute time: 236ms
+- Compile time: 465ms
+- Execute time: 269ms
 - Binary size: 36KB
 
 **Use Cases**:
@@ -88,9 +91,9 @@ multigen build -t cpp algorithm.py
 
 **Performance**:
 
-- Compile time: 658ms
-- Execute time: 238ms
-- Binary size: 82KB
+- Compile time: 405ms
+- Execute time: 286ms
+- Binary size: 95KB
 
 **Runtime**: ~2,500 lines (16 files)
 
@@ -120,13 +123,13 @@ multigen build -t c data_processing.py
 - [x] **Advanced HashMap inference** (detects reassignment patterns)
 - [x] **Memory safety** (compile-time borrow checking)
 - [x] **String handling** (strategic cloning for parameters)
-- [x] **Production-ready** (304-line runtime, pure std library)
+- [x] 304-line runtime, pure std library
 
 **Performance**:
 
-- Compile time: ~500ms (cargo build)
-- Execute time: ~200ms
-- Binary size: ~2-3MB (includes Rust std library)
+- Compile time: 237ms (rustc)
+- Execute time: 305ms
+- Binary size: 469KB
 
 **Use Cases**:
 
@@ -150,7 +153,7 @@ multigen build -t rust web_service.py
 
 **Strengths**:
 
-- [x] **Fastest compilation** (63ms, ~10x faster than others)
+- [x] **Fastest compilation** (179ms)
 - [x] **Reflection-based comprehensions** (flexible, idiomatic)
 - [x] **Goroutine-friendly** (works with Go concurrency)
 - [x] **Pure std library** (413 lines, zero dependencies)
@@ -158,9 +161,9 @@ multigen build -t rust web_service.py
 
 **Performance**:
 
-- Compile time: 63ms **FASTEST**
-- Execute time: 42ms
-- Binary size: 2365KB (includes Go runtime)
+- Compile time: 179ms **FASTEST**
+- Execute time: 407ms
+- Binary size: 2.3MB (includes Go runtime)
 
 **Use Cases**:
 
@@ -192,9 +195,9 @@ multigen build -t go microservice.py
 
 **Performance**:
 
-- Compile time: 209ms
-- Execute time: 167ms
-- Binary size: 771KB
+- Compile time: 306ms
+- Execute time: 391ms
+- Binary size: 831KB
 
 **Use Cases**:
 
@@ -227,9 +230,9 @@ multigen build -t ocaml research.py
 
 **Performance** (O2, default):
 
-- Compile time: ~800ms (IR generation + LLVM optimization)
-- Execute time: 54ms (O3: 36% faster than O0)
-- Binary size: ~37KB (all optimization levels)
+- Compile time: 331ms (IR generation + LLVM optimization)
+- Execute time: 277ms
+- Binary size: 54KB
 
 **Optimization Levels**:
 
@@ -261,10 +264,6 @@ multigen build -t llvm -O3 algorithm.py
 multigen build -t llvm -O0 algorithm.py
 ```
 
----
-
-## Functionally Complete Backend (6/7 Benchmarks)
-
 ### Haskell Backend
 
 **Best for**: Pure functional programming, type safety, academic use
@@ -274,14 +273,13 @@ multigen build -t llvm -O0 algorithm.py
 - [x] **Pure functional** (Data.Map, Data.Set, foldl/foldM)
 - [x] **Type-safe** (strong Haskell type system)
 - [x] **Visitor pattern** (separates main/IO from pure functions)
-- [x] **Comprehensive features** (all Python constructs work)
-- [!] **In-place mutations not supported** (6/7 benchmarks, see note below)
+- [!] **In-place list mutation is refused** (see note below)
 
 **Performance**:
 
-- Compile time: 513ms
-- Execute time: 275ms
-- Binary size: 19734KB (includes GHC runtime)
+- Compile time: 1036ms
+- Execute time: 551ms
+- Binary size: 19.8MB (includes GHC runtime)
 
 **Use Cases**:
 
@@ -290,9 +288,10 @@ multigen build -t llvm -O0 algorithm.py
 - Academic research
 - Learning Haskell through Python
 
-**Known Limitation**: The quicksort benchmark uses in-place array mutations
-(`arr[i] = arr[j]`), which cannot be translated to pure Haskell. Use functional
-patterns instead (list comprehensions, recursive decomposition). See
+**Known Limitation**: In-place list mutation (`arr[i] = arr[j]`) cannot be
+translated to pure Haskell and is refused. The benchmark runner uses a functional
+quicksort variant (`quicksort_haskell.py`). Use functional patterns instead (list
+comprehensions, recursive decomposition). See
 [Haskell Backend Limitations](haskell_backend_limitations.md) for details and
 working examples.
 
@@ -305,18 +304,48 @@ multigen build -t haskell algorithm.py
 
 ---
 
+### TypeScript Backend
+
+**Best for**: JavaScript/Deno ecosystems, prototyping
+
+**Strengths**:
+
+- [x] Native `class`, template-literal f-strings, array-method comprehensions
+- [x] `Map`/`Set` containers keep key types, insertion order and `.size`
+- [x] Python semantics via a 197-line runtime (floor division, modulo sign, truthiness)
+
+**Limitations**:
+
+- [!] `int` is a float64 `number`: exact only below 2**53
+- [!] `deno compile --no-check`: TypeScript type errors are not caught
+
+**Performance**:
+
+- Compile time: 691ms (`deno compile`)
+- Execute time: 994ms
+- Binary size: 64.5MB (Deno runtime embedded)
+
+**Example**:
+
+```bash
+multigen build -t typescript app.py
+./build/app
+```
+
+---
+
 ## Backend Comparison Matrix
 
-| Feature | C++ | C | Rust | Go | OCaml | LLVM | Haskell |
-|---------|-----|---|------|----|----|------|---------|
-| **Production Ready** | [x] | [x] | [x] | [x] | [x] | [x] | [!] 6/7 |
-| **Compile Speed** | Medium | Slow | Slow | Fast | Fast | Medium | Medium |
-| **Binary Size** | [+]Tiny | Small | Large | Large | Medium | Tiny | Large |
-| **Optimization** | High | High | High | Medium | Medium | [+]Highest | Low |
-| **Memory Safety** | Manual | Manual | [+]Auto | GC | GC | Manual* | GC |
-| **Cross-Platform** | Good | [+]Best | Good | Good | Good | [+]Best | Good |
-| **Concurrency** | Manual | Manual | Native | [+]Native | Limited | Manual | Limited |
-| **WebAssembly** | Via Emscripten | Via Emscripten | [x] Native | [x] TinyGo | Via js_of_ocaml | [x] Native | Via GHCJS |
+| Feature | C++ | C | Rust | Go | OCaml | LLVM | Haskell | TypeScript |
+|---------|-----|---|------|----|----|------|---------|------------|
+| **7/7 Benchmarks** | [x] | [x] | [x] | [x] | [x] | [x] | [x] | [x] |
+| **Compile Speed** | Medium | Medium | Fast | Fast | Fast | Medium | Slow | Slow |
+| **Binary Size** | [+]Tiny | Small | Medium | Large | Medium | Tiny | Large | Largest |
+| **Optimization** | High | High | High | Medium | Medium | [+]Highest | Low | JIT (V8) |
+| **Memory Safety** | Manual | Manual | [+]Auto | GC | GC | Manual* | GC | GC |
+| **Cross-Platform** | Good | [+]Best | Good | Good | Good | [+]Best | Good | Good |
+| **Concurrency** | Manual | Manual | Native | [+]Native | Limited | Manual | Limited | Async (event loop) |
+| **WebAssembly** | Via Emscripten | Via Emscripten | [x] Native | [x] TinyGo | Via js_of_ocaml | [x] Native | Via GHCJS | [X] |
 
 \* *LLVM backend runtime is ASAN-verified memory-safe (0 leaks, 0 errors)*
 
@@ -348,7 +377,7 @@ multigen build -t haskell algorithm.py
 
 **Recommended**: Go or Rust
 
-- Go: Instant compilation (63ms)
+- Go: Fastest compilation (179ms)
 - Rust: Single binary with dependencies
 
 ### Cross-Platform / Multi-Target
@@ -379,13 +408,13 @@ multigen build -t haskell algorithm.py
 
 ---
 
-## Performance Benchmarks (All 7/7 Backends)
+## Performance Benchmarks (All 8 Backends at 7/7)
 
 ### Fibonacci (Recursive)
 
-- **Fastest Execution**: Go (42ms)
-- **Smallest Binary**: C++ (36KB)
-- **Fastest Compile**: Go (63ms)
+- **Fastest Execution**: C++ (266ms)
+- **Smallest Binary**: C++ (34KB)
+- **Fastest Compile**: Rust (152ms)
 
 ### Matrix Multiplication (2D Arrays)
 
@@ -399,8 +428,7 @@ multigen build -t haskell algorithm.py
 
 ### String Operations (Wordcount)
 
-- **Complete**: All 6 production backends
-- **Pending**: Haskell optimization
+- **Complete**: All 8 backends
 
 ---
 
@@ -486,4 +514,6 @@ If you're unsure which backend to choose:
 
 **For research**: Use **Haskell** or **OCaml** (functional paradigm)
 
-All backends are actively maintained and production-ready (except Haskell which is functionally complete).
+**For JavaScript/Deno**: Use **TypeScript**
+
+All backends are actively maintained.

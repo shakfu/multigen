@@ -51,6 +51,7 @@ class MultiGenPythonToHaskellConverter:
         self.data_types: dict[str, Any] = {}  # Track data type definitions for classes
         self.current_function: Optional[str] = None  # Track current function context
         self.declared_vars: set[str] = set()  # Track declared variables in current function
+        self.dict_vars: set[str] = set()  # Python names known to hold dicts in the current function
         self.needed_imports: set[str] = set()  # Track which imports are needed
         self._loop_converter: Optional[ForLoopConverter] = None  # Lazy-initialized loop converter
 
@@ -148,8 +149,9 @@ class MultiGenPythonToHaskellConverter:
         # Scan for needed imports
         self._scan_for_imports(node)
 
-        # Add language extensions if needed
-        extensions = []
+        # Add language extensions if needed. ExtendedDefaultRules lets a literal
+        # used only through printValue (class ToString) default to Integer.
+        extensions = ["{-# LANGUAGE ExtendedDefaultRules #-}"]
         if any(isinstance(item, ast.ClassDef) for item in node.body):
             extensions.append("{-# LANGUAGE OverloadedStrings #-}")
         if self.needed_imports:
@@ -846,6 +848,9 @@ main = printValue "Generated Haskell code executed successfully"'''
             # Handle built-in functions
             if func_name == "print":
                 if args:
+                    # Parenthesize applications: `printValue f x` would pass f and x separately.
+                    if " " in args[0] and not isinstance(node.args[0], ast.Constant):
+                        return f"printValue ({args[0]})"
                     return f"printValue {args[0]}"
                 else:
                     return 'printValue ""'
@@ -1010,6 +1015,9 @@ main = printValue "Generated Haskell code executed successfully"'''
 
         index = self._convert_expression(node.slice)
 
+        if isinstance(node.value, ast.Name) and node.value.id in self.dict_vars:
+            return f"({obj} Map.! {index})"
+
         # Heuristic: if index is a string literal, it's likely a dict access
         # For maps: obj Map.! index
         # For lists: obj !! index
@@ -1099,6 +1107,31 @@ main = printValue "Generated Haskell code executed successfully"'''
             return "Set.empty"
         return f"Set.fromList [{', '.join(elements)}]"
 
+    def _loop_target_pattern(self, target: ast.expr, iterable: ast.expr) -> str:
+        """Return the lambda pattern binding a for-loop or comprehension target.
+
+        Raises:
+            UnsupportedFeatureError: target is neither a name nor `k, v` over a no-argument `.items()`
+        """
+        if isinstance(target, ast.Name):
+            return self._to_haskell_var_name(target.id)
+        if (
+            isinstance(target, ast.Tuple)
+            and len(target.elts) == 2
+            and isinstance(target.elts[0], ast.Name)
+            and isinstance(target.elts[1], ast.Name)
+            and isinstance(iterable, ast.Call)
+            and isinstance(iterable.func, ast.Attribute)
+            and iterable.func.attr == "items"
+            and not iterable.args
+            and not iterable.keywords
+        ):
+            # items is Map.toList, so each element is a (key, value) pair.
+            key = self._to_haskell_var_name(target.elts[0].id)
+            value = self._to_haskell_var_name(target.elts[1].id)
+            return f"({key}, {value})"
+        raise UnsupportedFeatureError("Tuple targets are supported only as `k, v` unpacking `d.items()`")
+
     def _convert_list_comprehension(self, node: ast.ListComp) -> str:
         """Convert Python list comprehension to Haskell."""
         # Check preferences for comprehension style
@@ -1112,7 +1145,7 @@ main = printValue "Generated Haskell code executed successfully"'''
             raise UnsupportedFeatureError("Multiple generators in comprehensions not supported")
 
         gen = node.generators[0]
-        target = self._to_haskell_var_name(gen.target.id) if isinstance(gen.target, ast.Name) else "x"
+        target = self._loop_target_pattern(gen.target, gen.iter)
         iterable = self._convert_expression(gen.iter)
 
         if use_native:
@@ -1150,20 +1183,7 @@ main = printValue "Generated Haskell code executed successfully"'''
 
         gen = node.generators[0]
 
-        # Handle tuple unpacking in target: (k, v) in items()
-        if isinstance(gen.target, ast.Tuple):
-            # Tuple target - create pattern for each element
-            tuple_vars = [
-                self._to_haskell_var_name(elt.id) if isinstance(elt, ast.Name) else "x" for elt in gen.target.elts
-            ]
-            target = f"({', '.join(tuple_vars)})"
-            target_pattern = target  # For pattern matching
-        elif isinstance(gen.target, ast.Name):
-            target = self._to_haskell_var_name(gen.target.id)
-            target_pattern = target
-        else:
-            target = "x"
-            target_pattern = "x"
+        target = target_pattern = self._loop_target_pattern(gen.target, gen.iter)
 
         iterable = self._convert_expression(gen.iter)
 
@@ -1200,7 +1220,7 @@ main = printValue "Generated Haskell code executed successfully"'''
             raise UnsupportedFeatureError("Multiple generators in comprehensions not supported")
 
         gen = node.generators[0]
-        target = self._to_haskell_var_name(gen.target.id) if isinstance(gen.target, ast.Name) else "x"
+        target = self._loop_target_pattern(gen.target, gen.iter)
         iterable = self._convert_expression(gen.iter)
 
         if use_native:
@@ -1497,9 +1517,11 @@ main = printValue "Generated Haskell code executed successfully"'''
             if self.current_function == "main":
                 return f"mapM_ (\\{var_name} -> {body}) {iterable}"
             else:
-                # In pure context, can't use mapM_ - need to handle differently
-                # For now, skip side-effect-only loops in pure functions
-                return "-- for loop with side effects (not converted in pure function)"
+                # No strategy matched. Dropping the loop would compile and compute the wrong answer.
+                raise UnsupportedFeatureError(
+                    f"for loop at line {node.lineno} in pure function '{self.current_function}' "
+                    "matches no fold pattern (single augmented assignment, list append, or word count)"
+                )
         else:
             raise UnsupportedFeatureError("Complex for loop targets not supported")
 

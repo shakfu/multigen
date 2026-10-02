@@ -63,7 +63,7 @@ def test_floor_div_assign(x: int) -> int:
 """
         rust_code = self.converter.convert_code(python_code)
 
-        assert "x /= 3;" in rust_code
+        assert "x = py_floordiv(x, 3);" in rust_code
 
     def test_modulo_assignment(self):
         """Test %= operator."""
@@ -74,7 +74,7 @@ def test_mod_assign(x: int) -> int:
 """
         rust_code = self.converter.convert_code(python_code)
 
-        assert "x %= 4;" in rust_code
+        assert "x = py_mod(x, 4);" in rust_code
 
     def test_bitwise_or_assignment(self):
         """Test |= operator."""

@@ -927,6 +927,10 @@ class IRVisitor(ABC):
         pass
 
 
+# Statements that emit nothing and lose nothing when skipped.
+_NO_OP_STATEMENTS = (ast.Pass, ast.Import, ast.ImportFrom, ast.Global)
+
+
 class IRBuilder:
     """Builder for constructing IR from Python AST."""
 
@@ -1026,7 +1030,19 @@ class IRBuilder:
         return ir_func
 
     def _build_statement(self, node: ast.stmt) -> Optional[IRStatement]:
-        """Build IR statement from AST statement."""
+        """Build IR statement from AST statement, refusing any a builder could not model."""
+        result = self._build_statement_node(node)
+        if result is None and not isinstance(node, _NO_OP_STATEMENTS):
+            # Callers filter out None, so the statement would vanish while the
+            # pipeline reported success: `for k, v in ...` printed 0.
+            raise UnsupportedFeatureError(
+                f"LLVM backend cannot translate this {type(node).__name__} at line {node.lineno}: "
+                f"{ast.unparse(node).splitlines()[0]}"
+            )
+        return result
+
+    def _build_statement_node(self, node: ast.stmt) -> Optional[IRStatement]:
+        """Dispatch an AST statement to its builder."""
         if isinstance(node, ast.AnnAssign):
             return self._build_annotated_assignment(node)
         elif isinstance(node, ast.Assign):
@@ -1057,7 +1073,7 @@ class IRBuilder:
             return self._build_try(node)
         elif isinstance(node, ast.Raise):
             return self._build_raise(node)
-        elif isinstance(node, (ast.Pass, ast.Import, ast.ImportFrom, ast.Global)):
+        elif isinstance(node, _NO_OP_STATEMENTS):
             # Nothing to emit, and nothing is lost by emitting nothing. `global`
             # only restates where a name already lives: module variables are in
             # the symbol table, so assignments resolve to them either way.
@@ -1573,6 +1589,8 @@ class IRBuilder:
 
     def _build_while(self, node: ast.While) -> IRWhile:
         """Build while loop."""
+        if node.orelse:
+            raise UnsupportedFeatureError(f"LLVM backend does not support while/else (line {node.lineno})")
         condition = self._build_expression(node.test)
         body_raw = [self._build_statement(stmt) for stmt in node.body]
         body: list[IRStatement] = [stmt for stmt in body_raw if stmt is not None]
@@ -1581,6 +1599,8 @@ class IRBuilder:
 
     def _build_for(self, node: ast.For) -> Optional[IRFor]:
         """Build for loop - supports both range() and list iteration."""
+        if node.orelse:
+            raise UnsupportedFeatureError(f"LLVM backend does not support for/else (line {node.lineno})")
         # Check if it's a range-based loop
         if isinstance(node.iter, ast.Call) and isinstance(node.iter.func, ast.Name):
             if node.iter.func.id == "range":

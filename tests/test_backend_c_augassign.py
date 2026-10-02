@@ -76,7 +76,7 @@ def test_floor_div_assignment() -> int:
         c_code = self.converter.convert_code(python_code)
 
         assert "int x = 15;" in c_code
-        assert "x /= 4;" in c_code  # Floor division maps to regular division
+        assert "x = multigen_floordiv_int(x, 4);" in c_code
 
     def test_mod_assignment(self):
         """Test %= operator."""
@@ -89,7 +89,7 @@ def test_mod_assignment() -> int:
         c_code = self.converter.convert_code(python_code)
 
         assert "int value = 17;" in c_code
-        assert "value %= 5;" in c_code
+        assert "value = multigen_mod_int(value, 5);" in c_code
 
 
 class TestBitwiseAugmentedAssignment:
@@ -368,7 +368,7 @@ def multiple_operations() -> int:
         assert "value *= 2;" in c_code
         assert "value -= 8;" in c_code
         assert "value /= 2;" in c_code
-        assert "value %= 7;" in c_code
+        assert "value = multigen_mod_int(value, 7);" in c_code
 
 
 @pytest.mark.parametrize(
@@ -378,8 +378,6 @@ def multiple_operations() -> int:
         ("-=", "-="),
         ("*=", "*="),
         ("/=", "/="),
-        ("//=", "/="),  # Floor division maps to regular division
-        ("%=", "%="),
         ("|=", "|="),
         ("^=", "^="),
         ("&=", "&="),
@@ -400,6 +398,25 @@ def test_operator() -> int:
 
     c_code = converter.convert_code(python_code)
     assert f"x {op_c} 3;" in c_code
+
+
+@pytest.mark.parametrize(
+    "op_python,helper",
+    [("//=", "multigen_floordiv_int"), ("%=", "multigen_mod_int")],
+)
+def test_augassign_int_floor_operators(op_python, helper):
+    """Int //= and %= floor like Python, so they call runtime helpers instead of /= and %=."""
+    converter = MultiGenPythonToCConverter()
+
+    python_code = f"""
+def test_operator() -> int:
+    x: int = 10
+    x {op_python} 3
+    return x
+"""
+
+    c_code = converter.convert_code(python_code)
+    assert f"x = {helper}(x, 3);" in c_code
 
 
 @pytest.mark.integration

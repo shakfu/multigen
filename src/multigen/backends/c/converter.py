@@ -20,11 +20,14 @@ Supported Features:
 from __future__ import annotations
 
 import ast
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any
 
 from ..converter_utils import (
     escape_string_for_c_family,
     extract_format_spec,
+    find_in_place_mutated_params,
     format_spec_to_printf,
     get_augmented_assignment_operator,
     get_standard_binary_operator,
@@ -98,6 +101,11 @@ class MultiGenPythonToCConverter:
 
         # Track function return types for better inference
         self.function_return_types: dict[str, str] = {}
+        # function -> container params it mutates in place (copied in, written back)
+        self.mutated_params: dict[str, set[str]] = {}
+        self._writeback: list[str] = []
+        # function -> per-position param name when passed by pointer, else None
+        self._ref_param_names: dict[str, list[str | None]] = {}
 
         # String method converter (extracted for maintainability)
         self._string_converter = CStringMethodConverter()
@@ -124,6 +132,7 @@ class MultiGenPythonToCConverter:
 
         # NEW: Phase 0 - Enhanced type inference (multi-pass analysis)
         self.inferred_types = self.type_engine.analyze_module(node)
+        self.mutated_params = find_in_place_mutated_params(node)
 
         # Get inference statistics for debugging
         self.type_engine.get_inference_statistics()
@@ -371,6 +380,7 @@ class MultiGenPythonToCConverter:
             "#include <stdio.h>",
             "#include <stdlib.h>",
             "#include <stdbool.h>",
+            "#include <stdint.h>",
         ]
 
         # Add assert.h if asserts are used
@@ -625,6 +635,10 @@ class MultiGenPythonToCConverter:
 
         # Build parameter list
         params = []
+        ref_prologue: list[str] = []
+        self._writeback = []
+        ref_names: list[str | None] = []
+        self._ref_param_names[node.name] = ref_names
         for arg in node.args.args:
             param_type = self._get_type_annotation(arg.annotation) if arg.annotation else "int"
             # Use enhanced type inference for complex types like list[list[int]]
@@ -642,8 +656,17 @@ class MultiGenPythonToCConverter:
             if c_type == "map_str_int":
                 c_type = "multigen_str_int_map_t*"
 
-            params.append(f"{c_type} {arg.arg}")
             self.variable_context[arg.arg] = c_type
+            if self._is_ref_param(node.name, arg.arg, c_type):
+                # Containers are structs passed by value; growth in the callee
+                # would be lost. Copy in, and write back before every return.
+                params.append(f"{c_type}* {arg.arg}__ref")
+                ref_prologue.append(f"{c_type} {arg.arg} = *{arg.arg}__ref;")
+                self._writeback.append(f"*{arg.arg}__ref = {arg.arg};")
+                ref_names.append(arg.arg)
+            else:
+                params.append(f"{c_type} {arg.arg}")
+                ref_names.append(None)
 
         # Get return type
         return_type = "void"
@@ -686,7 +709,7 @@ class MultiGenPythonToCConverter:
         self.function_return_types[node.name] = return_type
 
         # Convert function body
-        body_lines = []
+        body_lines = list(ref_prologue)
 
         # For generators, inject accumulator at start
         if is_generator:
@@ -700,6 +723,9 @@ class MultiGenPythonToCConverter:
         # For generators, add return at end
         if is_generator:
             body_lines.append("return __mgen_result;")
+        elif self._writeback and not (node.body and isinstance(node.body[-1], ast.Return)):
+            body_lines.extend(self._writeback)
+        self._writeback = []
 
         # Format function
         body = "\n".join(f"    {line}" if line.strip() else "" for line in body_lines)
@@ -800,8 +826,9 @@ class MultiGenPythonToCConverter:
         Python programs may return meaningful values, but Unix convention is
         0 = success, non-zero = failure.
         """
+        writeback = " ".join(self._writeback)
         if stmt.value is None:
-            return "return;"
+            return f"{{ {writeback} return; }}" if writeback else "return;"
 
         # Special case: main() should always return 0 for Unix compatibility
         if self.current_function == "main":
@@ -809,7 +836,16 @@ class MultiGenPythonToCConverter:
             return "return 0;"
 
         value_expr = self._convert_expression(stmt.value)
+        if writeback:
+            # Evaluate the result before writing the parameters back.
+            ret_type = self.function_return_types.get(self.current_function or "", "int")
+            return f"{{ {ret_type} __mgen_ret = {value_expr}; {writeback} return __mgen_ret; }}"
         return f"return {value_expr};"
+
+    def _is_ref_param(self, func: str, param: str, c_type: str) -> bool:
+        """Report whether a container parameter is mutated in place and so passed by pointer."""
+        is_container = c_type.startswith(("vec_", "map_", "set_")) and not c_type.endswith("*")
+        return is_container and param in self.mutated_params.get(func, set())
 
     def _convert_assignment(self, stmt: ast.Assign) -> str:
         """Convert assignment statement."""
@@ -1100,8 +1136,17 @@ class MultiGenPythonToCConverter:
         """Convert augmented assignment (+=, -=, etc.) to C syntax."""
         # Handle C-specific operators
         op_str: str
-        if isinstance(stmt.op, ast.FloorDiv):
-            op_str = "/="  # Floor division maps to regular division in C
+        if (
+            isinstance(stmt.op, (ast.FloorDiv, ast.Mod))
+            and isinstance(stmt.target, ast.Name)
+            and self._is_int_operation(stmt.target, stmt.value)
+        ):
+            if stmt.target.id not in self.variable_context:
+                raise TypeMappingError(f"Variable '{stmt.target.id}' must be declared before augmented assignment")
+            call = self._int_floor_op_call(stmt.op, stmt.target.id, self._convert_expression(stmt.value))
+            return f"{stmt.target.id} = {call};"
+        elif isinstance(stmt.op, ast.FloorDiv):
+            op_str = "/="
         else:
             # Use standard augmented assignment operator mapping from converter_utils
             op_result = get_augmented_assignment_operator(stmt.op)
@@ -1191,8 +1236,10 @@ class MultiGenPythonToCConverter:
             # Pow requires math.h
             self.includes_needed.add("#include <math.h>")
             return f"pow({left}, {right})"
+        elif isinstance(expr.op, (ast.FloorDiv, ast.Mod)) and self._is_int_operation(expr.left, expr.right):
+            # C truncates toward zero; Python floors.
+            return self._int_floor_op_call(expr.op, left, right)
         elif isinstance(expr.op, ast.FloorDiv):
-            # FloorDiv maps to regular division in C (not exact for negative numbers)
             return f"({left} / {right})"
         elif isinstance(expr.op, ast.Add) and (self._is_string_type(expr.left) or self._is_string_type(expr.right)):
             # String concatenation using multigen_str_concat
@@ -1204,6 +1251,31 @@ class MultiGenPythonToCConverter:
             if op is None:
                 raise UnsupportedFeatureError(f"Unsupported binary operator: {type(expr.op)}")
             return f"({left} {op} {right})"
+
+    def _is_int_operation(self, left: ast.expr, right: ast.expr) -> bool:
+        """Report whether both operands are C ints (bool promotes to int)."""
+        return self._is_int_expr(left) and self._is_int_expr(right)
+
+    def _is_int_expr(self, expr: ast.expr) -> bool:
+        """Report whether an expression is an int.
+
+        _infer_expression_type defaults unknown expressions to int. A double
+        passed to the int helpers would be truncated, so recurse instead.
+        """
+        if isinstance(expr, ast.BinOp):
+            return not isinstance(expr.op, (ast.Div, ast.Pow)) and self._is_int_operation(expr.left, expr.right)
+        if isinstance(expr, ast.UnaryOp):
+            return self._is_int_expr(expr.operand)
+        if isinstance(expr, ast.Subscript) and isinstance(expr.value, ast.Name):
+            return self.variable_context.get(expr.value.id) == "vec_int"
+        if isinstance(expr, (ast.Constant, ast.Name, ast.Call)):
+            return self._infer_expression_type(expr) in ("int", "bool")
+        return False
+
+    def _int_floor_op_call(self, op: ast.operator, left: str, right: str) -> str:
+        """Return the runtime call implementing Python int // or %."""
+        func = "multigen_floordiv_int" if isinstance(op, ast.FloorDiv) else "multigen_mod_int"
+        return f"{func}({left}, {right})"
 
     def _convert_unary_op(self, expr: ast.UnaryOp) -> str:
         """Convert unary operations."""
@@ -1368,6 +1440,15 @@ class MultiGenPythonToCConverter:
                     return self._convert_print_call(expr.args, args)
                 return self._convert_builtin_with_runtime(func_name, args)
             else:
+                if func_name in self._ref_param_names:
+                    for index, name in enumerate(self._ref_param_names[func_name]):
+                        if name is None or index >= len(expr.args):
+                            continue
+                        if not isinstance(expr.args[index], ast.Name):
+                            raise UnsupportedFeatureError(
+                                f"'{func_name}' mutates argument {index + 1}; pass a variable, not an expression"
+                            )
+                        args[index] = f"&{args[index]}"
                 args_str = ", ".join(args)
                 return f"{func_name}({args_str})"
 
@@ -2001,6 +2082,8 @@ class MultiGenPythonToCConverter:
 
     def _convert_for(self, stmt: ast.For) -> str:
         """Convert for loop (supports range() and container iteration)."""
+        if isinstance(stmt.target, ast.Tuple):
+            return self._convert_for_items(stmt)
         if not isinstance(stmt.target, ast.Name):
             raise UnsupportedFeatureError("Only simple loop variables supported")
 
@@ -2106,35 +2189,8 @@ class MultiGenPythonToCConverter:
                     result += f"    {line}\n"
                 result += "}"
 
-            else:  # items
-                # for k, v in dict.items() - tuple unpacking
-                if (
-                    not isinstance(stmt.target, ast.Tuple)
-                    or len(stmt.target.elts) != 2
-                    or not isinstance(stmt.target.elts[0], ast.Name)
-                    or not isinstance(stmt.target.elts[1], ast.Name)
-                ):
-                    raise UnsupportedFeatureError("dict.items() requires 2-tuple unpacking (for k, v in ...)")
-
-                key_var = stmt.target.elts[0].id
-                value_var = stmt.target.elts[1].id
-
-                self.variable_context[key_var] = "int"  # TODO: infer key type
-                self.variable_context[value_var] = "int"  # TODO: infer value type
-
-                body = []
-                for s in stmt.body:
-                    converted = self._convert_statement(s)
-                    if converted:
-                        body.extend(converted.split("\n"))
-
-                result = f"{dict_type}_iter {iter_var} = {dict_type}_begin(&{dict_name});\n"
-                result += f"for (; {iter_var}.ref; {dict_type}_next(&{iter_var})) {{\n"
-                result += f"    int {key_var} = {iter_var}.ref->first;\n"
-                result += f"    int {value_var} = {iter_var}.ref->second;\n"
-                for line in body:
-                    result += f"    {line}\n"
-                result += "}"
+            else:  # items with a single loop variable
+                raise UnsupportedFeatureError("dict.items() requires 2-tuple unpacking (for k, v in ...)")
 
             return result
 
@@ -2212,6 +2268,109 @@ class MultiGenPythonToCConverter:
 
         else:
             raise UnsupportedFeatureError("Only for loops with range() or container iteration supported")
+
+    def _convert_for_items(self, stmt: ast.For) -> str:
+        """Convert `for k, v in d.items()` over an STC map with scalar key and value types."""
+        if stmt.orelse:
+            raise UnsupportedFeatureError("for-else is not supported")
+        key_var, value_var = self._items_target_names(stmt.target)
+        dict_name, map_type, key_type, value_type = self._dict_items_types(stmt.iter, ("int", "double", "bool"))
+
+        # C scopes k and v to the loop body; an outer binding would keep its old value after the loop.
+        func = self.current_function_ast
+        if func is not None:
+            outside = {id(n) for n in ast.walk(stmt)}
+            bound = {a.arg for a in func.args.args}
+            for node in ast.walk(func):
+                if id(node) not in outside and isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+                    targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                    bound.update(n.id for t in targets for n in ast.walk(t) if isinstance(n, ast.Name))
+            clash = sorted(bound & {key_var, value_var})
+            if clash:
+                raise UnsupportedFeatureError(f"dict.items() loop variable {clash[0]!r} is also bound outside the loop")
+
+        self.variable_context[key_var] = key_type
+        self.variable_context[value_var] = value_type
+
+        body = []
+        for s in stmt.body:
+            converted = self._convert_statement(s)
+            if converted:
+                body.extend(converted.split("\n"))
+
+        it = self._generate_temp_var_name("iter")
+        result = f"for ({map_type}_iter {it} = {map_type}_begin(&{dict_name}); {it}.ref; {map_type}_next(&{it})) {{\n"
+        result += f"    {key_type} {key_var} = {it}.ref->first;\n"
+        result += f"    {value_type} {value_var} = {it}.ref->second;\n"
+        for line in body:
+            result += f"    {line}\n"
+        return result + "}"
+
+    def _items_target_names(self, target: ast.expr) -> tuple[str, str]:
+        """Return the two distinct names in a `k, v` unpacking target, or raise."""
+        if (
+            not isinstance(target, ast.Tuple)
+            or len(target.elts) != 2
+            or not all(isinstance(e, ast.Name) for e in target.elts)
+        ):
+            raise UnsupportedFeatureError("Tuple unpacking only supported as two plain names (k, v)")
+        names = [e.id for e in target.elts if isinstance(e, ast.Name)]
+        if names[0] == names[1]:
+            raise UnsupportedFeatureError("Tuple unpacking requires two distinct names")
+        return names[0], names[1]
+
+    def _dict_items_types(self, iter_node: ast.expr, scalars: tuple[str, ...]) -> tuple[str, str, str, str]:
+        """Return (dict_name, map_type, key_type, value_type) for `name.items()` over an STC map.
+
+        Raises UnsupportedFeatureError unless the map type is known and its key and value types are in `scalars`.
+        """
+        if not (
+            isinstance(iter_node, ast.Call)
+            and isinstance(iter_node.func, ast.Attribute)
+            and iter_node.func.attr == "items"
+            and isinstance(iter_node.func.value, ast.Name)
+            and not iter_node.args
+            and not iter_node.keywords
+        ):
+            raise UnsupportedFeatureError("Only simple loop variables, or two names over name.items(), supported")
+        dict_name = iter_node.func.value.id
+        map_type = self.variable_context.get(dict_name, "")
+        if not map_type and dict_name in self.inferred_types:
+            map_type = self.inferred_types[dict_name].c_type
+        parts = map_type[4:].split("_") if map_type.startswith("map_") else []
+        if len(parts) != 2 or parts[0] not in scalars or parts[1] not in scalars:
+            raise UnsupportedFeatureError(
+                f"dict.items() unpacking not supported for {dict_name!r} of type {map_type or 'unknown'!r}"
+            )
+        return dict_name, map_type, parts[0], parts[1]
+
+    def _items_comprehension_loop(self, generator: ast.comprehension) -> tuple[str, str, dict[str, str]]:
+        """Return loop header, per-iteration unpacking and variable types for `k, v in d.items()`.
+
+        Only int-to-int maps: comprehension result types are inferred as int.
+        """
+        key_var, value_var = self._items_target_names(generator.target)
+        dict_name, map_type, key_type, value_type = self._dict_items_types(generator.iter, ("int",))
+        it = self._generate_temp_var_name("iter")
+        header = f"for ({map_type}_iter {it} = {map_type}_begin(&{dict_name}); {it}.ref; {map_type}_next(&{it}))"
+        unpack = (
+            f"{key_type} {key_var} = {it}.ref->first;\n        {value_type} {value_var} = {it}.ref->second;\n        "
+        )
+        return header, unpack, {key_var: key_type, value_var: value_type}
+
+    @contextmanager
+    def _scoped_types(self, types: dict[str, str]) -> Iterator[None]:
+        """Set variable types for a comprehension's duration, then restore the previous entries."""
+        saved = {name: self.variable_context.get(name) for name in types}
+        self.variable_context.update(types)
+        try:
+            yield
+        finally:
+            for name, prev in saved.items():
+                if prev is None:
+                    self.variable_context.pop(name, None)
+                else:
+                    self.variable_context[name] = prev
 
     def _convert_expression_statement(self, stmt: ast.Expr) -> str:
         """Convert expression statement."""
@@ -2976,6 +3135,17 @@ class MultiGenPythonToCConverter:
         return self._convert_expression(expr)
 
     def _convert_list_comprehension(self, node: ast.ListComp) -> str:
+        """Convert list comprehension; `k, v in d.items()` targets are typed for the comprehension only."""
+        if len(node.generators) != 1:
+            raise UnsupportedFeatureError("Multiple generators in list comprehensions not yet supported")
+        generator = node.generators[0]
+        items_loop = self._items_comprehension_loop(generator) if isinstance(generator.target, ast.Tuple) else None
+        with self._scoped_types(items_loop[2] if items_loop else {}):
+            return self._list_comprehension_code(node, generator, items_loop)
+
+    def _list_comprehension_code(
+        self, node: ast.ListComp, generator: ast.comprehension, items_loop: tuple[str, str, dict[str, str]] | None
+    ) -> str:
         """Convert list comprehension to C loop with STC list operations.
 
         [expr for target in iter if condition] becomes:
@@ -2993,25 +3163,20 @@ class MultiGenPythonToCConverter:
         result_element_type = self._infer_expression_type(node.elt)
         result_container_type = f"vec_{self._sanitize_type_name(result_element_type)}"
 
-        # Process the single generator (comprehensions can have multiple, but we'll start simple)
-        if len(node.generators) != 1:
-            raise UnsupportedFeatureError("Multiple generators in list comprehensions not yet supported")
+        if items_loop is not None:
+            loop_code, loop_var_decl, _ = items_loop
 
-        generator = node.generators[0]
-
-        # Extract loop variable and iterable
-        if not isinstance(generator.target, ast.Name):
+        elif not isinstance(generator.target, ast.Name):
             raise UnsupportedFeatureError("Only simple loop variables supported in comprehensions")
 
-        loop_var = generator.target.id
-
         # Handle range-based iteration (most common case)
-        if (
+        elif (
             isinstance(generator.iter, ast.Call)
             and isinstance(generator.iter.func, ast.Name)
             and generator.iter.func.id == "range"
         ):
             # Generate range-based for loop
+            loop_var = generator.target.id
             range_args = generator.iter.args
             if len(range_args) == 1:
                 start = "0"
@@ -3043,6 +3208,7 @@ class MultiGenPythonToCConverter:
         # Handle iteration over container variables (e.g., for x in numbers)
         elif isinstance(generator.iter, ast.Name):
             container_name = generator.iter.id
+            loop_var = generator.target.id
             # Generate a clean index variable name
             index_var = self._generate_temp_var_name("idx")
             # Use vec_int as default type for now (TODO: proper type inference)
@@ -3094,6 +3260,17 @@ class MultiGenPythonToCConverter:
         return comp_code
 
     def _convert_dict_comprehension(self, node: ast.DictComp) -> str:
+        """Convert dict comprehension; `k, v in d.items()` targets are typed for the comprehension only."""
+        if len(node.generators) != 1:
+            raise UnsupportedFeatureError("Multiple generators in dict comprehensions not yet supported")
+        generator = node.generators[0]
+        items_loop = self._items_comprehension_loop(generator) if isinstance(generator.target, ast.Tuple) else None
+        with self._scoped_types(items_loop[2] if items_loop else {}):
+            return self._dict_comprehension_code(node, generator, items_loop)
+
+    def _dict_comprehension_code(
+        self, node: ast.DictComp, generator: ast.comprehension, items_loop: tuple[str, str, dict[str, str]] | None
+    ) -> str:
         """Convert dictionary comprehension to C loop with STC hashmap operations.
 
         {key_expr: value_expr for target in iter if condition} becomes:
@@ -3123,49 +3300,10 @@ class MultiGenPythonToCConverter:
             result_container_type = f"map_{key_sanitized}_{val_sanitized}"
             use_fallback = False
 
-        # Process the single generator
-        if len(node.generators) != 1:
-            raise UnsupportedFeatureError("Multiple generators in dict comprehensions not yet supported")
-
-        generator = node.generators[0]
-
-        # Extract loop variable and iterable
-        # Support tuple unpacking for dict.items(): for k, v in dict.items()
-        if isinstance(generator.target, ast.Tuple):
-            if len(generator.target.elts) != 2:
-                raise UnsupportedFeatureError("Only 2-element tuple unpacking supported in comprehensions")
-            if not isinstance(generator.target.elts[0], ast.Name) or not isinstance(generator.target.elts[1], ast.Name):
-                raise UnsupportedFeatureError("Only simple names in tuple unpacking supported")
-
-            key_var = generator.target.elts[0].id
-            value_var = generator.target.elts[1].id
-
-            # Must be iterating over .items() method
-            if (
-                isinstance(generator.iter, ast.Call)
-                and isinstance(generator.iter.func, ast.Attribute)
-                and generator.iter.func.attr == "items"
-                and isinstance(generator.iter.func.value, ast.Name)
-            ):
-                dict_name = generator.iter.func.value.id
-                dict_type = self.variable_context.get(dict_name, "map_int_int")
-
-                # Generate code to iterate over STC map
-                iter_var = self._generate_temp_var_name("iter")
-                loop_code = f"""
-    {dict_type}_iter {iter_var} = {dict_type}_begin(&{dict_name});
-    for (; {iter_var}.ref; {dict_type}_next(&{iter_var}))"""
-
-                # In the loop body, extract key and value
-                # For STC maps: iter.ref->first is key, iter.ref->second is value
-                key_extract = f"typeof({iter_var}.ref->first) {key_var} = {iter_var}.ref->first;"
-                value_extract = f"typeof({iter_var}.ref->second) {value_var} = {iter_var}.ref->second;"
-
-                # We'll need to modify the loop body generation below
-                loop_var = None  # Signal that we're using tuple unpacking
-                tuple_unpacking_code = f"{key_extract}\n        {value_extract}\n        "
-            else:
-                raise UnsupportedFeatureError("Tuple unpacking only supported for dict.items()")
+        loop_var: str | None
+        if items_loop is not None:
+            loop_code, tuple_unpacking_code, _ = items_loop
+            loop_var = None  # Signal that we're using tuple unpacking
         elif isinstance(generator.target, ast.Name):
             loop_var = generator.target.id
             tuple_unpacking_code = ""

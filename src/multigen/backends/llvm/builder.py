@@ -5,6 +5,7 @@ import shutil
 from pathlib import Path
 from typing import Any, Optional
 
+from ...common.makefilegen import check_make_safe
 from ..base import AbstractBuilder
 
 
@@ -71,8 +72,15 @@ class LLVMBuilder(AbstractBuilder):
 
         Returns:
             Makefile content as string
+
+        Raises:
+            ValueError: If a name or path contains characters unsafe in a Makefile
         """
-        ll_files = " ".join(Path(f).name for f in source_files if f.endswith(".ll"))
+        check_make_safe(target_name, "target name")
+        # Absolute paths: the CLI moves the Makefile out of the source directory.
+        ll_files = " ".join(
+            check_make_safe(str(Path(f).resolve()), "source") for f in source_files if f.endswith(".ll")
+        )
 
         makefile = f"""# Generated Makefile for LLVM IR compilation
 # Target: {target_name}

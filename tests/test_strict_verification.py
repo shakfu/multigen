@@ -156,12 +156,28 @@ def unsafe_access(arr: list[int], n: int) -> int:
 
         result = pipeline.convert(test_file)
 
-        # Should fail in strict mode
-        # Note: May pass if verifier doesn't detect issue - adjust based on actual behavior
-        if not result.success:
-            assert len(result.errors) > 0
-            assert any("FORMAL_VERIFICATION" in error for error in result.errors)
-            assert any("Code generation halted" in error for error in result.errors)
+        # arr[i] with symbolic i is undecided, so strict mode has no proof.
+        assert not result.success
+        assert any("Unproved in 'unsafe_access'" in error for error in result.errors)
+        assert any("Code generation halted" in error for error in result.errors)
+
+    @pytest.mark.skipif(not Z3_AVAILABLE, reason="Z3 not available")
+    def test_strict_mode_rejects_undecided_parameter_index(self, tmp_path):
+        """An access that is neither proved nor disproved must not pass strict mode."""
+        test_file = tmp_path / "test_param.py"
+        test_file.write_text("def get(a: list[int], i: int) -> int:\n    return a[i]\n")
+
+        strict = MultiGenPipeline(
+            PipelineConfig(target_language="c", enable_formal_verification=True, strict_verification=True)
+        ).convert(test_file)
+        assert not strict.success
+        assert any("index is not statically known" in error for error in strict.errors)
+
+        lenient = MultiGenPipeline(
+            PipelineConfig(target_language="c", enable_formal_verification=True, strict_verification=False)
+        ).convert(test_file)
+        assert lenient.success
+        assert any("FORMAL_VERIFICATION" in warning for warning in lenient.warnings)
 
     @pytest.mark.skipif(not Z3_AVAILABLE, reason="Z3 not available")
     def test_strict_mode_errors_vs_warnings(self, tmp_path):

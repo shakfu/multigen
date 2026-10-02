@@ -2,23 +2,39 @@
 
 ## Critical
 
-- [ ] **`--makefile` places the source where the generated Makefile cannot find it** (R-11). C generation writes `build/src/prog.c` but moves the Makefile to `build/`, whose `$(wildcard $(SRCDIR)/*.c)` then matches nothing; `make` fails with `undefined reference to 'main'`. The same mapping renames TypeScript's `deno.json` to `Makefile`.
+- [ ] **`--makefile` output does not build for Rust or Go** (R-11, remainder). C, C++ and LLVM Makefiles now build. Rust's `Cargo.toml` sits in `build/` beside `src/prog.rs`, but Cargo wants `src/main.rs` or a `[[bin]]` path. Go's `go.mod` builds, but the `multigenproject/multigen` runtime package is never copied. Haskell (`main-is: Main.hs`) and OCaml (`dune` contents written into `dune-project`) are untested and look broken the same way.
 
-- [ ] **Generated Makefiles interpolate filenames unescaped** (R-10, `common/makefilegen.py`). A source file named `evil$(shell ...)` reaches `TARGET`, `all:` and the recipes verbatim and executes when `make` runs.
+- [ ] **The LLVM Makefile links no runtime.** `compile_direct` builds `RUNTIME_SOURCES`; the Makefile links the `.ll` objects alone, so any program using containers fails to link.
 
 ## High
 
-- [ ] **The bounds prover models no program state** (R-7, `verifiers/bounds_prover.py`). Partly addressed: an access whose offset or region size is not concrete is now reported UNKNOWN instead of being handed to Z3 as unconstrained integers, so guarded and annotated code is no longer reported unsafe, and annotation subscripts (`a: list[int]`) no longer invent a region. Still outstanding: path conditions and a `len()` model, without which only accesses with literal indices into literal-sized regions are decided.
+- [ ] **The bounds prover models no program state** (R-7, `verifiers/bounds_prover.py`). Partly addressed: an access whose offset or region size is not concrete is now reported UNKNOWN instead of being handed to Z3 as unconstrained integers, so guarded and annotated code is no longer reported unsafe, and annotation subscripts (`a: list[int]`) no longer invent a region. Still outstanding: path conditions and a `len()` model, without which only accesses with literal indices into literal-sized regions are decided. Strict mode fails on UNKNOWN, so until then it rejects nearly every subscript, including `a = [1, 2, 3]; a[1]`.
 
-- [ ] **The symbolic executor stops at the first loop** (R-5). `_execute_for` and `_execute_while` return a `None` continuation, so a function containing a loop is never analysed past it and no return value is recorded.
-
-- [ ] **Build configuration is exposed but ignored** (R-9). `compiler`, `compiler_flags`, `include_dirs` and `libraries` on `PipelineConfig` are read nowhere outside `__post_init__`. `multigen build --compiler clang` still emits `CC = gcc`.
+- [ ] **The symbolic executor does not model loop bodies** (R-5, remainder). Loops now continue to the following statement, but bodies run inline through `_execute_simple_statement`, which skips `if`, `break`, `continue`, `return` and nested loops; `for` runs at most once. Each case is listed in `SymbolicExecutionReport.approximations`.
 
 ## Medium
 
-- [ ] **C floor division truncates toward zero** for negative operands: `-7 // 2` emits `((-7) / 2)` = -3, where Python gives -4.
+- [ ] **LLVM integer `//` and `%` by zero are undefined behaviour** (`sdiv`/`srem`), not a ZeroDivisionError. The other seven backends raise.
 
-- [ ] **`vec_int_push` writes after a failed reallocation** (`runtime/multigen_vec_int.h`). `vec_int_grow` returns without growing on allocation failure and the caller stores into `vec->data[vec->size++]` anyway.
+- [ ] **Reassigning a container parameter does not compile in C or Rust.** C emits `a = {0};` for `a = [0, 0, 0]` (any list-literal reassignment); Rust assigns `vec![...]` to a `&mut Vec` parameter.
+
+- [ ] **OCaml container parameters do not compile**: dicts are emitted as `[]` and indexed with `d.(k) <- v`, `len(xs)` emits `string_of_int len_array xs` without parentheses, and `append` rebinds a local. Haskell refuses mutated array parameters outright.
+
+- [ ] **Haskell functions other than `main` cannot print.** `print` outside `main` is now refused; a `None`-returning function would need an `IO ()` type and a `do` block.
+
+- [ ] **Rust set comprehensions over `range(a, b)` do not compile**: the map closure is `|x| x` over `&i32`, producing `HashSet<&i32>`. One-argument `range` emits `|&x| x` and works.
+
+- [ ] **LLVM `print(len(xs))` fails**: "Print for type IRDataType.VOID not implemented".
+
+- [ ] **Dict iteration order differs from Python in C++, Rust and Go.** `unordered_map`, `HashMap` and Go maps do not keep insertion order, so `[k for k, v in d.items()]` prints keys in a different order. Sums and counts are unaffected. LLVM's `map_int_int` now records insertion order; C, Haskell (`Data.Map`, key order) and OCaml are unaudited.
+
+- [ ] **Filtered list comprehensions over `range` do not compile in Rust or OCaml** when the result reaches `len()`. Rust maps `|x| x` over `&i32`; OCaml calls `len_array` on the `int list` a comprehension returns.
+
+- [ ] **`.items()` unpacking is narrower on some backends.** C and LLVM accept only `dict[int, int]` in comprehensions (and no string-keyed maps anywhere); Go and C reject a loop name already bound outside the loop; Rust rejects mutating the dict inside its own loop. Each refuses rather than miscompiles.
+
+- [ ] **The validator still admits shapes some converters cannot build**: C++ comprehensions inside class methods emit `[](x)` lambdas; Rust's non-`.items()` tuple-target comprehension path emits unbound names (unreachable through the validator). Haskell builtin wrappers other than `print` (`len'`, `sum'`) do not parenthesize call arguments, and pure-function `if` statements emit `if c then x = ... else ()`.
+
+- [ ] **C float `//` is true division**: `7.0 // 2` gives 3.5. A fix needs `floor()`, and the C builder does not link `-lm`.
 
 - [ ] **Negative list indices are reported as errors** (`analyzers/bounds_checker.py`), though `a[-1]` is valid Python.
 
@@ -33,8 +49,6 @@
 ## Low
 
 - [ ] **`scripts/test_llvm_memory.sh` cannot detect the failures it looks for.** AddressSanitizer output goes to `*_asan.log` via `log_path` but the script greps `*_output.txt`. Its `((passed++))` also returns 1 under `set -e`, aborting on the first successful benchmark.
-
-- [ ] **`scripts/benchmark.py` judges success by process exit status alone** and never compares output against a Python reference, so its pass rates say nothing about semantic equivalence.
 
 - [ ] **`make test-benchmark` invokes `tests/benchmarks.py`, which does not exist.**
 

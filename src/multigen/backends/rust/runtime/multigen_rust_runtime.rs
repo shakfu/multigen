@@ -88,6 +88,84 @@ impl std::fmt::Display for ZeroDivisionError {
 
 impl MultiGenException for ZeroDivisionError {}
 
+/// Python `//` and `%`: round toward negative infinity, not zero.
+/// `div_euclid`/`rem_euclid` differ from Python when the divisor is negative.
+pub trait PyDivMod: Sized {
+    fn py_floordiv(self, rhs: Self) -> Self;
+    fn py_mod(self, rhs: Self) -> Self;
+}
+
+macro_rules! impl_py_divmod_int {
+    ($($t:ty),*) => {$(
+        impl PyDivMod for $t {
+            fn py_floordiv(self, rhs: Self) -> Self {
+                if rhs == 0 {
+                    std::panic::panic_any(ZeroDivisionError::new("integer division or modulo by zero"));
+                }
+                let q = self / rhs;
+                if self % rhs != 0 && ((self < 0) != (rhs < 0)) { q - 1 } else { q }
+            }
+            fn py_mod(self, rhs: Self) -> Self {
+                if rhs == 0 {
+                    std::panic::panic_any(ZeroDivisionError::new("integer division or modulo by zero"));
+                }
+                if rhs == -1 {
+                    return 0; // MIN % -1 overflows
+                }
+                let r = self % rhs;
+                if r != 0 && ((r < 0) != (rhs < 0)) { r + rhs } else { r }
+            }
+        }
+    )*};
+}
+
+impl_py_divmod_int!(i32, i64);
+
+impl PyDivMod for f64 {
+    fn py_floordiv(self, rhs: Self) -> Self {
+        if rhs == 0.0 {
+            std::panic::panic_any(ZeroDivisionError::new("float floor division by zero"));
+        }
+        (self / rhs).floor()
+    }
+    fn py_mod(self, rhs: Self) -> Self {
+        if rhs == 0.0 {
+            std::panic::panic_any(ZeroDivisionError::new("float modulo"));
+        }
+        let r = self % rhs;
+        if r != 0.0 && ((r < 0.0) != (rhs < 0.0)) { r + rhs } else { r }
+    }
+}
+
+/// A number or a reference to one: closures over iterators receive `&i32`.
+pub trait PyNum {
+    type Val: PyDivMod;
+    fn py_val(self) -> Self::Val;
+}
+
+macro_rules! impl_py_num {
+    ($($t:ty),*) => {$(
+        impl PyNum for $t {
+            type Val = $t;
+            fn py_val(self) -> $t { self }
+        }
+        impl PyNum for &$t {
+            type Val = $t;
+            fn py_val(self) -> $t { *self }
+        }
+    )*};
+}
+
+impl_py_num!(i32, i64, f64);
+
+pub fn py_floordiv<A: PyNum, B: PyNum<Val = A::Val>>(a: A, b: B) -> A::Val {
+    a.py_val().py_floordiv(b.py_val())
+}
+
+pub fn py_mod<A: PyNum, B: PyNum<Val = A::Val>>(a: A, b: B) -> A::Val {
+    a.py_val().py_mod(b.py_val())
+}
+
 #[derive(Debug, Clone)]
 pub struct IndexError {
     pub message: String,

@@ -63,7 +63,7 @@ def test_floordiv_assign(x: int) -> int:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "x /= 3;" in cpp_code
+        assert "x = multigen::floordiv(x, 3);" in cpp_code
 
     def test_modulo_assignment(self):
         """Test %= operator."""
@@ -74,7 +74,7 @@ def test_mod_assign(x: int) -> int:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "x %= 7;" in cpp_code
+        assert "x = multigen::pymod(x, 7);" in cpp_code
 
 
 class TestBitwiseAugmentedAssignment:

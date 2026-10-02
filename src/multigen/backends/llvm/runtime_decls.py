@@ -480,6 +480,8 @@ class LLVMRuntimeDeclarations:
                 map_int_entry* entries;
                 size_t size;
                 size_t capacity;
+                long long* order;
+                size_t order_cap;
             } map_int_int;
 
         Returns:
@@ -504,6 +506,8 @@ class LLVMRuntimeDeclarations:
             i8_ptr,  # entries: map_int_entry* (treated as opaque i8*)
             ir.IntType(64),  # size: size_t
             ir.IntType(64),  # capacity: size_t
+            i8_ptr,  # order: long long* (treated as opaque i8*)
+            ir.IntType(64),  # order_cap: size_t
         )
 
         self.struct_types["map_int_int"] = map_int_int_type
@@ -566,6 +570,11 @@ class LLVMRuntimeDeclarations:
         func_type = ir.FunctionType(i64, [map_int_int_ptr, i64])
         func = ir.Function(self.module, func_type, name="map_int_int_entry_value")
         self.function_decls["map_int_int_entry_value"] = func
+
+        # void map_int_int_check_size(map_int_int* map, size_t expected)
+        func_type = ir.FunctionType(void, [map_int_int_ptr, i64])
+        func = ir.Function(self.module, func_type, name="map_int_int_check_size")
+        self.function_decls["map_int_int_check_size"] = func
 
     def get_set_int_type(self) -> ir.Type:
         """Get or create set_int struct type.

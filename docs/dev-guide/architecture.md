@@ -8,7 +8,7 @@ MultiGen consists of:
 
 - **Frontend**: Python AST analysis, type inference, optimization
 - **Pipeline**: 7-phase conversion pipeline
-- **Backends**: Language-specific code generation (7 backends)
+- **Backends**: Language-specific code generation (8 backends)
 - **Runtime**: Self-contained runtime libraries for each backend
 - **Verification**: Optional Z3-based formal verification
 

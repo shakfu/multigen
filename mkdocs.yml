@@ -62,7 +62,6 @@ nav:
     - Haskell Limitations: haskell_backend_limitations.md
     - Use Cases: USE_CASES.md
     - Assert Implementation: assert_implementation.md
-    - Translation Tests: translation_test.md
   - API Reference:
     - Pipeline: api/pipeline.md
     - Backends: api/backends.md

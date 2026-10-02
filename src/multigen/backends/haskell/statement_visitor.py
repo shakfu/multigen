@@ -8,6 +8,8 @@ import ast
 from abc import ABC, abstractmethod
 from typing import Optional, cast
 
+from ..errors import UnsupportedFeatureError
+
 
 class HaskellStatementVisitor(ABC):
     """Abstract visitor for converting Python statements to Haskell."""
@@ -187,6 +189,12 @@ class PureFunctionVisitor(HaskellStatementVisitor):
         # Skip docstrings
         if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
             return None
+        call = node.value
+        if isinstance(call, ast.Call) and isinstance(call.func, ast.Name) and call.func.id == "print":
+            # A where clause holds bindings only; IO outside main would not compile.
+            raise UnsupportedFeatureError(
+                f"print() at line {node.lineno} outside main: Haskell functions other than main are pure"
+            )
         result = self.converter._convert_statement(node)
         return cast(Optional[str], result)
 
@@ -296,15 +304,10 @@ class FunctionBodyAnalyzer:
 
         # Find all bindings
         for i, stmt_str in enumerate(body_stmts):
-            if stmt_str and "=" in stmt_str and not stmt_str.startswith("--"):
-                if not any(op in stmt_str for op in ["if", "then", "<=", ">=", "==", "/="]):
-                    parts = stmt_str.split("=", 1)
-                    if len(parts) == 2:
-                        var_name = parts[0].strip()
-                        if var_name and var_name.replace("_", "").isalnum():
-                            if var_name not in seen_vars:
-                                seen_vars[var_name] = []
-                            seen_vars[var_name].append(i)
+            # A binding is `name = ...`; its right side may hold if/then or comparisons.
+            match = re.match(r"([A-Za-z_][A-Za-z0-9_]*)\s*=(?!=)", stmt_str) if stmt_str else None
+            if match and match.group(1) not in ("if", "let", "case"):
+                seen_vars.setdefault(match.group(1), []).append(i)
 
         # Handle duplicates
         for var_name, indices in seen_vars.items():

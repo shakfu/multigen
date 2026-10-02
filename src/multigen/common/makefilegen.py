@@ -10,6 +10,7 @@ high-performance C code generation projects.
 
 import argparse
 import platform
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -29,6 +30,19 @@ try:
     VERSION = float(".".join(make_version.split(".")[:2]))
 except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
     VERSION = 4.0  # Default fallback version
+
+
+# Make expands $, and recipes pass values to the shell. Any other character
+# here could alter the Makefile or the command line, so values are checked
+# against a conservative allowlist rather than escaped.
+_MAKE_SAFE = re.compile(r"[A-Za-z0-9_./+=,@-]+")
+
+
+def check_make_safe(value: str, what: str) -> str:
+    """Return value unchanged, or raise ValueError if Make or the shell could interpret it."""
+    if not _MAKE_SAFE.fullmatch(value):
+        raise ValueError(f"{what} {value!r} contains characters unsafe in a Makefile")
+    return value
 
 
 def unique_list(lst: list[str]) -> list[str]:
@@ -137,7 +151,7 @@ class Builder:
             self.std = "c99"
 
         # Add STC-specific flags if not already present
-        stc_flags = ["-std=c99", "-DSTC_ENABLED"]
+        stc_flags = ["-DSTC_ENABLED"]
         for flag in stc_flags:
             if flag not in self.flags:
                 self.flags.append(flag)
@@ -245,6 +259,7 @@ class MakefileGenerator:
         stc_include_path: Optional[str] = None,
         project_type: str = "MultiGen",
         additional_sources: Optional[list[str]] = None,
+        sources: Optional[list[str]] = None,
     ):
         self.log = log.config(self.__class__.__name__)
         self.name = name
@@ -263,6 +278,9 @@ class MakefileGenerator:
         self.stc_include_path = stc_include_path
         self.project_type = project_type
         self.additional_sources = additional_sources or []
+        # Explicit sources replace the $(SRCDIR) wildcard, so the Makefile
+        # builds the same files wherever it is moved.
+        self.sources = sources
 
         # Auto-detect STC if requested
         if self.use_stc and not self.stc_include_path:
@@ -323,12 +341,6 @@ class MakefileGenerator:
         # Ensure C99 standard for STC compatibility
         if self.std in ["c89", "c90"]:
             self.std = "c99"
-
-        # Add STC-specific flags if not already present
-        stc_flags = ["-std=c99"]
-        for flag in stc_flags:
-            if flag not in self.flags:
-                self.flags.append(flag)
 
     def comment(self, text: str) -> "MakefileGenerator":
         """Add a comment to the Makefile."""
@@ -424,7 +436,10 @@ class MakefileGenerator:
             self.variable("LIBS", lib_flags)
 
         # Source and object files
-        if self.additional_sources:
+        if self.sources is not None:
+            self.variable("SOURCES", " ".join(self.sources + self.additional_sources))
+            self.variable("OBJECTS", "$(addprefix $(BUILDDIR)/,$(addsuffix .o,$(basename $(notdir $(SOURCES)))))")
+        elif self.additional_sources:
             # Include additional sources explicitly
             additional_src_str = " ".join(self.additional_sources)
             self.variable("SOURCES", f"$(wildcard $(SRCDIR)/*.c) {additional_src_str}")
@@ -441,8 +456,12 @@ class MakefileGenerator:
             self.variable("STC_INCLUDE", str(self.stc_include_path))
             self.variable("STC_FLAGS", "-DSTC_ENABLED")
 
+        if self.sources is not None:
+            source_dirs_list = unique_list([str(Path(src).parent) for src in self.sources + self.additional_sources])
+            self.blank_line()
+            self.variable("VPATH", ":".join(source_dirs_list))
         # Add VPATH if we have additional sources from other directories
-        if self.additional_sources:
+        elif self.additional_sources:
             # Extract unique directories from additional sources
             source_dirs = set()
             for src in self.additional_sources:
@@ -473,7 +492,12 @@ class MakefileGenerator:
             compile_cmd.append("$(STC_FLAGS)")
         compile_cmd.extend(["-c $< -o $@"])
 
-        self.pattern_rule("$(BUILDDIR)/%.o", "$(SRCDIR)/%.c", [" ".join(compile_cmd)])
+        if self.sources is not None:
+            # Prerequisites resolve through VPATH, which lists every source directory.
+            for ext in unique_list([Path(src).suffix for src in self.sources + self.additional_sources]):
+                self.pattern_rule("$(BUILDDIR)/%.o", f"%{ext}", [" ".join(compile_cmd)])
+        else:
+            self.pattern_rule("$(BUILDDIR)/%.o", "$(SRCDIR)/%.c", [" ".join(compile_cmd)])
 
         # Main target
         link_cmd = ["$(CC)"]
@@ -505,8 +529,33 @@ class MakefileGenerator:
 
         return self
 
+    def _check_values(self) -> None:
+        """Reject any value that Make or the shell would interpret."""
+        check_make_safe(self.name, "target name")
+        check_make_safe(self.compiler, "compiler")
+        check_make_safe(self.std, "standard")
+        for path in (self.source_dir, self.build_dir):
+            check_make_safe(str(path), "directory")
+        if self.stc_include_path:
+            check_make_safe(self.stc_include_path, "include directory")
+        groups = {
+            "flag": self.flags + self.cppflags + self.cxxflags + self.ldflags,
+            "include directory": self.include_dirs,
+            "library directory": self.library_dirs,
+            "library": self.libraries,
+            "source": (self.sources or []) + self.additional_sources,
+        }
+        for what, values in groups.items():
+            for value in values:
+                check_make_safe(value, what)
+
     def generate_makefile(self) -> str:
-        """Generate the complete Makefile content."""
+        """Generate the complete Makefile content.
+
+        Raises:
+            ValueError: If a name, path or flag contains characters unsafe in a Makefile
+        """
+        self._check_values()
         self.content = []  # Reset content
 
         self.generate_header()

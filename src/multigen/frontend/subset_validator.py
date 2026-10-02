@@ -17,7 +17,7 @@ from .diagnostics import Diagnostic, DiagnosticSeverity, RuleId, SourceSpan
 class SubsetTier(Enum):
     """Tiers of Python subset support."""
 
-    TIER_1_FUNDAMENTAL = 1  # Core features - production ready
+    TIER_1_FUNDAMENTAL = 1  # Core features
     TIER_2_STRUCTURED = 2  # Structured data - feasible
     TIER_3_ADVANCED = 3  # Advanced patterns - research required
     TIER_4_UNSUPPORTED = 4  # Fundamental limitations
@@ -49,6 +49,8 @@ class FeatureRule:
     # satisfies it. Several rules claim ast.ClassDef; only one describes any
     # given class. A rule with no matcher governs every node of its types.
     matcher: Optional[Callable[..., bool]] = None
+    # Like matcher, for rules that depend on where the node sits.
+    context_matcher: Optional[Callable[["ast.AST", "ValidationContext"], bool]] = None
     # Alternative to `validator` for rules with specific messages: returns None
     # when the node is acceptable, otherwise the diagnostic describing why not.
     diagnose: Optional[Callable[..., Optional["Diagnostic"]]] = None
@@ -203,15 +205,44 @@ def _annotation_node_ids(tree: ast.AST) -> frozenset[int]:
     return frozenset(ids)
 
 
+def _items_target_ids(tree: ast.AST) -> frozenset[int]:
+    """Identify `k, v` tuples that unpack `d.items()` in a for loop or comprehension.
+
+    This is the one tuple form every backend translates: each maps it onto its
+    own key/value iteration without building a tuple value.
+    """
+    ids: set[int] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.For, ast.comprehension)):
+            target, source = node.target, node.iter
+            if (
+                isinstance(target, ast.Tuple)
+                and len(target.elts) == 2
+                and all(isinstance(elt, ast.Name) for elt in target.elts)
+                and isinstance(source, ast.Call)
+                and isinstance(source.func, ast.Attribute)
+                and source.func.attr == "items"
+                and not source.args
+                and not source.keywords
+            ):
+                ids.add(id(target))
+    return frozenset(ids)
+
+
 @dataclass(frozen=True)
 class ValidationContext:
     """Where a node sits, for rules whose meaning depends on position."""
 
     annotation_nodes: frozenset[int] = frozenset()
+    items_targets: frozenset[int] = frozenset()
 
     def in_annotation(self, node: ast.AST) -> bool:
         """Whether this node is part of a type annotation."""
         return id(node) in self.annotation_nodes
+
+    def is_items_target(self, node: ast.AST) -> bool:
+        """Whether this node is the `k, v` target of a loop over `d.items()`."""
+        return id(node) in self.items_targets
 
 
 class StaticPythonSubsetValidator:
@@ -268,7 +299,7 @@ class StaticPythonSubsetValidator:
         result = ValidationResult(is_valid=True, tier=SubsetTier.TIER_1_FUNDAMENTAL)
         max_tier = SubsetTier.TIER_1_FUNDAMENTAL
 
-        context = ValidationContext(annotation_nodes=_annotation_node_ids(tree))
+        context = ValidationContext(annotation_nodes=_annotation_node_ids(tree), items_targets=_items_target_ids(tree))
 
         # Check each node against our rules
         for node in ast.walk(tree):
@@ -325,7 +356,9 @@ class StaticPythonSubsetValidator:
             evidence=evidence,
         )
 
-    def _governing_rule(self, node: ast.AST) -> tuple[bool, Optional[FeatureRule]]:
+    def _governing_rule(
+        self, node: ast.AST, context: Optional["ValidationContext"] = None
+    ) -> tuple[bool, Optional[FeatureRule]]:
         """Find the single rule that classifies this node.
 
         Returns whether any rule claims the node's type at all, and the one rule
@@ -339,9 +372,13 @@ class StaticPythonSubsetValidator:
         if not candidates:
             return False, None
 
+        context = context or ValidationContext()
         for rule in sorted(candidates, key=lambda r: r.priority):
-            if rule.matcher is None or rule.matcher(node):
-                return True, rule
+            if rule.matcher is not None and not rule.matcher(node):
+                continue
+            if rule.context_matcher is not None and not rule.context_matcher(node, context):
+                continue
+            return True, rule
         return True, None
 
     def _validate_node(self, node: ast.AST, context: Optional[ValidationContext] = None) -> ValidationResult:
@@ -350,7 +387,7 @@ class StaticPythonSubsetValidator:
         result = ValidationResult(is_valid=True, tier=SubsetTier.TIER_1_FUNDAMENTAL)
         context = context or ValidationContext()
 
-        recognised, rule = self._governing_rule(node)
+        recognised, rule = self._governing_rule(node, context)
 
         if rule is not None and rule.skip_in_annotations and context.in_annotation(node):
             # Type syntax, not a runtime construct: this rule has nothing to say.
@@ -446,7 +483,7 @@ class StaticPythonSubsetValidator:
         """Initialize the feature rules for the Static Python Subset."""
         rules = {}
 
-        # Tier 1: Fundamental Support (Production Ready)
+        # Tier 1: Fundamental Support
 
         rules["basic_types"] = FeatureRule(
             name="Basic Types",
@@ -550,9 +587,21 @@ class StaticPythonSubsetValidator:
             c_mapping="C struct definitions with constructor functions",
         )
 
+        rules["dict_items_unpacking"] = FeatureRule(
+            name="Dict Items Unpacking",
+            tier=SubsetTier.TIER_2_STRUCTURED,
+            status=FeatureStatus.FULLY_SUPPORTED,
+            description="`for k, v in d.items()` in loops and comprehensions; no tuple value is built",
+            ast_nodes=[ast.Tuple],
+            context_matcher=lambda node, context: context.is_items_target(node),
+            priority=0,
+            c_mapping="Iteration over the map's key/value entries",
+        )
+
         rules["tuples"] = FeatureRule(
             name="Tuples",
             tier=SubsetTier.TIER_2_STRUCTURED,
+            priority=1,
             # Audited across the backends: only TypeScript builds a tuple value.
             # C used to emit `tuple[int, int] p = /* Unsupported expression */`,
             # and the rest refuse. The annotation form, as in dict[str, int], is
@@ -705,6 +754,10 @@ class StaticPythonSubsetValidator:
             status=FeatureStatus.FULLY_SUPPORTED,
             description="List, dict, and set comprehensions converted to C loops with STC containers",
             ast_nodes=[ast.ListComp, ast.DictComp, ast.SetComp],
+            # No backend translates a second `for` clause: four refuse, three
+            # emit code that does not build, and TypeScript fails at runtime.
+            validator=self._validate_single_generator,
+            constraints=["One `for` clause per comprehension"],
         )
 
         rules["lambda_functions"] = FeatureRule(
@@ -934,14 +987,26 @@ class StaticPythonSubsetValidator:
                 return node.attr in {"List", "Dict", "Set", "Optional"}
         return False
 
+    def _validate_single_generator(self, node: ast.AST) -> bool:
+        """Validate that a comprehension has exactly one `for` clause."""
+        return len(getattr(node, "generators", [])) == 1
+
     def _validate_list(self, node: ast.List) -> bool:
         """Validate list constraints."""
         # All elements should be the same type
         if not node.elts:
             return True  # Empty list is OK
 
-        first_type = type(node.elts[0])
-        return all(type(elt) is first_type for elt in node.elts)
+        def kind(elt: ast.expr) -> object:
+            # Literals compare by value type: -7 is a UnaryOp node but an int.
+            if isinstance(elt, ast.UnaryOp) and isinstance(elt.op, (ast.USub, ast.UAdd)):
+                elt = elt.operand
+            if isinstance(elt, ast.Constant):
+                return type(elt.value)
+            return type(elt)
+
+        first = kind(node.elts[0])
+        return all(kind(elt) is first for elt in node.elts)
 
     def _validate_union_type(self, node: ast.Subscript) -> bool:
         """Validate union type constraints. The matcher has established the form."""
