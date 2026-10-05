@@ -86,7 +86,10 @@ class OCamlBuilder(AbstractBuilder):
         source_dir = Path(source_file).parent
         self._copy_runtime_files(source_dir)
         name = Path(source_file).stem
-        (source_dir / "dune").write_text(f"(executable\n (name {name})\n (modules multigen_runtime {name}))\n")
+        # dune's dev profile makes warnings fatal; ocamlc in direct mode only reports them.
+        (source_dir / "dune").write_text(
+            f"(executable\n (name {name})\n (modules multigen_runtime {name})\n (flags (:standard -warn-error -a)))\n"
+        )
 
     def get_build_filename(self) -> str:
         """Get build file name for OCaml."""

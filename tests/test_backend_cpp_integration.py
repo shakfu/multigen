@@ -293,7 +293,7 @@ def mystery_function(x, y):
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "auto mystery_function(auto x, auto y)" in cpp_code
+        assert "template <typename MgenT0, typename MgenT1>\nauto mystery_function(MgenT0 x, MgenT1 y)" in cpp_code
         assert "auto result = (x + y);" in cpp_code
 
     def test_complex_expressions(self):

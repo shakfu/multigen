@@ -221,8 +221,9 @@ class MultiGenPythonToCppConverter:
         body = "\n".join(body_parts)
 
         # Build function
+        template, params = self._template_params(params)
         param_str = ", ".join(params)
-        function = f"{return_type} {node.name}({param_str}) {{\n{self._indent_block(body)}\n}}"
+        function = f"{template}{return_type} {node.name}({param_str}) {{\n{self._indent_block(body)}\n}}"
 
         self.current_function = None
         self.append_map = {}  # Clear after function
@@ -486,6 +487,9 @@ class MultiGenPythonToCppConverter:
         # Find __init__ method
         for stmt in class_node.body:
             if isinstance(stmt, ast.FunctionDef) and stmt.name == "__init__":
+                # `self.v = v` takes its type from the constructor parameter.
+                saved_context = self.variable_context
+                self.variable_context = {arg.arg: self._get_param_type(arg) for arg in stmt.args.args[1:]}
                 # Look for self.attribute assignments
                 for init_stmt in stmt.body:
                     if isinstance(init_stmt, ast.AnnAssign) and isinstance(init_stmt.target, ast.Attribute):
@@ -505,7 +509,15 @@ class MultiGenPythonToCppConverter:
                                 attr_name = target.attr
                                 attr_type = self._infer_type_from_value(init_stmt.value)
                                 instance_vars[attr_name] = attr_type
+                self.variable_context = saved_context
 
+        # A data member cannot be declared `auto` in any C++ standard.
+        unknown = sorted(name for name, var_type in instance_vars.items() if var_type == "auto")
+        if unknown:
+            raise UnsupportedFeatureError(
+                f"Cannot determine the type of {class_node.name} attribute(s) {', '.join(unknown)}; "
+                "annotate the attribute or the constructor parameter it is assigned from"
+            )
         return instance_vars
 
     def _extract_methods(self, class_node: ast.ClassDef) -> list[ast.FunctionDef]:
@@ -556,9 +568,10 @@ class MultiGenPythonToCppConverter:
                     body_parts.append(converted)
 
         # Build constructor
+        template, params = self._template_params(params, "    ")
         param_str = ", ".join(params) if params else ""
         body = "\n".join(body_parts)
-        constructor = f"    {class_name}({param_str}) {{\n{body}\n    }}"
+        constructor = f"{template}    {class_name}({param_str}) {{\n{body}\n    }}"
         return constructor
 
     def _generate_method(self, class_name: str, method: ast.FunctionDef) -> str:
@@ -586,8 +599,9 @@ class MultiGenPythonToCppConverter:
         body = "\n".join(body_parts)
 
         # Build method
+        template, params = self._template_params(params, "    ")
         param_str = ", ".join(params)
-        method_def = f"    {return_type} {method.name}({param_str}) {{\n{self._indent_block(body)}\n    }}"
+        method_def = f"{template}    {return_type} {method.name}({param_str}) {{\n{self._indent_block(body)}\n    }}"
 
         self.current_function = None
         return method_def
@@ -2001,6 +2015,19 @@ class MultiGenPythonToCppConverter:
             return "auto"
 
         return "void"  # No return statements, so return void
+
+    def _template_params(self, params: list[str], indent: str = "") -> tuple[str, list[str]]:
+        """Replace `auto` parameters, which need C++20, with explicit template parameters."""
+        names: list[str] = []
+        result = []
+        for param in params:
+            if param.startswith("auto "):
+                names.append(f"MgenT{len(names)}")
+                param = names[-1] + param[len("auto") :]
+            result.append(param)
+        if not names:
+            return "", result
+        return f"{indent}template <{', '.join(f'typename {name}' for name in names)}>\n", result
 
     def _get_param_type(self, arg: ast.arg) -> str:
         """Get parameter type from annotation."""

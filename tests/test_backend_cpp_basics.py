@@ -1,6 +1,9 @@
 """Tests for basic C++ backend functionality."""
 
+import pytest
+
 from multigen.backends.cpp.converter import MultiGenPythonToCppConverter
+from multigen.backends.errors import UnsupportedFeatureError
 
 
 class TestCppBasicsConversion:
@@ -64,8 +67,47 @@ def mystery_function(x, y):
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "auto mystery_function(auto x, auto y)" in cpp_code
+        assert "template <typename MgenT0, typename MgenT1>\nauto mystery_function(MgenT0 x, MgenT1 y)" in cpp_code
         assert "return (x + y);" in cpp_code
+
+    def test_untyped_method_parameter_is_a_template(self):
+        """`auto` parameters need C++20; the default standard is C++17."""
+        python_code = """
+class Box:
+    def __init__(self, v: int, tag):
+        self.v = v
+
+    def put(self, w) -> int:
+        return 1
+"""
+        cpp_code = self.converter.convert_code(python_code)
+
+        assert "    template <typename MgenT0>\n    Box(int v, MgenT0 tag)" in cpp_code
+        assert "    template <typename MgenT0>\n    int put(MgenT0 w)" in cpp_code
+        assert "(auto " not in cpp_code
+
+    def test_attribute_takes_its_type_from_the_constructor_parameter(self):
+        python_code = """
+class Box:
+    def __init__(self, v: int, xs: list[int]):
+        self.v = v
+        self.xs = xs
+        self.k = v + 1
+"""
+        cpp_code = self.converter.convert_code(python_code)
+
+        assert "    int v;\n    std::vector<int> xs;\n    int k;" in cpp_code
+        assert "auto " not in cpp_code
+
+    def test_attribute_of_unknown_type_is_refused(self):
+        """A data member cannot be `auto`, so emitting one yields source that never compiles."""
+        python_code = """
+class Box:
+    def __init__(self, v):
+        self.v = v
+"""
+        with pytest.raises(UnsupportedFeatureError, match="Box attribute"):
+            self.converter.convert_code(python_code)
 
 
 class TestCppBasicStatements:

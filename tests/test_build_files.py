@@ -80,6 +80,19 @@ def test_cli_makefile_builds_and_runs(tmp_path: Path, target: str) -> None:
     assert run.stdout.strip() == "4", run.stderr
 
 
+@pytest.mark.skipif(not shutil.which("dune"), reason="dune not available")
+def test_dune_build_tolerates_warnings(tmp_path: Path) -> None:
+    """An unused local must not break the build, although dune's dev profile makes warnings fatal."""
+    source = "def main() -> int:\n    unused: int = 3\n    print(1)\n    return 0\n"
+    cli = _cli_build_makefile(tmp_path, "ocaml", source=source)
+    assert cli.returncode == 0, cli.stderr
+
+    built = subprocess.run(
+        ["dune", "build", "./src/hello.exe"], cwd=tmp_path / "build", capture_output=True, text=True, timeout=600
+    )
+    assert built.returncode == 0, built.stdout + built.stderr
+
+
 @pytest.mark.parametrize(
     "target,build_file",
     [("typescript", "deno.json"), ("ocaml", "dune-project"), ("haskell", "multigen-project.cabal")],
