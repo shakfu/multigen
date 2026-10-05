@@ -9,15 +9,18 @@ import pytest
 
 from multigen.backends.base import CompilationResult
 from multigen.backends.c.builder import CBuilder
+from multigen.backends.llvm.builder import LLVMBuilder
 from multigen.common.makefilegen import MakefileGenerator, check_make_safe
 from multigen.pipeline import BuildMode, MultiGenPipeline, PipelineConfig
 
 HELLO = 'def main() -> int:\n    print(42)\n    return 0\n\n\nif __name__ == "__main__":\n    main()\n'
 
 
-def _cli_build_makefile(tmp_path: Path, target: str, filename: str = "hello.py") -> subprocess.CompletedProcess[str]:
+def _cli_build_makefile(
+    tmp_path: Path, target: str, filename: str = "hello.py", source: str = HELLO
+) -> subprocess.CompletedProcess[str]:
     src = tmp_path / filename
-    src.write_text(HELLO)
+    src.write_text(source)
     return subprocess.run(
         [
             sys.executable,
@@ -37,22 +40,50 @@ def _cli_build_makefile(tmp_path: Path, target: str, filename: str = "hello.py")
     )
 
 
-@pytest.mark.parametrize("target,compiler", [("c", "gcc"), ("cpp", "g++")])
-def test_cli_makefile_builds_and_runs(tmp_path: Path, target: str, compiler: str) -> None:
-    """The CLI moves the Makefile above the generated sources; make must still find them."""
-    if not (shutil.which(compiler) and shutil.which("make")):
-        pytest.skip(f"{compiler} or make not available")
+# Exercises each backend's runtime library: list construction and len().
+CONTAINERS = (
+    "def main() -> int:\n"
+    "    xs: list[int] = [1, 2, 3, 4]\n"
+    "    n: int = len(xs)\n"
+    "    print(n)\n"
+    "    return 0\n"
+)
 
-    cli = _cli_build_makefile(tmp_path, target)
+# target -> (required tools, build command, run command), all run in the build directory.
+MAKEFILE_BUILDS = {
+    "c": (["gcc", "make"], ["make"], ["./hello"]),
+    "cpp": (["g++", "make"], ["make"], ["./hello"]),
+    "llvm": (["clang", "make"], ["make"], ["./hello"]),
+    "rust": (["cargo"], ["cargo", "build", "-q"], ["./target/debug/hello"]),
+    "go": (["go"], ["go", "build", "-o", "hello", "./src"], ["./hello"]),
+    "haskell": (
+        ["cabal", "ghc"],
+        ["cabal", "build", "-v0", "--offline"],
+        ["cabal", "run", "-v0", "--offline", "hello"],
+    ),
+    "ocaml": (["dune"], ["dune", "build", "./src/hello.exe"], ["./_build/default/src/hello.exe"]),
+}
+
+
+@pytest.mark.parametrize("target", list(MAKEFILE_BUILDS))
+def test_cli_makefile_builds_and_runs(tmp_path: Path, target: str) -> None:
+    """The CLI moves the build file above the generated sources; the native build tool must still build them."""
+    tools, build_cmd, run_cmd = MAKEFILE_BUILDS[target]
+    missing = [tool for tool in tools if not shutil.which(tool)]
+    if target == "llvm" and not shutil.which(LLVMBuilder().llc_path):
+        missing.append("llc")
+    if missing:
+        pytest.skip(f"{', '.join(missing)} not available")
+
+    cli = _cli_build_makefile(tmp_path, target, source=CONTAINERS)
     assert cli.returncode == 0, cli.stderr
     build = tmp_path / "build"
-    assert (build / "Makefile").exists()
 
-    make = subprocess.run(["make"], cwd=build, capture_output=True, text=True)
-    assert make.returncode == 0, make.stderr
+    built = subprocess.run(build_cmd, cwd=build, capture_output=True, text=True, timeout=600)
+    assert built.returncode == 0, built.stdout + built.stderr
 
-    run = subprocess.run([str(build / "hello")], capture_output=True, text=True, timeout=10)
-    assert run.stdout.strip() == "42"
+    run = subprocess.run(run_cmd, cwd=build, capture_output=True, text=True, timeout=60)
+    assert run.stdout.strip() == "4", run.stderr
 
 
 @pytest.mark.parametrize(

@@ -102,6 +102,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Fixed
 
+- **`--makefile` output did not build for Rust, Go, Haskell, OCaml or LLVM** (R-11). Each build file assumed a layout the CLI never produced. Cargo found no `src/main.rs`. Go and Haskell had no runtime module beside the source. Cabal pointed `main-is` at a nonexistent `Main.hs` and required `base ^>=4.16`, which excludes current GHC. OCaml wrote the `dune` stanza into `dune-project`. The LLVM Makefile linked no runtime. Build files now name the source by absolute path, and a new `AbstractBuilder.stage_build_tree` copies runtime files beside it. That keeps them valid whether or not the CLI moves them. The OCaml layout is untested: `dune` is not installed here.
+
+- **LLVM direct compilation failed on Debian/Ubuntu.** `llc` in `/usr/lib/llvm-N/bin` was not found, and its non-PIC objects failed to link as PIE. Optimized IR from llvmlite (LLVM 20) also uses syntax such as `icmp samesign` that an older system `llc` rejects. Direct mode now emits the object with llvmlite's own PIC target machine, so optimizer and code generator share one LLVM version.
+
 - **A failed build was reported as a successful conversion.** `_build_phase` appended `"Direct compilation failed"` to `errors` and returned False without clearing `result.success`, and `convert()` ignored the return value -- so every compilation failure, including the 20 known `emit: ok` / `run: build_failed` capability cells, was invisible to callers. Both build failure paths now clear `success` and record a failed `BuildPhaseResult`, and `convert()` clears it for every phase that fails.
 
 - **String literals were emitted unescaped by six backends.** `msg = "he said \"hi\""` produced `char* msg = "he said "hi"";` -- source that cannot compile. C, C++, Go, Rust, Haskell and OCaml now route every constant, f-string literal part, and container literal through the new escapers. A literal `%` no longer reaches printf/Sprintf as a directive, and a non-interpolated f-string no longer keeps its doubled `%%` or `{{`.

@@ -201,11 +201,15 @@ class TestOCamlBuilder:
         commands = self.builder.get_run_command("test.ml")
         assert "./test" in commands
 
-    def test_build_file_generation(self):
-        """Test build file generation."""
-        build_content = self.builder.generate_build_file(["test.ml"], "test")
-        assert "dune" in build_content
-        assert "test" in build_content
+    def test_build_file_generation(self, tmp_path):
+        """dune-project holds only project metadata; the executable stanza goes in a dune file beside the source."""
+        source = tmp_path / "test.ml"
+        source.write_text("")
+        assert self.builder.generate_build_file([str(source)], "test") == "(lang dune 3.0)\n"
+
+        self.builder.stage_build_tree(str(source))
+        assert "(modules multigen_runtime test)" in (tmp_path / "dune").read_text()
+        assert (tmp_path / "multigen_runtime.ml").exists()
 
     def test_compile_flags(self):
         """Test compile flags."""

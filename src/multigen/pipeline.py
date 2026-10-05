@@ -1143,6 +1143,7 @@ class MultiGenPipeline:
                 build_content = self.builder.generate_build_file([str(source_file_path)], source_file_path.stem)
                 build_file_path = output_dir / self.builder.get_build_filename()
                 build_file_path.write_text(build_content)
+                self.builder.stage_build_tree(str(source_file_path))
 
                 result.build_file_content = build_content
                 result.output_files["build_file"] = str(build_file_path)

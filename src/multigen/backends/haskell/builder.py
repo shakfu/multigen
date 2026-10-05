@@ -1,5 +1,7 @@
 """Haskell build system for MultiGen."""
 
+import json
+from pathlib import Path
 from typing import Any
 
 from ..base import AbstractBuilder
@@ -14,6 +16,9 @@ class HaskellBuilder(AbstractBuilder):
 
     def generate_build_file(self, source_files: list[str], target_name: str) -> str:
         """Generate Cabal file for Haskell project."""
+        source = Path(source_files[0]).resolve()
+        # Absolute path: the CLI moves the cabal file out of the source directory.
+        source_dir = json.dumps(str(source.parent))
         cabal_content = f"""cabal-version: 2.4
 
 name: {target_name}
@@ -26,14 +31,17 @@ maintainer: multigen@example.com
 build-type: Simple
 
 executable {target_name}
-    main-is: Main.hs
+    main-is: {source.name}
+    hs-source-dirs: {source_dir}
+    other-modules: MultiGenRuntime
     default-language: Haskell2010
     default-extensions:
         OverloadedStrings
         FlexibleInstances
         TypeSynonymInstances
+        ScopedTypeVariables
     build-depends:
-        base ^>=4.16,
+        base >=4.16 && <5,
         containers,
         text
     ghc-options:
@@ -48,6 +56,10 @@ executable {target_name}
         -Wredundant-constraints
 """
         return cabal_content
+
+    def stage_build_tree(self, source_file: str) -> None:
+        """Copy the runtime module the generated source imports."""
+        self._copy_runtime_file("MultiGenRuntime.hs", Path(source_file).parent)
 
     def compile_direct(self, source_file: str, output_dir: str, **kwargs: Any) -> bool:
         """Compile Haskell source directly using GHC."""

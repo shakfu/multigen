@@ -189,6 +189,10 @@ class AbstractBuilder(ABC):
     def get_build_filename(self) -> str:
         """Get build file name (Makefile, Cargo.toml, etc.)."""
 
+    def stage_build_tree(self, source_file: str) -> None:
+        """Write the files the generated build file expects beside the source (runtime modules, nested build files)."""
+        return None  # Build files that reference sources by absolute path need nothing staged.
+
     @abstractmethod
     def compile_direct(self, source_file: str, output_dir: str, **kwargs: Any) -> bool:
         """Compile source directly using language tools.

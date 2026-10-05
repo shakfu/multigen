@@ -25,73 +25,6 @@ class OCamlBuilder(AbstractBuilder):
         """Initialize the OCaml builder with preferences."""
         self.preferences = preferences or OCamlPreferences()
 
-    def build(self, output_file: str, makefile: bool = False) -> bool:
-        """Build the OCaml code.
-
-        Args:
-            output_file: The OCaml source file to compile
-            makefile: Whether to generate a dune-project file instead of direct compilation
-
-        Returns:
-            True if build succeeded, False otherwise
-        """
-        if makefile:
-            return self._generate_dune_project(output_file)
-        else:
-            return self._compile_direct_internal(output_file)
-
-    def _compile_direct_internal(self, output_file: str) -> bool:
-        """Compile OCaml code directly using ocamlc (internal method)."""
-        base_path = Path(output_file).parent
-        runtime_path = base_path / "multigen_runtime.ml"
-
-        # Copy runtime file if it doesn't exist
-        if not runtime_path.exists():
-            self._copy_runtime_files(base_path)
-
-        # Compile with OCaml compiler
-        executable = output_file.replace(".ml", "")
-        if _has_opam_initialized():
-            cmd = ["opam", "exec", "--", "ocamlc", "-o", executable, str(runtime_path), output_file]
-        else:
-            cmd = ["ocamlc", "-o", executable, str(runtime_path), output_file]
-
-        result = self._run_command(cmd)
-        return result.success
-
-    def _generate_dune_project(self, output_file: str) -> bool:
-        """Generate a dune-project file for the OCaml project."""
-        base_path = Path(output_file).parent
-        project_name = Path(output_file).stem
-
-        # Copy runtime files
-        self._copy_runtime_files(base_path)
-
-        # Generate dune-project
-        dune_project_content = f"""(lang dune 3.0)
-
-(package
- (name {project_name})
- (depends ocaml dune))
-"""
-
-        dune_project_path = base_path / "dune-project"
-        with open(dune_project_path, "w") as f:
-            f.write(dune_project_content)
-
-        # Generate dune file
-        dune_content = f"""(executable
- (public_name {project_name})
- (name {project_name})
- (modules multigen_runtime {project_name}))
-"""
-
-        dune_file_path = base_path / "dune"
-        with open(dune_file_path, "w") as f:
-            f.write(dune_content)
-
-        return True
-
     def _copy_runtime_files(self, target_dir: Path) -> None:
         """Copy OCaml runtime files to the target directory."""
         # Copy all .ml files from runtime directory using base class helper
@@ -146,20 +79,14 @@ class OCamlBuilder(AbstractBuilder):
 
     def generate_build_file(self, source_files: list[str], target_name: str) -> str:
         """Generate dune-project build configuration."""
-        dune_project_content = f"""(lang dune 3.0)
+        return "(lang dune 3.0)\n"
 
-(package
- (name {target_name})
- (depends ocaml dune))
-"""
-
-        dune_content = f"""(executable
- (public_name {target_name})
- (name {target_name})
- (modules multigen_runtime {" ".join(Path(f).stem for f in source_files)}))
-"""
-
-        return dune_project_content + "\n" + dune_content
+    def stage_build_tree(self, source_file: str) -> None:
+        """Write the dune stanza and runtime beside the source; dune finds them from dune-project."""
+        source_dir = Path(source_file).parent
+        self._copy_runtime_files(source_dir)
+        name = Path(source_file).stem
+        (source_dir / "dune").write_text(f"(executable\n (name {name})\n (modules multigen_runtime {name}))\n")
 
     def get_build_filename(self) -> str:
         """Get build file name for OCaml."""

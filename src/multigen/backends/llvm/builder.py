@@ -52,6 +52,15 @@ class LLVMBuilder(AbstractBuilder):
             if path.exists():
                 return str(path)
 
+        # Debian/Ubuntu install versioned LLVM outside PATH; prefer the newest.
+        versioned = {
+            int(path.parts[-3].removeprefix("llvm-")): path
+            for path in Path("/usr/lib").glob(f"llvm-*/bin/{tool_name}")
+            if path.parts[-3].removeprefix("llvm-").isdigit()
+        }
+        if versioned:
+            return str(versioned[max(versioned)])
+
         # Fall back to just the tool name (will fail if not in PATH)
         return tool_name
 
@@ -82,29 +91,41 @@ class LLVMBuilder(AbstractBuilder):
             check_make_safe(str(Path(f).resolve()), "source") for f in source_files if f.endswith(".ll")
         )
 
+        runtime_dir = self._get_runtime_dir()
+        runtime_sources = [name for name in self.RUNTIME_SOURCES if runtime_dir and (runtime_dir / name).exists()]
+        runtime_objects = " ".join(name.replace(".c", ".o") for name in runtime_sources)
+
         makefile = f"""# Generated Makefile for LLVM IR compilation
 # Target: {target_name}
 
-LLC = llc
-CLANG = clang
+LLC = {check_make_safe(self.llc_path, "llc path")}
+CLANG = {check_make_safe(self.clang_path, "clang path")}
 TARGET = {target_name}
 LLVM_IR = {ll_files}
 OBJECT_FILES = $(LLVM_IR:.ll=.o)
+RUNTIME_DIR = {check_make_safe(str(runtime_dir), "runtime directory") if runtime_dir else "."}
+RUNTIME_OBJECTS = {runtime_objects}
+
+vpath %.c $(RUNTIME_DIR)
 
 # Default target
 all: $(TARGET)
 
 # Compile LLVM IR to object files
 %.o: %.ll
-\t$(LLC) -filetype=obj $< -o $@
+\t$(LLC) -filetype=obj -relocation-model=pic $< -o $@
+
+# Compile runtime libraries into the build directory
+%.o: %.c
+\t$(CLANG) -c $< -I$(RUNTIME_DIR) -o $@
 
 # Link object files to create executable
-$(TARGET): $(OBJECT_FILES)
-\t$(CLANG) $(OBJECT_FILES) -o $(TARGET)
+$(TARGET): $(OBJECT_FILES) $(RUNTIME_OBJECTS)
+\t$(CLANG) $(OBJECT_FILES) $(RUNTIME_OBJECTS) -o $(TARGET)
 
 # Clean build artifacts
 clean:
-\trm -f $(OBJECT_FILES) $(TARGET)
+\trm -f $(OBJECT_FILES) $(RUNTIME_OBJECTS) $(TARGET)
 
 # Run the program
 run: $(TARGET)
@@ -144,18 +165,11 @@ run: $(TARGET)
         optimized_path = paths.output_dir / f"{paths.executable_name}.opt.ll"
         optimized_path.write_text(optimized_ir)
 
-        # Step 1: Compile optimized LLVM IR to object file using llc
+        # Step 1: Emit the object with llvmlite; a system llc older than llvmlite's LLVM rejects its output.
         object_file = paths.output_dir / f"{paths.executable_name}.o"
-        llc_cmd = [
-            self.llc_path,
-            "-filetype=obj",
-            str(optimized_path),
-            "-o",
-            str(object_file),
-        ]
-
-        result = self._run_command(llc_cmd)
-        if not result.success:
+        try:
+            object_file.write_bytes(optimizer.emit_object(optimized_ir))
+        except RuntimeError:
             return False
 
         # Step 2: Compile runtime libraries
@@ -345,6 +359,7 @@ int main_wrapper(int argc, char** argv) {{
         llc_cmd = [
             self.llc_path,
             "-filetype=obj",
+            "-relocation-model=pic",
             str(paths.source_path),
             "-o",
             str(object_file),

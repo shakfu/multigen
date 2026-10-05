@@ -2,9 +2,7 @@
 
 ## Critical
 
-- [ ] **`--makefile` output does not build for Rust or Go** (R-11, remainder). C, C++ and LLVM Makefiles now build. Rust's `Cargo.toml` sits in `build/` beside `src/prog.rs`, but Cargo wants `src/main.rs` or a `[[bin]]` path. Go's `go.mod` builds, but the `multigenproject/multigen` runtime package is never copied. Haskell (`main-is: Main.hs`) and OCaml (`dune` contents written into `dune-project`) are untested and look broken the same way.
-
-- [ ] **The LLVM Makefile links no runtime.** `compile_direct` builds `RUNTIME_SOURCES`; the Makefile links the `.ll` objects alone, so any program using containers fails to link.
+- [ ] **OCaml `--makefile` layout is untested.** `dune-project` plus a staged `src/dune` stanza should build with `dune build ./src/<name>.exe`, but `dune` was not installed when it was written. `test_cli_makefile_builds_and_runs[ocaml]` skips without it.
 
 ## High
 
@@ -19,6 +17,8 @@
 - [ ] **Reassigning a container parameter does not compile in C or Rust.** C emits `a = {0};` for `a = [0, 0, 0]` (any list-literal reassignment); Rust assigns `vec![...]` to a `&mut Vec` parameter.
 
 - [ ] **OCaml container parameters do not compile**: dicts are emitted as `[]` and indexed with `d.(k) <- v`, `len(xs)` emits `string_of_int len_array xs` without parentheses, and `append` rebinds a local. Haskell refuses mutated array parameters outright.
+
+- [ ] **Haskell `main` cannot append to a list or print a dict value.** `xs.append(4)` emits `xs = xs ++ [4]` inside a `do` block (parse error); `print(d["a"])` on a `dict[str, int]` is an ambiguous `printValue` type.
 
 - [ ] **Haskell functions other than `main` cannot print.** `print` outside `main` is now refused; a `None`-returning function would need an `IO ()` type and a `do` block.
 
@@ -47,6 +47,8 @@
 - [ ] **TypeScript represents Python `int` as `number`**, losing precision above `2**53`, and its builder passes `--no-check`, so generated type errors are never caught.
 
 ## Low
+
+- [ ] **Direct compilation discards compiler stderr.** The pipeline reports only `Direct compilation failed`; diagnosing it means rerunning the toolchain by hand.
 
 - [ ] **`scripts/test_llvm_memory.sh` cannot detect the failures it looks for.** AddressSanitizer output goes to `*_asan.log` via `log_path` but the script greps `*_output.txt`. Its `((passed++))` also returns 1 under `set -e`, aborting on the first successful benchmark.
 

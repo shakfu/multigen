@@ -52,7 +52,8 @@ class LLVMOptimizer(AbstractOptimizer):
 
         # Create target machine for native platform
         target = llvm.Target.from_default_triple()
-        self.target_machine = target.create_target_machine(opt=opt_level)
+        # PIC: Linux toolchains link position-independent executables by default.
+        self.target_machine = target.create_target_machine(opt=opt_level, reloc="pic")
 
     def optimize(self, llvm_ir: str, opt_level: Optional[int] = None) -> str:
         """Apply optimization passes to LLVM IR.
@@ -109,6 +110,10 @@ class LLVMOptimizer(AbstractOptimizer):
 
         # Return optimized IR
         return str(llvm_module)
+
+    def emit_object(self, llvm_ir: str) -> bytes:
+        """Compile LLVM IR to a native object file with the same LLVM that optimized it."""
+        return bytes(self.target_machine.emit_object(llvm.parse_assembly(llvm_ir)))
 
     def _configure_pipeline_options(self, pto: llvm.PipelineTuningOptions) -> None:
         """Configure pipeline tuning options based on optimization level.
