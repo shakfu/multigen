@@ -348,15 +348,15 @@
     "llvm": {
       "arithmetic_operations": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       },
       "basic_types": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       },
       "comprehensions": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       },
       "context_managers": {
         "emit": "refuses",
@@ -364,7 +364,7 @@
       },
       "control_flow": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       },
       "dataclasses": {
         "emit": "refuses",
@@ -384,11 +384,11 @@
       },
       "function_calls": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       },
       "function_definitions": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       },
       "generator_expressions": {
         "emit": "error",
@@ -404,7 +404,7 @@
       },
       "lists": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       },
       "namedtuples": {
         "emit": "refuses",
@@ -424,7 +424,7 @@
       },
       "variable_declarations": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       },
       "yield_from": {
         "emit": "error",
@@ -606,27 +606,27 @@
     "typescript": {
       "arithmetic_operations": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       },
       "basic_types": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       },
       "comprehensions": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       },
       "context_managers": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "crashed"
       },
       "control_flow": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       },
       "dataclasses": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "mismatch"
       },
       "enums": {
         "emit": "drops",
@@ -634,39 +634,39 @@
       },
       "exceptions": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       },
       "f_strings": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       },
       "function_calls": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       },
       "function_definitions": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       },
       "generator_expressions": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       },
       "generators": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       },
       "generics": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       },
       "lists": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       },
       "namedtuples": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "mismatch"
       },
       "pattern_matching": {
         "emit": "error",
@@ -674,19 +674,19 @@
       },
       "tuples": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       },
       "union_types": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       },
       "variable_declarations": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       },
       "yield_from": {
         "emit": "ok",
-        "run": "unverified"
+        "run": "matches"
       }
     }
   }

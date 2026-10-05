@@ -1,7 +1,5 @@
 (* MultiGen OCaml Runtime - Python-like operations using OCaml standard library *)
 
-open Printf
-
 (* Python-like Exception Types *)
 exception Value_error of string
 exception Type_error of string

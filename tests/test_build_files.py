@@ -41,13 +41,7 @@ def _cli_build_makefile(
 
 
 # Exercises each backend's runtime library: list construction and len().
-CONTAINERS = (
-    "def main() -> int:\n"
-    "    xs: list[int] = [1, 2, 3, 4]\n"
-    "    n: int = len(xs)\n"
-    "    print(n)\n"
-    "    return 0\n"
-)
+CONTAINERS = "def main() -> int:\n    xs: list[int] = [1, 2, 3, 4]\n    n: int = len(xs)\n    print(n)\n    return 0\n"
 
 # target -> (required tools, build command, run command), all run in the build directory.
 MAKEFILE_BUILDS = {
