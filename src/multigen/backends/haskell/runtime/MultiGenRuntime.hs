@@ -36,6 +36,8 @@ module MultiGenRuntime
     , toString, printValue
       -- * Container Types
     , Dict, Set
+      -- * List Operations
+    , updateAt
       -- * Dictionary Operations
     , items, values, keys
       -- * Exception Types
@@ -193,6 +195,15 @@ rangeList (Range start stop step)
     | step > 0 && start < stop = start : rangeList (Range (start + step) stop step)
     | step < 0 && start > stop = start : rangeList (Range (start + step) stop step)
     | otherwise = []
+
+
+-- | Replace one element, as Python's xs[i] = v does; a negative index counts from the end.
+updateAt :: Int -> a -> [a] -> [a]
+updateAt i v xs
+    | j < 0 || j >= length xs = throw (IndexError "list assignment index out of range")
+    | otherwise = take j xs ++ v : drop (j + 1) xs
+  where
+    j = if i < 0 then length xs + i else i
 
 
 -- | Comprehensions module providing Python-like comprehensions

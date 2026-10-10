@@ -2236,6 +2236,10 @@ class MultiGenPythonToGoConverter:
                 f"func({target_name} int) ({key_type}, {value_type}) {{ return {key_transform}, {value_transform} }}"
             )
 
+            if expr.generators[0].ifs:
+                condition_expr = self._convert_expression(expr.generators[0].ifs[0])
+                filter_lambda = f"func({target_name} int) bool {{ return {condition_expr} }}"
+                return f"multigen.DictComprehensionFromRangeWithFilter[{key_type}, {value_type}]({range_call}, {transform_lambda}, {filter_lambda})"
             return f"multigen.DictComprehensionFromRange[{key_type}, {value_type}]({range_call}, {transform_lambda})"
         else:
             # Tuple unpacking over dict.items(): {k: v for k, v in d.items()}
@@ -2270,6 +2274,10 @@ class MultiGenPythonToGoConverter:
                 value_transform = self._convert_expression(value_expr)
                 transform_lambda = f"func({target_name} {element_type}) ({key_type}, {value_type}) {{ return {key_transform}, {value_transform} }}"
 
+                if expr.generators[0].ifs:
+                    condition_expr = self._convert_expression(expr.generators[0].ifs[0])
+                    filter_lambda = f"func({target_name} {element_type}) bool {{ return {condition_expr} }}"
+                    return f"multigen.DictComprehensionWithFilter[{element_type}, {key_type}, {value_type}]({container_expr}, {transform_lambda}, {filter_lambda})"
                 return f"multigen.DictComprehension[{element_type}, {key_type}, {value_type}]({container_expr}, {transform_lambda})"
 
     def _convert_set_comprehension(self, expr: ast.SetComp) -> str:
@@ -2290,6 +2298,10 @@ class MultiGenPythonToGoConverter:
             transform_expr = self._convert_expression(element_expr)
             transform_lambda = f"func({target_name} int) {element_type} {{ return {transform_expr} }}"
 
+            if expr.generators[0].ifs:
+                condition_expr = self._convert_expression(expr.generators[0].ifs[0])
+                filter_lambda = f"func({target_name} int) bool {{ return {condition_expr} }}"
+                return f"multigen.SetComprehensionFromRangeWithFilter[{element_type}]({range_call}, {transform_lambda}, {filter_lambda})"
             return f"multigen.SetComprehensionFromRange[{element_type}]({range_call}, {transform_lambda})"
         else:
             source_type = self._infer_type_from_value(iter_expr)
@@ -2304,7 +2316,9 @@ class MultiGenPythonToGoConverter:
                 transform_lambda = (
                     f"func({target_name} {source_element_type}) {element_type} {{ return {transform_expr} }}"
                 )
-                return f"multigen.SetComprehension[{source_element_type}, {element_type}]({container_expr}, {transform_lambda})"
+                return self._set_comprehension_over_slice(
+                    expr, source_element_type, element_type, container_expr, transform_lambda
+                )
             elif source_type.startswith("map[") and source_type.endswith("]bool"):
                 # Set type: map[int]bool → int - use SetComprehensionFromSet
                 source_element_type = source_type[4:-5]  # Remove "map[" prefix and "]bool" suffix
@@ -2328,7 +2342,22 @@ class MultiGenPythonToGoConverter:
                 transform_lambda = (
                     f"func({target_name} {source_element_type}) {element_type} {{ return {transform_expr} }}"
                 )
-                return f"multigen.SetComprehension[{source_element_type}, {element_type}]({container_expr}, {transform_lambda})"
+                return self._set_comprehension_over_slice(
+                    expr, source_element_type, element_type, container_expr, transform_lambda
+                )
+
+    def _set_comprehension_over_slice(
+        self, expr: ast.SetComp, source_type: str, element_type: str, container_expr: str, transform_lambda: str
+    ) -> str:
+        """Emit a set comprehension over a slice, with its filter if it has one."""
+        type_args = f"[{source_type}, {element_type}]"
+        if not expr.generators[0].ifs:
+            return f"multigen.SetComprehension{type_args}({container_expr}, {transform_lambda})"
+        target = expr.generators[0].target
+        target_name = target.id if isinstance(target, ast.Name) else "x"
+        condition_expr = self._convert_expression(expr.generators[0].ifs[0])
+        filter_lambda = f"func({target_name} {source_type}) bool {{ return {condition_expr} }}"
+        return f"multigen.SetComprehensionWithFilter{type_args}({container_expr}, {transform_lambda}, {filter_lambda})"
 
     def _convert_subscript(self, expr: ast.Subscript) -> str:
         """Convert subscript operation to Go array/map access."""

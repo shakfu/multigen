@@ -218,7 +218,7 @@ def test_func_call() -> list:
 
         assert "Comprehensions::list_comprehension" in rust_code
         # Should contain abs function call
-        assert "Builtins::abs_i32" in rust_code
+        assert "Builtins::abs_i64" in rust_code
 
     def test_comprehension_in_class_method(self):
         """Test comprehension used within a class method."""

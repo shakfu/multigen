@@ -29,7 +29,7 @@ class TestGenericsAreSupported:
 
     @pytest.mark.parametrize(
         "backend,expected",
-        [("c", "vec_int"), ("rust", "Vec<i32>"), ("typescript", "number[]"), ("go", "[]int")],
+        [("c", "vec_int"), ("rust", "Vec<i64>"), ("typescript", "number[]"), ("go", "[]int")],
     )
     def test_backends_emit_real_container_types(self, backend, expected):
         if backend not in registry.list_backends():

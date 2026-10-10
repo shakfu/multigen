@@ -60,7 +60,7 @@ class RustNameInferenceStrategy(NameInferenceStrategy):
                     return inferred
 
         # Fallback to generic type
-        return context.type_mapper("int")  # Rust defaults to i32
+        return context.type_mapper("int")  # Rust defaults to i64
 
 
 class RustListInferenceStrategy(ListInferenceStrategy):
@@ -74,15 +74,15 @@ class RustListInferenceStrategy(ListInferenceStrategy):
         assert isinstance(value, ast.List), "Expected ast.List"
 
         if not value.elts:
-            # Empty list - use default i32
-            return "Vec<i32>"
+            # Empty list - use default i64
+            return "Vec<i64>"
 
         # Use parent implementation for element type inference
         result = super().infer(value, context)
 
-        # If parent returns generic "list", convert to Vec<i32> default
+        # If parent returns generic "list", convert to Vec<i64> default
         if result == context.type_mapper("list"):
-            return "Vec<i32>"
+            return "Vec<i64>"
 
         return result
 
@@ -98,15 +98,15 @@ class RustDictInferenceStrategy(DictInferenceStrategy):
         assert isinstance(value, ast.Dict), "Expected ast.Dict"
 
         if not value.keys or not value.values:
-            # Empty dict - use default i32 keys/values
-            return "std::collections::HashMap<i32, i32>"
+            # Empty dict - use default i64 keys/values
+            return "std::collections::HashMap<i64, i64>"
 
         # Use parent implementation
         result = super().infer(value, context)
 
-        # If parent returns generic "dict", convert to HashMap<i32, i32> default
+        # If parent returns generic "dict", convert to HashMap<i64, i64> default
         if result == context.type_mapper("dict"):
-            return "std::collections::HashMap<i32, i32>"
+            return "std::collections::HashMap<i64, i64>"
 
         return result
 
@@ -122,15 +122,15 @@ class RustSetInferenceStrategy(SetInferenceStrategy):
         assert isinstance(value, ast.Set), "Expected ast.Set"
 
         if not value.elts:
-            # Empty set - use default i32
-            return "std::collections::HashSet<i32>"
+            # Empty set - use default i64
+            return "std::collections::HashSet<i64>"
 
         # Use parent implementation
         result = super().infer(value, context)
 
-        # If parent returns generic "set", convert to HashSet<i32> default
+        # If parent returns generic "set", convert to HashSet<i64> default
         if result == context.type_mapper("set"):
-            return "std::collections::HashSet<i32>"
+            return "std::collections::HashSet<i64>"
 
         return result
 
@@ -154,7 +154,7 @@ class RustComprehensionInferenceStrategy(ComprehensionInferenceStrategy):
         elif context.infer_recursively:
             element_type = context.infer_recursively(value.elt)
             return f"Vec<{element_type}>"
-        return "Vec<i32>"
+        return "Vec<i64>"
 
     def _infer_dict_comp(self, value: ast.DictComp, context: InferenceContext) -> str:
         """Infer type from dict comprehension."""
@@ -162,14 +162,14 @@ class RustComprehensionInferenceStrategy(ComprehensionInferenceStrategy):
             key_type = self.element_type_inferrer(value.key)
             value_type = self.element_type_inferrer(value.value)
             return f"std::collections::HashMap<{key_type}, {value_type}>"
-        return "std::collections::HashMap<i32, i32>"
+        return "std::collections::HashMap<i64, i64>"
 
     def _infer_set_comp(self, value: ast.SetComp, context: InferenceContext) -> str:
         """Infer type from set comprehension."""
         if self.element_type_inferrer:
             element_type = self.element_type_inferrer(value.elt)
             return f"std::collections::HashSet<{element_type}>"
-        return "std::collections::HashSet<i32>"
+        return "std::collections::HashSet<i64>"
 
 
 class RustCallInferenceStrategy(CallInferenceStrategy):
@@ -201,13 +201,13 @@ class RustCallInferenceStrategy(CallInferenceStrategy):
 
         # Standard built-ins
         if func_name in ["abs", "len", "sum", "min", "max"]:
-            return "i32"
+            return "i64"
         elif func_name == "set":
-            return "std::collections::HashSet<i32>"
+            return "std::collections::HashSet<i64>"
         elif func_name == "dict":
-            return "std::collections::HashMap<i32, i32>"
+            return "std::collections::HashMap<i64, i64>"
         else:
-            return "i32"  # Default for unknown functions
+            return "i64"  # Default for unknown functions
 
     def _infer_from_method(self, method_name: str, context: InferenceContext) -> str:
         """Infer return type from method name (Rust specific)."""
@@ -216,12 +216,12 @@ class RustCallInferenceStrategy(CallInferenceStrategy):
             return "String"
         # Search methods
         elif method_name == "find":
-            return "i32"
+            return "i64"
         # String split
         elif method_name == "split":
             return "Vec<String>"
         else:
-            return "i32"  # Default
+            return "i64"  # Default
 
 
 class RustBinOpInferenceStrategy(TypeInferenceStrategy):
@@ -234,7 +234,7 @@ class RustBinOpInferenceStrategy(TypeInferenceStrategy):
         assert isinstance(value, ast.BinOp), "Expected ast.BinOp"
 
         if not context.infer_recursively:
-            return "i32"
+            return "i64"
 
         # Infer types from both operands
         left_type = context.infer_recursively(value.left)
@@ -248,8 +248,8 @@ class RustBinOpInferenceStrategy(TypeInferenceStrategy):
         if left_type == "f64" or right_type == "f64":
             return "f64"
 
-        # Default to i32 for mixed int operations
-        return "i32"
+        # Default to i64 for mixed int operations
+        return "i64"
 
 
 class RustSubscriptInferenceStrategy(TypeInferenceStrategy):
@@ -278,8 +278,8 @@ class RustSubscriptInferenceStrategy(TypeInferenceStrategy):
                     if len(parts) == 2:
                         return parts[1]  # Return value type
 
-        # Default to i32 - can't infer from unknown container
-        return "i32"
+        # Default to i64 - can't infer from unknown container
+        return "i64"
 
 
 def create_rust_type_inference_engine(

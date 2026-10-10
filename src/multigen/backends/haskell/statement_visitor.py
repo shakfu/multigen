@@ -156,12 +156,16 @@ class PureFunctionVisitor(HaskellStatementVisitor):
             return None
 
         target = node.targets[0]
-        if isinstance(target, ast.Name):
-            var_name = self.converter._to_haskell_var_name(target.id)
-            if node.value:
-                init_value = self.converter._convert_expression(node.value)
-                self.var_init_values[var_name] = init_value
-                return f"{var_name} = {init_value}"
+        if not isinstance(target, ast.Name):
+            # A where clause cannot rebind a name, so an item or tuple update has no translation.
+            raise UnsupportedFeatureError(
+                f"Haskell backend does not support assignment to {ast.unparse(target)} outside main"
+            )
+        var_name = self.converter._to_haskell_var_name(target.id)
+        if node.value:
+            init_value = self.converter._convert_expression(node.value)
+            self.var_init_values[var_name] = init_value
+            return f"{var_name} = {init_value}"
         return None
 
     def visit_ann_assign(self, node: ast.AnnAssign) -> Optional[str]:

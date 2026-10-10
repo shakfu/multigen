@@ -1,5 +1,7 @@
 """Tests for Rust backend basic functionality."""
 
+import pytest
+
 from multigen.backends.rust.converter import MultiGenPythonToRustConverter
 
 
@@ -18,7 +20,7 @@ def add(x: int, y: int) -> int:
 """
         rust_code = self.converter.convert_code(python_code)
 
-        assert "fn add(x: i32, y: i32) -> i32" in rust_code
+        assert "fn add(x: i64, y: i64) -> i64" in rust_code
         assert "(x + y)" in rust_code
 
     def test_function_with_no_return_type(self):
@@ -30,7 +32,7 @@ def greet(name: str):
         rust_code = self.converter.convert_code(python_code)
 
         assert "fn greet(name: String)" in rust_code
-        assert 'print_value(("Hello, ".to_string() + name))' in rust_code
+        assert 'print_value(format!("{}{}", "Hello, ".to_string(), name))' in rust_code
 
     def test_function_with_multiple_parameters(self):
         """Test function with multiple parameters."""
@@ -40,8 +42,8 @@ def calculate(a: int, b: int, c: float) -> float:
 """
         rust_code = self.converter.convert_code(python_code)
 
-        assert "fn calculate(a: i32, b: i32, c: f64) -> f64" in rust_code
-        assert "(to_f64_from_i32((a + b)) * c)" in rust_code
+        assert "fn calculate(a: i64, b: i64, c: f64) -> f64" in rust_code
+        assert "(to_f64_from_i64((a + b)) * c)" in rust_code
 
     def test_function_with_boolean_return(self):
         """Test function with boolean return type."""
@@ -51,7 +53,7 @@ def is_positive(x: int) -> bool:
 """
         rust_code = self.converter.convert_code(python_code)
 
-        assert "fn is_positive(x: i32) -> bool" in rust_code
+        assert "fn is_positive(x: i64) -> bool" in rust_code
         assert "(x > 0)" in rust_code
 
     def test_void_function(self):
@@ -113,7 +115,7 @@ def test_concat(first: str, second: str) -> str:
 """
         rust_code = self.converter.convert_code(python_code)
 
-        assert "(first + second)" in rust_code
+        assert 'format!("{}{}", first, second)' in rust_code
 
     def test_constant_values(self):
         """Test constant value conversion."""
@@ -127,7 +129,7 @@ def test_constants() -> str:
 """
         rust_code = self.converter.convert_code(python_code)
 
-        assert "let mut x: i32 = 42;" in rust_code
+        assert "let mut x: i64 = 42;" in rust_code
         assert "let mut y: f64 = 3.14;" in rust_code
         assert 'let mut z: String = "hello".to_string();' in rust_code
         assert "let mut b: bool = true;" in rust_code
@@ -163,7 +165,7 @@ def test_assignment() -> int:
 """
         rust_code = self.converter.convert_code(python_code)
 
-        assert "let mut x: i32 = 10;" in rust_code
+        assert "let mut x: i64 = 10;" in rust_code
         assert "let mut y = (x + 5);" in rust_code
 
     def test_annotated_assignment(self):
@@ -176,7 +178,7 @@ def test_annotated() -> int:
 """
         rust_code = self.converter.convert_code(python_code)
 
-        assert "let mut count: i32 = 0;" in rust_code
+        assert "let mut count: i64 = 0;" in rust_code
         assert 'let mut name: String = "test".to_string();' in rust_code
 
     def test_if_statement(self):
@@ -272,7 +274,7 @@ def test_abs(x: int) -> int:
 """
         rust_code = self.converter.convert_code(python_code)
 
-        assert "Builtins::abs_i32(x)" in rust_code
+        assert "Builtins::abs_i64(x)" in rust_code
 
     def test_min_max_functions(self):
         """Test min and max function conversion."""
@@ -284,8 +286,8 @@ def test_min_max(a: int, b: int) -> int:
 """
         rust_code = self.converter.convert_code(python_code)
 
-        assert "Builtins::min_i32(a, b)" in rust_code
-        assert "Builtins::max_i32(a, b)" in rust_code
+        assert "Builtins::min_i64(a, b)" in rust_code
+        assert "Builtins::max_i64(a, b)" in rust_code
 
     def test_type_conversion_functions(self):
         """Test type conversion functions."""
@@ -299,8 +301,8 @@ def test_conversions(x: int, y: float, z: bool) -> str:
         rust_code = self.converter.convert_code(python_code)
 
         assert "to_string(x)" in rust_code
-        assert "to_f64_from_i32(y)" in rust_code
-        assert "to_i32_from_f64(y)" in rust_code
+        assert "to_f64_from_i64(y)" in rust_code
+        assert "to_i64_from_f64(y)" in rust_code
 
 
 class TestRustTypeInference:
@@ -319,7 +321,7 @@ def test_int() -> int:
 """
         rust_code = self.converter.convert_code(python_code)
 
-        assert "let mut x: i32 = 42;" in rust_code
+        assert "let mut x: i64 = 42;" in rust_code
 
     def test_string_inference(self):
         """Test string type inference."""
@@ -353,7 +355,7 @@ def mystery_function(x, y):
 """
         rust_code = self.converter.convert_code(python_code)
 
-        assert "fn mystery_function(x: i32, y: i32) -> i32" in rust_code
+        assert "fn mystery_function(x: i64, y: i64) -> i64" in rust_code
         assert "let mut result = (x + y);" in rust_code
 
     def test_subscripted_list_type(self):
@@ -368,8 +370,8 @@ def process_numbers(numbers: list[int]) -> int:
         rust_code = self.converter.convert_code(python_code)
 
         # Immutability analysis detects read-only parameter, generates immutable reference
-        assert "fn process_numbers(numbers: &Vec<i32>) -> i32" in rust_code
-        assert "let mut total: i32 = 0;" in rust_code
+        assert "fn process_numbers(numbers: &Vec<i64>) -> i64" in rust_code
+        assert "let mut total: i64 = 0;" in rust_code
 
     def test_subscripted_dict_type(self):
         """Test subscripted dict type annotation (Python 3.9+)."""
@@ -380,7 +382,7 @@ def lookup_score(scores: dict[str, int], name: str) -> int:
         rust_code = self.converter.convert_code(python_code)
 
         # Immutability analysis detects read-only parameter, generates immutable reference
-        assert "fn lookup_score(scores: &std::collections::HashMap<String, i32>, name: String) -> i32" in rust_code
+        assert "fn lookup_score(scores: &std::collections::HashMap<String, i64>, name: String) -> i64" in rust_code
 
     def test_subscripted_set_type(self):
         """Test subscripted set type annotation (Python 3.9+)."""
@@ -391,7 +393,7 @@ def has_duplicates(unique_values: set[int]) -> bool:
         rust_code = self.converter.convert_code(python_code)
 
         # Immutability analysis detects read-only parameter, generates immutable reference
-        assert "fn has_duplicates(unique_values: &std::collections::HashSet<i32>) -> bool" in rust_code
+        assert "fn has_duplicates(unique_values: &std::collections::HashSet<i64>) -> bool" in rust_code
 
     def test_list_literal_with_annotation(self):
         """Test list literal type inference with annotation."""
@@ -402,7 +404,7 @@ def create_list() -> list[int]:
 """
         rust_code = self.converter.convert_code(python_code)
 
-        assert "let mut values: Vec<i32> = vec![10, 20, 30];" in rust_code
+        assert "let mut values: Vec<i64> = vec![10, 20, 30];" in rust_code
 
     def test_dict_literal_with_annotation(self):
         """Test dict literal type inference with annotation."""
@@ -413,7 +415,66 @@ def create_dict() -> dict[str, int]:
 """
         rust_code = self.converter.convert_code(python_code)
 
-        assert "let mut mapping: std::collections::HashMap<String, i32>" in rust_code
+        assert "let mut mapping: std::collections::HashMap<String, i64>" in rust_code
+
+    @pytest.mark.parametrize(
+        "annotation,test",
+        [
+            ("str", "c.contains(&x)"),
+            ("list[str]", "c.contains(&x)"),
+            ("set[str]", "c.contains(&x)"),
+            ("dict[str, int]", "c.contains_key(&x)"),
+        ],
+    )
+    def test_membership_test_follows_container_type(self, annotation, test):
+        """`in` is a substring test on str, an element test on list and set, a key test on dict."""
+        python_code = f"def has(c: {annotation}, x: str) -> bool:\n    return x in c\n"
+
+        assert test in self.converter.convert_code(python_code)
+
+    def test_math_module_maps_to_f64_methods(self):
+        """`math` has no Rust counterpart; its functions are f64 methods, and ints must be cast."""
+        python_code = (
+            "import math\n\n"
+            "def f(x: float, n: int) -> float:\n"
+            "    return math.sqrt(n) + math.pow(x, 2.0) + math.log(x) + math.floor(x) + math.pi\n"
+        )
+
+        rust_code = self.converter.convert_code(python_code)
+
+        assert "(n as f64).sqrt()" in rust_code
+        assert "(x as f64).powf((2.0 as f64))" in rust_code
+        assert "(x as f64).ln()" in rust_code
+        assert "((x as f64).floor() as i64)" in rust_code
+        assert "std::f64::consts::PI" in rust_code
+
+    def test_scalar_annotation_sets_the_type(self):
+        """The value's inferred type must not override a declared scalar type."""
+        python_code = "def f(s: str, t: str) -> float:\n    found: bool = s in t\n    x: float = 1\n    return x\n"
+
+        rust_code = self.converter.convert_code(python_code)
+
+        assert "let mut found: bool =" in rust_code
+        assert "let mut x: f64 = (1) as f64;" in rust_code
+
+    @pytest.mark.parametrize(
+        "annotation,value,rust_type",
+        [
+            ("dict[str, int]", "{}", "std::collections::HashMap<String, i64>"),
+            ("list[str]", "[]", "Vec<String>"),
+            ("set[str]", "set()", "std::collections::HashSet<String>"),
+        ],
+    )
+    def test_empty_container_takes_annotated_type(self, annotation, value, rust_type):
+        """An empty literal has no element type to infer; the annotation supplies it."""
+        python_code = f"""
+def make() -> int:
+    c: {annotation} = {value}
+    return len(c)
+"""
+        rust_code = self.converter.convert_code(python_code)
+
+        assert f"let mut c: {rust_type} =" in rust_code
 
     def test_set_literal_with_annotation(self):
         """Test set literal type inference with annotation."""
@@ -424,7 +485,7 @@ def create_set() -> set[int]:
 """
         rust_code = self.converter.convert_code(python_code)
 
-        assert "let mut unique: std::collections::HashSet<i32>" in rust_code
+        assert "let mut unique: std::collections::HashSet<i64>" in rust_code
 
 
 class TestRustAdvancedExpressions:

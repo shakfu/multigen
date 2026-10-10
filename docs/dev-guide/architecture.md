@@ -147,12 +147,12 @@ Python types map to backend types:
 ```text
 Python          C++              Rust             Go
 ------          ---              ----             --
-int             int              i32              int
+int             int              i64              int
 float           double           f64              float64
 str             std::string      String           string
-list[int]       vector<int>      Vec<i32>         []int
+list[int]       vector<int>      Vec<i64>         []int
 dict[str,int]   map<str,int>     HashMap<...>     map[string]int
-set[int]        set<int>         HashSet<i32>     map[int]bool
+set[int]        set<int>         HashSet<i64>     map[int]bool
 ```
 
 ## Runtime Libraries

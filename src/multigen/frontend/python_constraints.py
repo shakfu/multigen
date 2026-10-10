@@ -186,7 +186,7 @@ class PythonConstraintChecker:
                             PythonConstraintViolation(
                                 category=ConstraintCategory.TYPE_SAFETY,
                                 rule_id="TS004",
-                                message=f"Integer literal {node.value} exceeds 32-bit range (C/Go/Rust i32)",
+                                message=f"Integer literal {node.value} exceeds 32-bit range (C/C++ int)",
                                 line=node.lineno,
                                 severity="warning",
                                 suggestion="Use explicit 64-bit type or check target language limits",

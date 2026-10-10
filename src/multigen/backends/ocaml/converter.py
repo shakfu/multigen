@@ -9,6 +9,7 @@ from ..converter_utils import (
     format_spec_to_printf,
     get_standard_binary_operator,
     get_standard_comparison_operator,
+    is_main_guard,
     normalize_ast,
 )
 from ..errors import UnsupportedFeatureError
@@ -74,6 +75,8 @@ class MultiGenPythonToOCamlConverter:
 
         # Convert all statements
         for stmt in node.body:
+            if is_main_guard(stmt):
+                continue
             converted = self._convert_statement(stmt)
             if converted:
                 if isinstance(converted, list):
@@ -979,7 +982,10 @@ class MultiGenPythonToOCamlConverter:
         right = self._convert_expression(node.comparators[0])
         op = node.ops[0]
 
-        # Handle OCaml-specific comparison operators
+        # OCaml's == and != compare physical identity, so equal strings or lists
+        # at different addresses would differ. Python's == is structural.
+        if isinstance(op, ast.Eq):
+            return f"({left} = {right})"
         if isinstance(op, ast.NotEq):
             ocaml_op = "<>"  # OCaml uses <> instead of !=
             return f"({left} {ocaml_op} {right})"
@@ -994,9 +1000,7 @@ class MultiGenPythonToOCamlConverter:
             op_result = get_standard_comparison_operator(op)
             if op_result is None:
                 raise UnsupportedFeatureError(f"Unsupported comparison operator: {type(op).__name__}")
-            # OCaml uses = for equality (same as standard)
-            ocaml_op = op_result
-            return f"({left} {ocaml_op} {right})"
+            return f"({left} {op_result} {right})"
 
     def _convert_function_call(self, node: ast.Call) -> str:
         """Convert Python function call to OCaml."""

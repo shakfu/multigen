@@ -52,7 +52,7 @@ def test_div_assign(x: float) -> float:
 """
         rust_code = self.converter.convert_code(python_code)
 
-        assert "x /= 2;" in rust_code  # 2.0 -> 2
+        assert "x /= 2.0;" in rust_code  # `x /= 2` does not compile for an f64
 
     def test_floor_divide_assignment(self):
         """Test //= operator (mapped to /= in Rust)."""
@@ -151,7 +151,7 @@ def test_local_vars() -> int:
 """
         rust_code = self.converter.convert_code(python_code)
 
-        assert "let mut counter: i32 = 10;" in rust_code
+        assert "let mut counter: i64 = 10;" in rust_code
         assert "counter += multiplier;" in rust_code
         assert "counter *= 2;" in rust_code
 
@@ -235,7 +235,7 @@ class Calculator:
 
         assert "self.total += value;" in rust_code
         assert "self.count += 1;" in rust_code
-        assert "self.total *= (1 + rate);" in rust_code  # 1.0 -> 1
+        assert "self.total *= (1.0 + rate);" in rust_code
         assert "self.total -= (self.total * percent);" in rust_code
 
     def test_augassign_with_method_calls(self):
@@ -285,9 +285,9 @@ def test_account() -> float:
 
         assert "self.balance += amount;" in rust_code
         assert "self.balance -= amount;" in rust_code
-        assert "self.balance *= (1 + rate);" in rust_code  # 1.0 -> 1
-        assert "let mut account = BankAccount::new(1000);" in rust_code  # 1000.0 -> 1000
-        assert "account.deposit(500);" in rust_code  # 500.0 -> 500
+        assert "self.balance *= (1.0 + rate);" in rust_code
+        assert "let mut account = BankAccount::new(1000.0);" in rust_code
+        assert "account.deposit(500.0);" in rust_code
 
 
 class TestRustAugAssignAdvanced:
@@ -309,7 +309,7 @@ def test_complex_expressions(x: int, y: int, z: int) -> int:
         rust_code = self.converter.convert_code(python_code)
 
         assert "result += ((x * y) + z.pow(2 as u32));" in rust_code
-        assert "result *= Builtins::abs_i32((x - y));" in rust_code
+        assert "result *= Builtins::abs_i64((x - y));" in rust_code
 
     def test_augassign_with_function_calls(self):
         """Test augmented assignment with function call results."""
@@ -326,7 +326,7 @@ def test_function_calls() -> int:
         rust_code = self.converter.convert_code(python_code)
 
         assert "total += helper_function(5);" in rust_code
-        assert "total -= Builtins::abs_i32((-3));" in rust_code
+        assert "total -= Builtins::abs_i64((-3));" in rust_code
 
     def test_augassign_in_loops(self):
         """Test augmented assignment within loops."""

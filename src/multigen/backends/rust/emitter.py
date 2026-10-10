@@ -18,7 +18,7 @@ class RustEmitter(AbstractEmitter):
 
     def map_python_type(self, python_type: str) -> str:
         """Map Python type to Rust type."""
-        return self.converter.type_map.get(python_type, "i32")
+        return self.converter.type_map.get(python_type, "i64")
 
     def emit_function(self, func_node: ast.FunctionDef, type_context: dict[str, str]) -> str:
         """Generate Rust function code using converter."""

@@ -8,6 +8,7 @@ import ast
 import re
 from typing import TYPE_CHECKING, Optional
 
+from ..errors import UnsupportedFeatureError
 from .statement_visitor import FunctionBodyAnalyzer, MainFunctionVisitor, PureFunctionVisitor
 
 if TYPE_CHECKING:
@@ -144,6 +145,32 @@ def _simple_target(stmt: ast.stmt) -> Optional[str]:
     return None
 
 
+def _item_update(converter: "MultiGenPythonToHaskellConverter", target: ast.expr, value: str) -> tuple[str, str]:
+    """Return the variable an item assignment rebinds and its updated value; nested targets compose."""
+    if isinstance(target, ast.Name):
+        return converter._to_haskell_var_name(target.id), value
+    if not isinstance(target, ast.Subscript) or isinstance(target.slice, ast.Slice):
+        raise UnsupportedFeatureError(f"Haskell backend does not support assignment to {ast.unparse(target)}")
+    container = converter._convert_expression(target.value)
+    key = converter._convert_expression(target.slice)
+    if isinstance(target.value, ast.Name) and target.value.id in converter.dict_vars:
+        updated = f"Map.insert ({key}) ({value}) {container}"
+    else:
+        updated = f"updateAt ({key}) ({value}) ({container})"
+    return _item_update(converter, target.value, updated)
+
+
+def _rebinding_line(converter: "MultiGenPythonToHaskellConverter", stmt: ast.stmt) -> Optional[tuple[str, str]]:
+    """Convert an item assignment in main to a bind, returning the name bound and the line.
+
+    Returns None for a plain-name assignment, which the visitor converts.
+    """
+    if not isinstance(stmt, ast.Assign) or len(stmt.targets) != 1 or isinstance(stmt.targets[0], ast.Name):
+        return None
+    name, updated = _item_update(converter, stmt.targets[0], converter._convert_expression(stmt.value))
+    return name, f"{name} <- return ({updated})"
+
+
 def _convert_main_function(converter: "MultiGenPythonToHaskellConverter", node: ast.FunctionDef) -> str:
     """Convert main function with IO do-notation.
 
@@ -177,6 +204,13 @@ def _convert_main_function(converter: "MultiGenPythonToHaskellConverter", node: 
 
         # Skip returns (handled in visitor)
         if isinstance(stmt, ast.Return):
+            continue
+
+        rebinding = _rebinding_line(converter, stmt)
+        if rebinding is not None:
+            name, line = rebinding
+            bound.add(name)
+            do_lines.append(f"  {line}")
             continue
 
         converted_stmt = visitor.visit(stmt)

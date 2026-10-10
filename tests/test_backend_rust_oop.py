@@ -33,9 +33,9 @@ class Point:
         rust_code = self.converter.convert_code(python_code)
 
         assert "struct Point {" in rust_code
-        assert "x: i32," in rust_code
-        assert "y: i32," in rust_code
-        assert "fn new(x: i32, y: i32) -> Self" in rust_code
+        assert "x: i64," in rust_code
+        assert "y: i64," in rust_code
+        assert "fn new(x: i64, y: i64) -> Self" in rust_code
 
     def test_class_with_methods(self):
         """Test class with instance methods."""
@@ -54,10 +54,10 @@ class Rectangle:
         rust_code = self.converter.convert_code(python_code)
 
         assert "struct Rectangle {" in rust_code
-        assert "width: i32," in rust_code
-        assert "height: i32," in rust_code
-        assert "fn area(&mut self) -> i32" in rust_code
-        assert "fn perimeter(&mut self) -> i32" in rust_code
+        assert "width: i64," in rust_code
+        assert "height: i64," in rust_code
+        assert "fn area(&mut self) -> i64" in rust_code
+        assert "fn perimeter(&mut self) -> i64" in rust_code
         assert "(self.width * self.height)" in rust_code
 
     def test_class_with_void_method(self):
@@ -95,8 +95,8 @@ class Person:
         rust_code = self.converter.convert_code(python_code)
 
         assert "fn get_name(&mut self) -> String" in rust_code
-        assert "fn set_age(&mut self, new_age: i32)" in rust_code
-        assert "fn get_age(&mut self) -> i32" in rust_code
+        assert "fn set_age(&mut self, new_age: i64)" in rust_code
+        assert "fn get_age(&mut self) -> i64" in rust_code
         assert "self.name" in rust_code  # Return self.name
         assert "self.age = new_age;" in rust_code
 
@@ -171,7 +171,7 @@ class Book:
         assert "title: String," in rust_code
         assert "author: String," in rust_code
         assert "fn new(title: String, author: String)" in rust_code
-        assert '((self.title + " by ".to_string()) + self.author)' in rust_code
+        assert 'format!("{}{}", format!("{}{}", self.title, " by ".to_string()), self.author)' in rust_code
 
     def test_class_with_mixed_types(self):
         """Test class with mixed attribute types."""
@@ -193,7 +193,7 @@ class Student:
         rust_code = self.converter.convert_code(python_code)
 
         assert "name: String," in rust_code
-        assert "age: i32," in rust_code
+        assert "age: i64," in rust_code
         assert "gpa: f64," in rust_code
         assert "enrolled: bool," in rust_code
         assert "(self.age >= 18)" in rust_code
@@ -270,11 +270,11 @@ class Config:
         rust_code = self.converter.convert_code(python_code)
 
         assert "debug: bool," in rust_code
-        assert "max_retries: i32," in rust_code
+        assert "max_retries: i64," in rust_code
         assert "timeout: f64," in rust_code
         assert "debug: debug," in rust_code
         assert "max_retries: 3," in rust_code
-        assert "timeout: 30," in rust_code  # 30.0 -> 30
+        assert "timeout: 30.0," in rust_code
 
     def test_multiple_classes_interaction(self):
         """Test multiple classes that interact."""
@@ -300,8 +300,8 @@ class Rectangle:
         assert "struct Rectangle {" in rust_code
 
         # Point should have its constructor
-        assert "fn new(x: i32, y: i32) -> Self" in rust_code
+        assert "fn new(x: i64, y: i64) -> Self" in rust_code
 
         # Rectangle should reference Point type (though this is complex in Rust)
-        assert "width: i32," in rust_code
-        assert "height: i32," in rust_code
+        assert "width: i64," in rust_code
+        assert "height: i64," in rust_code

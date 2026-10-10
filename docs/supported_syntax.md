@@ -82,6 +82,7 @@ reported but not fatal, and **rejected** when it fails validation.
 | Duck Typing | 4 - unsupported | NOT_SUPPORTED | rejected | rejected | Duck typing requires runtime type checks |
 | Lambda Functions | 4 - unsupported | NOT_SUPPORTED | rejected | rejected | Lambda functions require function pointer support |
 | Metaclasses | 4 - unsupported | NOT_SUPPORTED | rejected | rejected | Metaclasses require runtime introspection |
+| Negative Indexing | 4 - unsupported | NOT_SUPPORTED | rejected | rejected | Index from the end with len(xs) - k: no backend translates xs[-k] |
 
 ### Diagnostic identifiers
 

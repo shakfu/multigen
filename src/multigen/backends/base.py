@@ -181,6 +181,9 @@ class AbstractBuilder(ABC):
     - `_get_runtime_dir()`: Get backend's runtime directory
     """
 
+    # Diagnostics of the last failed `_run_command`; `compile_direct` returns only a bool.
+    last_error: str = ""
+
     @abstractmethod
     def generate_build_file(self, source_files: list[str], target_name: str) -> str:
         """Generate build configuration (Makefile, Cargo.toml, etc.)."""
@@ -269,6 +272,13 @@ class AbstractBuilder(ABC):
         Returns:
             CompilationResult with success status and output
         """
+        compiled = self._execute(cmd, cwd, timeout)
+        if not compiled.success:
+            self.last_error = (compiled.stderr or compiled.stdout).strip()
+        return compiled
+
+    @staticmethod
+    def _execute(cmd: list[str], cwd: Optional[str], timeout: Optional[int]) -> CompilationResult:
         try:
             result = subprocess.run(
                 cmd,

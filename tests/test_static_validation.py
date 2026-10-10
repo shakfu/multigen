@@ -62,6 +62,47 @@ class TestStaticValidator:
         assert RuleId.ANALYSIS_ERROR in rule_ids
         assert not report.is_valid
 
+    def test_method_receivers_need_no_annotation(self):
+        """`self` and `cls` take the enclosing class's type."""
+        code = (
+            "class Counter:\n"
+            "    def __init__(self, start: int) -> None:\n"
+            "        self.value: int = start\n\n"
+            "    def inc(self, by: int) -> None:\n"
+            "        self.value += by\n\n"
+            "    @classmethod\n"
+            "    def zero(cls) -> int:\n"
+            "        return 0\n"
+        )
+
+        report = StaticValidator().validate_code(code)
+
+        assert report.errors() == []
+
+    @pytest.mark.parametrize(
+        "code",
+        [
+            "def f(self) -> int:\n    return 0\n",
+            "class C:\n    @staticmethod\n    def f(x) -> int:\n        return 0\n",
+            "class C:\n    def f(self, x) -> int:\n        return 0\n",
+        ],
+        ids=["free-function", "staticmethod", "second-param"],
+    )
+    def test_non_receiver_parameters_still_need_annotations(self, code):
+        rule_ids = {d.rule_id for d in StaticValidator().validate_code(code).diagnostics}
+
+        assert RuleId.UNANNOTATED_PARAMETER in rule_ids
+
+    @pytest.mark.parametrize(
+        "expression,valid",
+        [("xs[-1]", False), ("xs[-2]", False), ("xs[0]", True), ("xs[len(xs) - 1]", True)],
+    )
+    def test_negative_constant_index_is_rejected(self, expression, valid):
+        """Every backend read xs[-1] out of range or failed to compile it."""
+        code = f"def f(xs: list[int]) -> int:\n    return {expression}\n"
+
+        assert StaticValidator().validate_code(code).is_valid is valid
+
     def test_located_findings_precede_unlocated_ones(self):
         """A report reads top to bottom; positionless findings trail it."""
         code = "def f(x, y: int) -> int:\n    return x + y\n"

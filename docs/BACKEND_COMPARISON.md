@@ -20,7 +20,7 @@ The feature tables below predate the TypeScript backend and have no TypeScript c
 |---------|-----------|------------|-----------|-------------------|
 | **C++** | `std::vector<int>`, `std::vector<float>`, `std::vector<double>`, `std::vector<string>`, nested vectors | `std::unordered_map<int,int>`, `std::unordered_map<string,int>`, `std::unordered_map<string,string>` | `std::unordered_set<int>`, `std::unordered_set<string>` | [x] Full - 2D arrays, nested vectors |
 | **C** | `vec_int`, `vec_float`, `vec_double`, `vec_cstr`, `vec_vec_int` | `map_int_int`, `map_str_str`, `str_int_map` | `set_int`, `set_str` | [x] Full - 9+ types from 6 templates |
-| **Rust** | `Vec<i32>`, `Vec<f64>`, `Vec<String>`, nested vectors | `HashMap<i32,i32>`, `HashMap<String,i32>`, `HashMap<String,String>` | `HashSet<i32>`, `HashSet<String>` | [x] Full with ownership tracking |
+| **Rust** | `Vec<i64>`, `Vec<f64>`, `Vec<String>`, nested vectors | `HashMap<i64,i64>`, `HashMap<String,i64>`, `HashMap<String,String>` | `HashSet<i64>`, `HashSet<String>` | [x] Full with ownership tracking |
 | **Go** | `[]int`, `[]float64`, `[]string`, nested slices | `map[int]int`, `map[string]int`, `map[string]string` | `map[T]bool` (sets as maps) | [x] Full via generics |
 | **Haskell** | `[Int]`, `[Double]`, `[String]`, nested lists | `Data.Map.Map k v` (ordered) | `Data.Set.Set a` (ordered) | [x] Full with pure semantics |
 | **OCaml** | `int list`, `float list`, `string list`, nested | `(k * v) list` (assoc lists) | Lists with deduplication | [!] Basic - uses lists |

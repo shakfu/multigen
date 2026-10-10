@@ -23,7 +23,7 @@ class MultiGenPythonToRustConverter:
     def __init__(self) -> None:
         """Initialize the converter."""
         self.type_map = {
-            "int": "i32",
+            "int": "i64",
             "float": "f64",
             "bool": "bool",
             "str": "String",
@@ -73,9 +73,9 @@ class MultiGenPythonToRustConverter:
             python_type: Python type name (e.g., "int", "str", "list")
 
         Returns:
-            Rust type name (e.g., "i32", "String", "Vec")
+            Rust type name (e.g., "i64", "String", "Vec")
         """
-        return self.type_map.get(python_type, "i32")
+        return self.type_map.get(python_type, "i64")
 
     def _to_snake_case(self, camel_str: str) -> str:
         """Convert CamelCase to snake_case."""
@@ -147,8 +147,8 @@ class MultiGenPythonToRustConverter:
                     mapped_type = self._map_type_annotation(item.returns)
                     self.function_return_types[item.name] = mapped_type if mapped_type else "()"
                 else:
-                    # Default to i32 if no annotation
-                    self.function_return_types[item.name] = "i32"
+                    # Default to i64 if no annotation
+                    self.function_return_types[item.name] = "i64"
 
         # Convert functions
         functions = []
@@ -207,6 +207,7 @@ class MultiGenPythonToRustConverter:
         # Generate struct definition
         struct_lines = ["#[derive(Clone)]"]
         struct_lines.append(f"struct {class_name} {{")
+        field_types: dict[str, str] = {}
 
         if init_method:
             # Extract fields from __init__ method
@@ -220,6 +221,7 @@ class MultiGenPythonToRustConverter:
                         ):
                             field_name = self._to_snake_case(target.attr)
                             field_type = self._infer_type_from_assignment(stmt)
+                            field_types[field_name] = field_type
                             struct_lines.append(f"    {field_name}: {field_type},")
                 elif isinstance(stmt, ast.AnnAssign):
                     if (
@@ -229,15 +231,25 @@ class MultiGenPythonToRustConverter:
                     ):
                         field_name = self._to_snake_case(stmt.target.attr)
                         field_type = self._map_type_annotation(stmt.annotation)
+                        field_types[field_name] = field_type
                         struct_lines.append(f"    {field_name}: {field_type},")
         else:
-            # Empty struct
-            struct_lines.append("    _dummy: (),")
+            # A dataclass or NamedTuple declares its fields in the class body.
+            for stmt in node.body:
+                if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
+                    field_name = self._to_snake_case(stmt.target.id)
+                    field_types[field_name] = self._map_type_annotation(stmt.annotation)
+                    struct_lines.append(f"    {field_name}: {field_types[field_name]},")
+            if not field_types:
+                struct_lines.append("    _dummy: (),")
 
         struct_lines.append("}")
 
         # Store struct info for method generation
-        self.struct_info[class_name] = {"fields": self._extract_struct_fields(init_method) if init_method else []}
+        self.struct_info[class_name] = {
+            "fields": self._extract_struct_fields(init_method) if init_method else list(field_types),
+            "field_types": field_types,
+        }
 
         # Generate impl block with constructor and methods
         impl_lines = []
@@ -247,6 +259,13 @@ class MultiGenPythonToRustConverter:
         if init_method:
             constructor_lines = self._convert_constructor(class_name, init_method)
             impl_lines.extend(constructor_lines)
+        elif field_types:
+            # The generated dataclass/NamedTuple constructor takes every field, in order.
+            params = ", ".join(f"{name}: {rust_type}" for name, rust_type in field_types.items())
+            impl_lines.append(f"    fn new({params}) -> Self {{")
+            impl_lines.append(f"        {class_name} {{ {', '.join(field_types)} }}")
+            impl_lines.append("    }")
+            impl_lines.append("")
 
         # Generate methods
         for method in other_methods:
@@ -490,6 +509,8 @@ class MultiGenPythonToRustConverter:
 
             if isinstance(expr.op, (ast.FloorDiv, ast.Mod)):
                 return self._floor_op_call(expr.op, left, right)
+            if isinstance(expr.op, ast.Add) and self._is_string_expr(expr, class_name):
+                return f'format!("{{}}{{}}", {left}, {right})'
 
             # Use standard operator mapping from converter_utils
             op = get_standard_binary_operator(expr.op)
@@ -556,19 +577,19 @@ class MultiGenPythonToRustConverter:
                         return f"Builtins::len_string(&{args[0]})"
                     return "0"
                 elif func_name == "abs":
-                    return f"Builtins::abs_i32({args[0]})"
+                    return f"Builtins::abs_i64({args[0]})"
                 elif func_name == "min":
                     if len(args) >= 2:
-                        return f"Builtins::min_i32({args[0]}, {args[1]})"
+                        return f"Builtins::min_i64({args[0]}, {args[1]})"
                     else:
                         return "0"  # Fallback for invalid min args
                 elif func_name == "max":
                     if len(args) >= 2:
-                        return f"Builtins::max_i32({args[0]}, {args[1]})"
+                        return f"Builtins::max_i64({args[0]}, {args[1]})"
                     else:
                         return "0"  # Fallback for invalid max args
                 elif func_name == "sum":
-                    return f"Builtins::sum_i32(&{args[0]})"
+                    return f"Builtins::sum_i64(&{args[0]})"
                 elif func_name == "str":
                     return f"to_string({args[0]})"
                 elif func_name == "range":
@@ -610,13 +631,10 @@ class MultiGenPythonToRustConverter:
                     op_str = "!="
                     comp_expr = self._convert_method_expression(comp, class_name)
                     result = f"({result} {op_str} {comp_expr})"
-                elif isinstance(op, ast.In):
-                    # Use .contains_key() for maps or .contains() for sets
+                elif isinstance(op, (ast.In, ast.NotIn)):
                     comp_expr = self._convert_method_expression(comp, class_name)
-                    result = f"{comp_expr}.contains_key(&{result})"
-                elif isinstance(op, ast.NotIn):
-                    comp_expr = self._convert_method_expression(comp, class_name)
-                    result = f"!{comp_expr}.contains_key(&{result})"
+                    test = self._membership_test(comp, comp_expr, result, class_name)
+                    result = f"!{test}" if isinstance(op, ast.NotIn) else test
                 else:
                     op_str = "/*UNKNOWN_OP*/"
                     comp_expr = self._convert_method_expression(comp, class_name)
@@ -626,6 +644,21 @@ class MultiGenPythonToRustConverter:
                 result = f"({result} {op_str} {comp_expr})"
 
         return result
+
+    def _membership_test(
+        self, container: ast.expr, container_code: str, item_code: str, class_name: Optional[str] = None
+    ) -> str:
+        """Return the Rust test for `item in container`: a substring, element or key test by container type."""
+        is_field = isinstance(container, ast.Attribute) and isinstance(container.value, ast.Name)
+        if class_name and is_field and container.value.id == "self":  # type: ignore[attr-defined]
+            field_types = self.struct_info.get(class_name, {}).get("field_types", {})
+            rust_type = field_types.get(self._to_snake_case(container.attr), "")  # type: ignore[attr-defined]
+        else:
+            rust_type = self._infer_type_from_value(container)
+        rust_type = rust_type.removeprefix("&mut ").removeprefix("&")
+        if rust_type == "String" or rust_type.startswith(("Vec<", "std::collections::HashSet<")):
+            return f"{container_code}.contains(&{item_code})"
+        return f"{container_code}.contains_key(&{item_code})"
 
     def _convert_function(self, node: ast.FunctionDef) -> str:
         """Convert Python function to Rust function."""
@@ -687,13 +720,13 @@ class MultiGenPythonToRustConverter:
             mapped_type = self._map_type_annotation(node.returns)
 
             # If we got a generic fallback type, try to infer the actual type from return statements
-            # Check for Box<dyn Any> or default container types (HashMap<i32, i32>, Vec<i32>, etc.)
+            # Check for Box<dyn Any> or default container types (HashMap<i64, i64>, Vec<i64>, etc.)
             needs_inference = (
                 "Box<dyn" in mapped_type
-                or mapped_type == "std::collections::HashMap<i32, i32>"
-                or mapped_type == "std::collections::HashMap<String, i32>"
-                or mapped_type == "Vec<i32>"
-                or mapped_type == "std::collections::HashSet<i32>"
+                or mapped_type == "std::collections::HashMap<i64, i64>"
+                or mapped_type == "std::collections::HashMap<String, i64>"
+                or mapped_type == "Vec<i64>"
+                or mapped_type == "std::collections::HashSet<i64>"
             )
             if needs_inference:
                 # Analyze the function body to get the actual return type
@@ -720,7 +753,7 @@ class MultiGenPythonToRustConverter:
         is_generator = any(isinstance(n, (ast.Yield, ast.YieldFrom)) for n in ast.walk(node))
 
         # For generators, rewrite return type
-        gen_element_type = "i32"  # default
+        gen_element_type = "i64"  # default
         if is_generator:
             gen_element_type = self._get_generator_element_type_rust(node)
             actual_return_type = f"Vec<{gen_element_type}>"
@@ -794,9 +827,9 @@ class MultiGenPythonToRustConverter:
         """Determine the Rust element type yielded by a generator."""
         if node.returns:
             mapped = self._map_type_annotation(node.returns)
-            if mapped in ("i32", "f64", "bool", "String"):
+            if mapped in ("i64", "f64", "bool", "String"):
                 return mapped
-        return "i32"
+        return "i64"
 
     def _convert_statements(self, statements: list[ast.stmt]) -> str:
         """Convert a list of statements."""
@@ -950,7 +983,7 @@ class MultiGenPythonToRustConverter:
                 elif annotation is not None:
                     var_type = self._map_type_annotation(annotation)
                 else:
-                    var_type = "i32"
+                    var_type = "i64"
                 self.declared_vars.add(name)
                 self.variable_types[name] = var_type
                 hoisted.append((name, var_type))
@@ -972,7 +1005,7 @@ class MultiGenPythonToRustConverter:
                 return 0
 
             Becomes:
-            let v: Option<i32> = match std::panic::catch_unwind(... || -> Option<i32> {
+            let v: Option<i64> = match std::panic::catch_unwind(... || -> Option<i64> {
                 ...
                 None
             }) {
@@ -1217,8 +1250,8 @@ class MultiGenPythonToRustConverter:
                     # Update type if the new value has a more specific type
                     new_type = self._infer_type_from_value(stmt.value)
                     old_type = self.variable_types.get(target.id, "")
-                    # If old type was Vec<i32> (default for empty list) and new type is more specific, update it
-                    if old_type == "Vec<i32>" and new_type != "Vec<i32>" and new_type.startswith("Vec<"):
+                    # If old type was Vec<i64> (default for empty list) and new type is more specific, update it
+                    if old_type == "Vec<i64>" and new_type != "Vec<i64>" and new_type.startswith("Vec<"):
                         self.variable_types[target.id] = new_type
                     statements.append(f"    {target.id} = {value_expr};")
                 else:
@@ -1258,10 +1291,10 @@ class MultiGenPythonToRustConverter:
                         container_type = self.variable_types.get(target.value.id, "")
 
                     # Special case: Python bool in dict[int] = bool pattern (set simulation)
-                    # If value is True/False and container is HashMap<_, i32>, convert to 1/0
+                    # If value is True/False and container is HashMap<_, i64>, convert to 1/0
                     if isinstance(stmt.value, ast.Constant) and isinstance(stmt.value.value, bool):
-                        if "HashMap" in container_type and "i32>" in container_type:
-                            # HashMap with i32 values - convert bool to int
+                        if "HashMap" in container_type and "i64>" in container_type:
+                            # HashMap with i64 values - convert bool to int
                             value_expr = "1" if stmt.value.value else "0"
 
                     # Choose appropriate assignment syntax based on container type
@@ -1288,9 +1321,22 @@ class MultiGenPythonToRustConverter:
             # Infer type from value if possible, otherwise use annotation
             var_type = self._infer_type_from_value(stmt.value)
 
-            # Special case: If we inferred Vec<i32> from an empty list but annotation is 'list',
+            # A parameterised annotation such as `dict[str, int]` is the declared
+            # type; inference cannot type an empty container or a slice.
+            if isinstance(stmt.annotation, ast.Subscript):
+                annotated = self._map_type_annotation(stmt.annotation)
+                if "Box<dyn" not in annotated:
+                    var_type = annotated
+
+            # A scalar annotation is the declared type; inference can only guess it.
+            if isinstance(stmt.annotation, ast.Name) and stmt.annotation.id in ("int", "float", "bool", "str"):
+                var_type = self.type_map[stmt.annotation.id]
+                if var_type == "f64" and isinstance(stmt.value, ast.Constant) and type(stmt.value.value) is int:
+                    value_expr = f"({value_expr}) as f64"
+
+            # Special case: If we inferred Vec<i64> from an empty list but annotation is 'list',
             # check if we're in a function and analyze usage to detect nested lists
-            if var_type == "Vec<i32>" and isinstance(stmt.value, ast.List) and not stmt.value.elts:
+            if var_type == "Vec<i64>" and isinstance(stmt.value, ast.List) and not stmt.value.elts:
                 if isinstance(stmt.target, ast.Name) and self.current_function_node:
                     # We have an empty list - analyze what's appended to it
                     element_type = self._infer_list_element_type_from_appends(
@@ -1299,10 +1345,10 @@ class MultiGenPythonToRustConverter:
                     if element_type:
                         var_type = f"Vec<{element_type}>"
 
-            # Special case: If we inferred HashMap<i32, i32> from an empty dict but annotation is 'dict',
+            # Special case: If we inferred HashMap<i64, i64> from an empty dict but annotation is 'dict',
             # check if we're in a function and analyze usage to detect key/value types
             if (
-                var_type == "std::collections::HashMap<i32, i32>"
+                var_type == "std::collections::HashMap<i64, i64>"
                 and isinstance(stmt.value, ast.Dict)
                 and not stmt.value.keys
             ):
@@ -1474,10 +1520,8 @@ class MultiGenPythonToRustConverter:
         elif expr.value is None:
             return "()"
         elif isinstance(expr.value, float):
-            # Convert whole floats to ints for cleaner code (1.0 -> 1)
-            if expr.value.is_integer():
-                return str(int(expr.value))
-            return f"{expr.value}"
+            # Keep the decimal point: Rust reads `3` as an integer, not an f64.
+            return repr(expr.value)
         else:
             return str(expr.value)
 
@@ -1491,12 +1535,30 @@ class MultiGenPythonToRustConverter:
             return f"{left}.pow({right} as u32)"
         elif isinstance(expr.op, (ast.FloorDiv, ast.Mod)):
             return self._floor_op_call(expr.op, left, right)
+        elif isinstance(expr.op, ast.Add) and self._is_string_expr(expr):
+            # String + String does not compile: + takes &str and moves its left operand.
+            return f'format!("{{}}{{}}", {left}, {right})'
 
         # Use standard operator mapping from converter_utils
         op = get_standard_binary_operator(expr.op)
         if op is None:
             op = "/*UNKNOWN_OP*/"
         return f"({left} {op} {right})"
+
+    def _is_string_expr(self, expr: ast.expr, class_name: Optional[str] = None) -> bool:
+        """Check if an expression has Python type str, so `+` on it concatenates."""
+        if isinstance(expr, ast.BinOp) and isinstance(expr.op, ast.Add):
+            return self._is_string_expr(expr.left, class_name) or self._is_string_expr(expr.right, class_name)
+        if isinstance(expr, ast.JoinedStr) or (isinstance(expr, ast.Constant) and isinstance(expr.value, str)):
+            return True
+        if isinstance(expr, ast.Call) and isinstance(expr.func, ast.Name) and expr.func.id == "str":
+            return True
+        if class_name and isinstance(expr, ast.Attribute) and isinstance(expr.value, ast.Name):
+            if expr.value.id == "self":
+                field_types: dict[str, str] = self.struct_info.get(class_name, {}).get("field_types", {})
+                return field_types.get(self._to_snake_case(expr.attr)) == "String"
+        rust_type = self._infer_type_from_value(expr).removeprefix("&")
+        return rust_type in ("String", "str")
 
     def _floor_op_call(self, op: ast.operator, left: str, right: str) -> str:
         """Return the runtime call for Python // or %; Rust / and % truncate toward zero."""
@@ -1538,13 +1600,10 @@ class MultiGenPythonToRustConverter:
                     op_str = "!="
                     comp_expr = self._convert_expression(comp)
                     result = f"({result} {op_str} {comp_expr})"
-                elif isinstance(op, ast.In):
-                    # Use .contains_key() for maps or .contains() for sets
+                elif isinstance(op, (ast.In, ast.NotIn)):
                     comp_expr = self._convert_expression(comp)
-                    result = f"{comp_expr}.contains_key(&{result})"
-                elif isinstance(op, ast.NotIn):
-                    comp_expr = self._convert_expression(comp)
-                    result = f"!{comp_expr}.contains_key(&{result})"
+                    test = self._membership_test(comp, comp_expr, result)
+                    result = f"!{test}" if isinstance(op, ast.NotIn) else test
                 else:
                     op_str = "/*UNKNOWN_OP*/"
                     comp_expr = self._convert_expression(comp)
@@ -1761,40 +1820,40 @@ class MultiGenPythonToRustConverter:
                     arg_expr = expr.args[0]
                     arg_type = self._infer_type_from_value(arg_expr)
 
-                    # All len functions return usize, cast to i32 for Python semantics
+                    # All len functions return usize, cast to i64 for Python semantics
                     if arg_type.startswith("Vec<"):
-                        return f"(Builtins::len_vec(&{args[0]}) as i32)"
+                        return f"(Builtins::len_vec(&{args[0]}) as i64)"
                     elif arg_type.startswith("std::collections::HashMap<"):
-                        return f"(Builtins::len_hashmap(&{args[0]}) as i32)"
+                        return f"(Builtins::len_hashmap(&{args[0]}) as i64)"
                     elif arg_type.startswith("std::collections::HashSet<"):
-                        return f"(Builtins::len_hashset(&{args[0]}) as i32)"
+                        return f"(Builtins::len_hashset(&{args[0]}) as i64)"
                     elif arg_type == "String":
-                        return f"(Builtins::len_string(&{args[0]}) as i32)"
-                    elif arg_type == "i32":
-                        # Unknown type inferred as i32 default - check if it's likely a string parameter
+                        return f"(Builtins::len_string(&{args[0]}) as i64)"
+                    elif arg_type == "i64":
+                        # Unknown type inferred as i64 default - check if it's likely a string parameter
                         # If the argument is a simple variable name, assume it's a string (common case)
                         if isinstance(arg_expr, ast.Name):
-                            return f"(Builtins::len_string(&{args[0]}) as i32)"
+                            return f"(Builtins::len_string(&{args[0]}) as i64)"
                         # Otherwise default to len_vec for list-like containers
-                        return f"(Builtins::len_vec(&{args[0]}) as i32)"
+                        return f"(Builtins::len_vec(&{args[0]}) as i64)"
                     else:
                         # Default to len_vec for unknown types (safer for lists)
-                        return f"(Builtins::len_vec(&{args[0]}) as i32)"
+                        return f"(Builtins::len_vec(&{args[0]}) as i64)"
                 return "0"
             elif func_name == "abs":
-                return f"Builtins::abs_i32({args[0]})"
+                return f"Builtins::abs_i64({args[0]})"
             elif func_name == "min":
                 if len(args) >= 2:
-                    return f"Builtins::min_i32({args[0]}, {args[1]})"
+                    return f"Builtins::min_i64({args[0]}, {args[1]})"
                 else:
                     return "0"  # Fallback for invalid min args
             elif func_name == "max":
                 if len(args) >= 2:
-                    return f"Builtins::max_i32({args[0]}, {args[1]})"
+                    return f"Builtins::max_i64({args[0]}, {args[1]})"
                 else:
                     return "0"  # Fallback for invalid max args
             elif func_name == "sum":
-                return f"Builtins::sum_i32(&{args[0]})"
+                return f"Builtins::sum_i64(&{args[0]})"
             elif func_name == "any":
                 return f"Builtins::any(&{args[0]})"
             elif func_name == "all":
@@ -1802,9 +1861,9 @@ class MultiGenPythonToRustConverter:
             elif func_name == "bool":
                 return f"to_bool({args[0]})"
             elif func_name == "int":
-                return f"to_i32_from_f64({args[0]})"
+                return f"to_i64_from_f64({args[0]})"
             elif func_name == "float":
-                return f"to_f64_from_i32({args[0]})"
+                return f"to_f64_from_i64({args[0]})"
             elif func_name == "str":
                 return f"to_string({args[0]})"
             elif func_name == "range":
@@ -1867,7 +1926,8 @@ class MultiGenPythonToRustConverter:
                                 else:
                                     modified_args.append(arg)
                             else:
-                                modified_args.append(arg)
+                                # A literal or call yields an owned value; borrow it if the callee takes a reference.
+                                modified_args.append(f"{self._callee_borrow(func_name, i)}{arg}")
 
                         args_str = ", ".join(modified_args)
                     else:
@@ -1879,9 +1939,34 @@ class MultiGenPythonToRustConverter:
         else:
             return "/* Complex function call */"
 
+    _MATH_F64_METHODS = {
+        "sqrt": "sqrt", "sin": "sin", "cos": "cos", "tan": "tan", "asin": "asin", "acos": "acos",
+        "atan": "atan", "exp": "exp", "fabs": "abs", "log10": "log10", "log2": "log2",
+    }  # fmt: skip
+
+    def _convert_math_call(self, name: str, args: list[str]) -> Optional[str]:
+        """Translate a `math` module call to f64 methods; arguments may be ints, as in Python."""
+        floats = [f"({arg} as f64)" for arg in args]
+        if name in self._MATH_F64_METHODS and len(args) == 1:
+            return f"{floats[0]}.{self._MATH_F64_METHODS[name]}()"
+        if name == "log" and len(args) == 1:
+            return f"{floats[0]}.ln()"
+        if name in ("floor", "ceil") and len(args) == 1:
+            return f"({floats[0]}.{name}() as i64)"
+        if name == "pow" and len(args) == 2:
+            return f"{floats[0]}.powf({floats[1]})"
+        if name in ("atan2", "hypot") and len(args) == 2:
+            return f"{floats[0]}.{name}({floats[1]})"
+        return None
+
     def _convert_method_call_expression(self, expr: ast.Call) -> str:
         """Convert method calls on objects."""
         if isinstance(expr.func, ast.Attribute):
+            if isinstance(expr.func.value, ast.Name) and expr.func.value.id == "math":
+                math_call = self._convert_math_call(expr.func.attr, [self._convert_expression(a) for a in expr.args])
+                if math_call is None:
+                    raise UnsupportedFeatureError(f"Rust backend does not support math.{expr.func.attr}")
+                return math_call
             obj_expr = self._convert_expression(expr.func.value)
             method_name = expr.func.attr
             args = [self._convert_expression(arg) for arg in expr.args]
@@ -1906,6 +1991,13 @@ class MultiGenPythonToRustConverter:
                         return f"StrOps::split_sep(&{obj_expr}, &{args[0]})"
                     else:
                         return f"StrOps::split(&{obj_expr})"
+
+            receiver_type = self._infer_type_from_value(expr.func.value).removeprefix("&mut ").removeprefix("&")
+            if receiver_type.startswith("std::collections::HashSet<"):
+                if method_name == "add":
+                    return f"{obj_expr}.insert({args[0]})"
+                if method_name in ("discard", "remove"):
+                    return f"{obj_expr}.remove(&{args[0]})"
 
             # Handle list/vector methods - map Python names to Rust names
             if method_name == "append":
@@ -1938,6 +2030,8 @@ class MultiGenPythonToRustConverter:
 
     def _convert_attribute(self, expr: ast.Attribute) -> str:
         """Convert attribute access."""
+        if isinstance(expr.value, ast.Name) and expr.value.id == "math" and expr.attr in ("pi", "e", "tau"):
+            return f"std::f64::consts::{expr.attr.upper()}"
         obj_expr = self._convert_expression(expr.value)
         return f"{obj_expr}.{self._to_snake_case(expr.attr)}"
 
@@ -1976,17 +2070,14 @@ class MultiGenPythonToRustConverter:
                 # No condition
                 return f"Comprehensions::list_comprehension({range_call}, |{target_name}| {transform_expr})"
         else:
-            # Container iteration
-            container_expr = self._convert_expression(iter_expr)
+            # Container iteration. The runtime takes the Vec by value; cloning
+            # keeps the container usable afterwards and accepts a borrowed one.
+            container_expr = f"{self._convert_expression(iter_expr)}.clone()"
             target_name = target.id if isinstance(target, ast.Name) else "x"
             transform_expr = self._convert_expression(element_expr)
 
             if conditions:
                 condition_expr = self._convert_expression(conditions[0])
-                # For filtered comprehensions, the lambda receives &T, so clone if needed
-                if isinstance(element_expr, ast.Name) and element_expr.id == target_name:
-                    # Identity transform - need to clone the reference
-                    transform_expr = f"{transform_expr}.clone()"
                 return f"Comprehensions::list_comprehension_with_filter({container_expr}, |{target_name}| {transform_expr}, |{target_name}| {condition_expr})"
             else:
                 return f"Comprehensions::list_comprehension({container_expr}, |{target_name}| {transform_expr})"
@@ -2030,8 +2121,8 @@ class MultiGenPythonToRustConverter:
                 # No condition
                 return f"Comprehensions::dict_comprehension({range_call}, |{target_name}| ({key_transform}, {value_transform}))"
         else:
-            # Container iteration
-            container_expr = self._convert_expression(iter_expr)
+            # Container iteration; cloned for the same reason as in list comprehensions.
+            container_expr = f"{self._convert_expression(iter_expr)}.clone()"
             target_name = target.id if isinstance(target, ast.Name) else "x"
             key_transform = self._convert_expression(key_expr)
             value_transform = self._convert_expression(value_expr)
@@ -2123,40 +2214,34 @@ class MultiGenPythonToRustConverter:
             target_name = target.id if isinstance(target, ast.Name) else "x"
             transform_expr = self._convert_expression(element_expr)
 
-            # Check if we're iterating over a HashSet - need to convert to Vec for comprehension
-            # Infer the type of the container
-            if isinstance(iter_expr, ast.Name):
-                var_type = self.variable_types.get(iter_expr.id, "")
-                if "HashSet" in var_type:
-                    # Convert HashSet to Vec for iteration
-                    container_expr = f"{container_expr}.iter().cloned().collect::<Vec<_>>()"
-
-            # For identity transforms (|x| x), use pattern matching to avoid reference issues
-            # Check if transform is just the variable name
-            if isinstance(element_expr, ast.Name) and element_expr.id == target_name:
-                # Identity transform - use &pattern to dereference
-                transform_pattern = f"&{target_name}"
-                transform_body = target_name
-                transform_expr = f"|{transform_pattern}| {transform_body}"
+            # The runtime takes an owned Vec; cloning a Vec (or &Vec) leaves the
+            # container usable, and a HashSet is collected into one.
+            var_type = self.variable_types.get(iter_expr.id, "") if isinstance(iter_expr, ast.Name) else ""
+            if "HashSet" in var_type:
+                container_expr = f"{container_expr}.iter().cloned().collect::<Vec<_>>()"
+            else:
+                container_expr = f"{container_expr}.clone()"
 
             if conditions:
                 condition_expr = self._convert_expression(conditions[0])
-                return f"Comprehensions::set_comprehension_with_filter({container_expr}, {transform_expr}, |{target_name}| {condition_expr})"
+                return f"Comprehensions::set_comprehension_with_filter({container_expr}, |{target_name}| {transform_expr}, |{target_name}| {condition_expr})"
             else:
-                return f"Comprehensions::set_comprehension({container_expr}, {transform_expr})"
+                return f"Comprehensions::set_comprehension({container_expr}, |{target_name}| {transform_expr})"
 
     # Helper methods for type inference and mapping
 
     def _map_type_annotation(self, annotation: ast.expr) -> str:
         """Map Python type annotation to Rust type."""
         if isinstance(annotation, ast.Name):
-            return self.type_map.get(annotation.id, "i32")
+            if annotation.id in self.struct_info:
+                return annotation.id
+            return self.type_map.get(annotation.id, "i64")
         elif isinstance(annotation, ast.Subscript):
             # Handle subscripted types like list[int], dict[str, int], set[int]
             if isinstance(annotation.value, ast.Name):
                 container_type = annotation.value.id
                 if container_type == "list":
-                    # list[int] -> Vec<i32>, list[list[int]] -> Vec<Vec<i32>>
+                    # list[int] -> Vec<i64>, list[list[int]] -> Vec<Vec<i64>>
                     if isinstance(annotation.slice, ast.Name):
                         element_type = self.type_map.get(annotation.slice.id, annotation.slice.id)
                         return f"Vec<{element_type}>"
@@ -2164,27 +2249,27 @@ class MultiGenPythonToRustConverter:
                         # Recursively handle nested lists like list[list[int]]
                         element_type = self._map_type_annotation(annotation.slice)
                         return f"Vec<{element_type}>"
-                    return "Vec<i32>"  # Default to Vec<i32>
+                    return "Vec<i64>"  # Default to Vec<i64>
                 elif container_type == "dict":
-                    # dict[str, int] -> HashMap<String, i32>
+                    # dict[str, int] -> HashMap<String, i64>
                     if isinstance(annotation.slice, ast.Tuple) and len(annotation.slice.elts) == 2:
                         key_type = self._map_type_annotation(annotation.slice.elts[0])
                         value_type = self._map_type_annotation(annotation.slice.elts[1])
                         return f"std::collections::HashMap<{key_type}, {value_type}>"
-                    return "std::collections::HashMap<String, i32>"  # Default
+                    return "std::collections::HashMap<String, i64>"  # Default
                 elif container_type == "set":
-                    # set[int] -> HashSet<i32>
+                    # set[int] -> HashSet<i64>
                     if isinstance(annotation.slice, ast.Name):
                         element_type = self.type_map.get(annotation.slice.id, annotation.slice.id)
                         return f"std::collections::HashSet<{element_type}>"
-                    return "std::collections::HashSet<i32>"  # Default
-            return "i32"
+                    return "std::collections::HashSet<i64>"  # Default
+            return "i64"
         elif isinstance(annotation, ast.Constant):
             if annotation.value is None:
                 return "()"  # None type should be unit type
             return str(annotation.value)
         else:
-            return "i32"
+            return "i64"
 
     def _infer_type_from_value(self, value: ast.expr) -> str:
         """Infer Rust type from Python value using Strategy pattern.
@@ -2211,14 +2296,14 @@ class MultiGenPythonToRustConverter:
             if isinstance(expr.value, bool):
                 return "bool"
             elif isinstance(expr.value, int):
-                return "i32"
+                return "i64"
             elif isinstance(expr.value, float):
                 return "f64"
             elif isinstance(expr.value, str):
                 return "String"
         elif isinstance(expr, ast.Name):
-            # Variable reference - default to i32
-            return "i32"
+            # Variable reference - default to i64
+            return "i64"
         elif isinstance(expr, ast.BinOp):
             # For binary operations, try to infer from operands
             left_type = self._infer_comprehension_element_type(expr.left)
@@ -2226,26 +2311,45 @@ class MultiGenPythonToRustConverter:
             if left_type == right_type:
                 return left_type
             # If mixed int/float, return float
-            if {left_type, right_type} == {"i32", "f64"}:
+            if {left_type, right_type} == {"i64", "f64"}:
                 return "f64"
-            return "i32"
+            return "i64"
         elif isinstance(expr, ast.Call):
             if isinstance(expr.func, ast.Name):
                 func_name = expr.func.id
                 if func_name == "str":
                     return "String"
                 elif func_name in ["abs", "sum", "len", "min", "max"]:
-                    return "i32"
+                    return "i64"
             elif isinstance(expr.func, ast.Attribute):
                 method_name = expr.func.attr
                 if method_name in ["upper", "lower", "strip", "replace"]:
                     return "String"
 
-        return "i32"  # Default to i32
+        return "i64"  # Default to i64
 
     def _infer_type_from_assignment(self, stmt: ast.Assign) -> str:
         """Infer type from assignment statement."""
         return self._infer_type_from_value(stmt.value)
+
+    def _callee_borrow(self, func_name: str, index: int) -> str:
+        """Return the borrow (`&`, `&mut ` or empty) a top-level function's parameter takes, as its signature does."""
+        params = self._function_defs.get(func_name)
+        if not params:
+            return ""
+        callee = next(iter(params.values()))
+        if index >= len(callee.args.args):
+            return ""
+        arg = callee.args.args[index]
+        param_type = self._infer_parameter_type(arg, callee)
+        if not (param_type.startswith("Vec<") or param_type.startswith("std::collections::Hash")):
+            return ""
+        mutability = self.mutability_info.get(func_name, {}).get(arg.arg, MutabilityClass.UNKNOWN)
+        if mutability == MutabilityClass.MUTABLE:
+            return "&mut "
+        if mutability in (MutabilityClass.IMMUTABLE, MutabilityClass.READ_ONLY):
+            return "&"
+        return "&mut " if self._parameter_is_mutated(arg.arg, callee) else "&"
 
     def _infer_parameter_type(self, arg: ast.arg, func: ast.FunctionDef) -> str:
         """Infer parameter type from annotation or context."""
@@ -2265,7 +2369,7 @@ class MultiGenPythonToRustConverter:
                         return f"std::collections::HashSet<{element_type}>"
 
             return base_type
-        return "i32"
+        return "i64"
 
     def _infer_container_element_type(self, param_name: str, func: ast.FunctionDef) -> Optional[str]:
         """Infer container element type by analyzing how the parameter is used in function body.
@@ -2287,7 +2391,7 @@ class MultiGenPythonToRustConverter:
                         # This is param[i][j] - param is a 2D container
                         # The outer subscript returns the element type, which we can infer from context
                         # For now, assume it's used with int operations (most common case)
-                        return "Vec<i32>"  # This means param is Vec<Vec<i32>>
+                        return "Vec<i64>"  # This means param is Vec<Vec<i64>>
 
         # Look for annotated assignments like: element: int = container[index]
         for stmt in ast.walk(func):
@@ -2387,13 +2491,13 @@ class MultiGenPythonToRustConverter:
                         if isinstance(stmt.value, ast.Dict) and len(stmt.value.keys) == 0:
                             # Empty dict literal - check if it has a generic type
                             if "std::collections::HashMap<" in base_type and (
-                                "Box<dyn" in base_type or base_type.endswith("<i32, i32>")
+                                "Box<dyn" in base_type or base_type.endswith("<i64, i64>")
                             ):
                                 # Generic or default dict type - infer from usage
                                 return None  # Signal caller to do deeper inference
                         elif isinstance(stmt.value, ast.List) and len(stmt.value.elts) == 0:
                             # Empty list literal - check if it has a generic type
-                            if base_type == "Vec<i32>" or "Box<dyn" in base_type:
+                            if base_type == "Vec<i64>" or "Box<dyn" in base_type:
                                 # Generic or default list type - infer from usage
                                 return None  # Signal caller to do deeper inference
 
@@ -2409,7 +2513,7 @@ class MultiGenPythonToRustConverter:
                             if isinstance(stmt.value.value, str):
                                 return "String"
                             elif isinstance(stmt.value.value, int):
-                                return "i32"
+                                return "i64"
                             elif isinstance(stmt.value.value, float):
                                 return "f64"
                             elif isinstance(stmt.value.value, bool):
@@ -2474,12 +2578,12 @@ class MultiGenPythonToRustConverter:
 
                             candidates.append((key_type, value_type))
 
-        # Prefer non-i32 types (more specific than default)
+        # Prefer non-i64 types (more specific than default)
         for key_type, value_type in candidates:
-            if key_type != "i32" or value_type != "i32":
+            if key_type != "i64" or value_type != "i64":
                 return (key_type, value_type)
 
-        # Fallback to first candidate if all are i32
+        # Fallback to first candidate if all are i64
         if candidates:
             return candidates[0]
 
@@ -2494,7 +2598,7 @@ class MultiGenPythonToRustConverter:
                             # Found: key in dict
                             key_type = self._infer_type_from_value(stmt.left)
                             # Value type unknown from this pattern
-                            return (key_type, "i32")
+                            return (key_type, "i64")
 
         return None
 
@@ -2555,7 +2659,7 @@ class MultiGenPythonToRustConverter:
                                             inferred_type = self._infer_type_from_value(earlier_stmt.value)
                                             # If it's an empty list, recursively infer its element type
                                             if (
-                                                inferred_type == "Vec<i32>"
+                                                inferred_type == "Vec<i64>"
                                                 and isinstance(earlier_stmt.value, ast.List)
                                                 and not earlier_stmt.value.elts
                                             ):
@@ -2566,7 +2670,7 @@ class MultiGenPythonToRustConverter:
                                                 if nested_element_type:
                                                     return f"Vec<{nested_element_type}>"
                                                 else:
-                                                    return "Vec<i32>"
+                                                    return "Vec<i64>"
                                             return inferred_type
                                         else:
                                             # No value, use annotation
@@ -2614,13 +2718,13 @@ class MultiGenPythonToRustConverter:
                                 element_type = self._infer_list_element_type_from_appends(var_name, func)
                                 if element_type:
                                     return f"Vec<{element_type}>"
-                        elif inferred_type == "std::collections::HashMap<i32, i32>":
+                        elif inferred_type == "std::collections::HashMap<i64, i64>":
                             # Default int dict - try to get more specific type from usage
                             dict_types = self._infer_dict_types_from_usage(var_name, func)
                             if dict_types:
                                 key_type, value_type = dict_types
                                 return f"std::collections::HashMap<{key_type}, {value_type}>"
-                        elif inferred_type == "Vec<i32>":
+                        elif inferred_type == "Vec<i64>":
                             # Default int vec - try to get more specific element type
                             element_type = self._infer_list_element_type_from_appends(var_name, func)
                             if element_type:
@@ -2635,7 +2739,7 @@ class MultiGenPythonToRustConverter:
         for stmt in func.body:
             if isinstance(stmt, ast.Return) and stmt.value:
                 # Found return statement, infer type
-                return "i32"  # Default to i32 for complex expressions
+                return "i64"  # Default to i64 for complex expressions
         return "()"  # No return statement found
 
     def _is_constructor_call(self, value: ast.expr) -> bool:

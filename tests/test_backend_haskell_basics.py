@@ -170,6 +170,32 @@ def test_print(message: str) -> None:
         with pytest.raises(UnsupportedFeatureError, match="outside main"):
             self.converter.convert_code(python_code)
 
+    @pytest.mark.parametrize(
+        "declaration,assignment",
+        [("xs: list[int] = [1, 2]", "xs[0] = n"), ("d: dict[int, int] = {}", "d[1] = n")],
+    )
+    def test_item_assignment_outside_main_is_rejected(self, declaration, assignment):
+        """A where clause cannot rebind a name; the update was dropped silently before."""
+        python_code = f"def f(n: int) -> int:\n    {declaration}\n    {assignment}\n    return n\n"
+
+        with pytest.raises(UnsupportedFeatureError, match="outside main"):
+            self.converter.convert_code(python_code)
+
+    def test_item_assignment_in_main_rebinds_the_container(self):
+        python_code = (
+            "def main() -> int:\n"
+            "    m: list[list[int]] = [[0, 0], [0, 0]]\n"
+            "    m[1][0] = 5\n"
+            "    d: dict[str, int] = {}\n"
+            '    d["a"] = 1\n'
+            "    return 0\n"
+        )
+
+        haskell_code = self.converter.convert_code(python_code)
+
+        assert "m <- return (updateAt (1) (updateAt (0) (5) ((m !! 1))) (m))" in haskell_code
+        assert 'd <- return (Map.insert ("a") (1) d)' in haskell_code
+
     def test_ternary_expression(self):
         """Test ternary expression conversion."""
         python_code = """

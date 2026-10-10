@@ -24,6 +24,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
+- **Differential compile-and-run tests.** `test_compiled_output_matches_cpython` builds every program in `tests/translation/` and `tests/fixtures/differential/` on seven backends, runs it, and requires CPython's stdout and exit status 0. Known failures sit in `KNOWN_FAILURES` as strict xfails, so a fix fails the run until its entry is deleted. Converter tests compare generated text, which missed code that does not compile; the first run found 124 failing pairs, 15 of them on Rust.
+
 - **`for k, v in d.items()`** in for loops and list, dict and set comprehensions, on all eight backends. The validator admits exactly two names unpacking a no-argument `.items()` call; every other tuple stays rejected. It was the last benchmark blocker: all eight backends now pass 7/7 (`dict_ops` needed it everywhere; Haskell also gained guarded-sum and dict-insert folds, which `set_ops` needed).
 
 - **Structured validation diagnostics** -- validation reported bare strings, which callers could print but not act on
@@ -72,6 +74,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Changed
 
+- **Validation rejects a negative constant index.** `xs[-1]` failed on all seven backends: C++ read out of bounds and printed `0`, Rust and Go did not compile, the rest crashed. Rejecting it gives one clear error until the backends translate it. Write `xs[len(xs) - 1]`. Slices are unaffected.
+
+- **Rust: Python `int` is now `i64`, not `i32`.** `2**40` overflowed and panicked. `i64` matches the Go, Haskell and OCaml backends. C and C++ still use 32-bit `int`; the plan is in `docs/dev/c-cpp-int64-plan.md`.
+
 - **Comprehensions with a second `for` clause are refused by the validator.** No backend translated one: four refused, three emitted code that did not build, and TypeScript failed at runtime.
 
 - **The subset validator is an allowlist.** A construct no rule classifies is rejected rather than passed through. `async def`, `await`, the walrus operator, `nonlocal`, and `del` were previously accepted and handed to a backend.
@@ -101,6 +107,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Strict verification requires a proof.** It halted only on a disproof, so an undecided access (`a[i]` with symbolic `i`) proceeded to generation. Strict mode now fails unless every property is PROVED; non-strict mode still warns. `MemorySafetyProof.is_proved` exposes the distinction. The prover has no `len()` model yet, so strict mode rejects nearly every non-literal subscript (TODO R-7).
 
 ### Fixed
+
+- **Rust: the last translation-corpus failures.** Rust now passes every program in the differential tests.
+  - `set.add`, `set.remove` and `set.discard` emitted methods `HashSet` does not have.
+  - A dataclass or NamedTuple got an empty struct with no constructor. Its fields now come from the class body, and `new` takes them in order.
+  - A parameter annotated with a class name was typed `i64`.
+  - A whole float literal such as `3.0` was emitted as `3`, an integer in Rust, so `x /= 2.0` on an `f64` did not compile.
+  - A parameterised annotation such as `list[int]` lost to inference, so `subset: list[int] = xs[1:3]` was declared `i64` and `counts: dict[str, int] = {}` became `HashMap<i64, i64>`. It now sets the type.
+  - `math` functions and constants were emitted as field accesses on a nonexistent `math`. They now map to `f64` methods and `std::f64::consts`.
+
+- **Wrong output with no diagnostic, on three backends.** These compiled and ran but printed values CPython does not.
+  - Go dropped the `if` of a set comprehension over a range or list, and of a dict comprehension over a range or list. It now passes the filter.
+  - Haskell dropped `xs[i] = v` and `d[k] = v` in `main`. They now rebind the container through a bind, with the new runtime `updateAt`. A `where` clause cannot rebind a name, so outside `main` these assignments now raise `UnsupportedFeatureError`.
+  - OCaml translated `==` to `==`, which compares physical identity, so equal strings could compare unequal. It now emits `=`.
+  - OCaml's fold for `for i in r: x = f(x)` discarded its accumulator, so every step read the initial `x`: `2**40` printed `2`. The accumulator now takes the variable's name; a `ref` variable uses `List.iter`.
+
+- **`def main() -> None` broke C, C++ and OCaml.** C++ emitted `void main`, which does not compile. C emitted it too and exited with whatever the return register held. Both now emit `int main`. OCaml translated the `if __name__ == "__main__":` guard into a syntax error; the guard is now skipped, since the generated entry point already calls `main`.
+
+- **Rust: `in` always emitted `contains_key`.** That is a dict key test, so membership in a `str`, list or set did not compile. The test now follows the container's type.
+
+- **Rust: a scalar annotation lost to inference.** `found: bool = s in t` was declared `i64`. An `int`, `float`, `bool` or `str` annotation now sets the type, and an integer literal assigned to a `float` is cast.
+
+- **Rust: string `+` did not compile.** Rust's `+` takes `&str` on the right and moves its left operand, so `String + String` and `self.a + b` were rejected. Concatenation now emits `format!`.
+
+- **Rust: a dict comprehension moved its source.** Like list and set comprehensions before, it now passes a clone.
+
+- **Build failures hid the compiler's output.** `compile_direct` returns only a bool, so the pipeline reported a bare "Direct compilation failed". The builder now keeps the last failed command's stderr, and the error includes it.
+
+- **Rust: comprehensions over a container did not compile.** The runtime takes the iterable by value, so a borrowed parameter did not type-check and an owned local was moved. The converter now passes a clone. Filtered variants also passed `&T` to their closures, so `x > 1` compared a reference with an integer; every closure now receives an owned element.
+
+- **Rust: a literal argument was not borrowed.** `uniq([1, 2])` passed a `Vec` where the signature takes `&Vec`. Only plain variables were borrowed at the call site. Any other argument now takes the borrow the callee's signature declares.
+
+- **Validation rejected every class method.** The unannotated-parameter check in the subset validator and the AST analyzer also fired on `self` and `cls`, so any class failed the pipeline's validation phase. Converter-level tests skip validation and missed it. The first parameter of a non-static method is now exempt. A free function's `self`, a static method's first parameter, and a method's other parameters still need annotations.
 
 - **`--makefile` output did not build for Rust, Go, Haskell, OCaml or LLVM** (R-11). Each build file assumed a layout the CLI never produced. Cargo found no `src/main.rs`. Go and Haskell had no runtime module beside the source. Cabal pointed `main-is` at a nonexistent `Main.hs` and required `base ^>=4.16`, which excludes current GHC. OCaml wrote the `dune` stanza into `dune-project`. The LLVM Makefile linked no runtime. Build files now name the source by absolute path, and a new `AbstractBuilder.stage_build_tree` copies runtime files beside it. That keeps them valid whether or not the CLI moves them. The OCaml runtime also dropped an unused `open Printf`, which dune's default `dev` profile rejects as an error.
 

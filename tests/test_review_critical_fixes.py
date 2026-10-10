@@ -10,6 +10,7 @@ import ast
 
 import pytest
 
+from multigen.backends.base import CompilationResult
 from multigen.backends.c.converter import MultiGenPythonToCConverter
 from multigen.backends.converter_utils import (
     escape_string_for_c_family,
@@ -47,6 +48,20 @@ class TestFailedBuildIsNotSuccess:
         assert not result.success
         assert "Direct compilation failed" in result.errors
         assert result.executable_path is None
+
+    def test_build_failure_reports_compiler_output(self, tmp_path, monkeypatch):
+        source = tmp_path / "prog.py"
+        source.write_text("def main() -> int:\n    return 0\n")
+
+        config = PipelineConfig(target_language="c", build_mode=BuildMode.DIRECT, output_dir=str(tmp_path / "out"))
+        pipeline = MultiGenPipeline(config=config)
+        failed = CompilationResult(success=False, stderr="prog.c:1: error: boom\n", return_code=1)
+        monkeypatch.setattr(pipeline.builder, "_execute", lambda *args: failed)
+
+        result = pipeline.convert(source)
+
+        assert not result.success
+        assert "Direct compilation failed:\nprog.c:1: error: boom" in result.errors
 
 
 class TestStringEscaping:
@@ -161,7 +176,7 @@ class TestTryExceptControlFlow:
     def test_rust_carries_the_return_out_of_the_closure(self):
         rust_code = MultiGenPythonToRustConverter().convert_code(self.SOURCE)
 
-        assert "-> Option<i32>" in rust_code
+        assert "-> Option<i64>" in rust_code
         assert "return Some(y);" in rust_code
         assert "if let Some(__mgen_returned0) = __mgen_try_value0 {" in rust_code
 

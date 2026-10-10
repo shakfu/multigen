@@ -195,26 +195,26 @@ class TestRustGenerators:
     def test_simple_generator(self) -> None:
         """Test while-loop generator produces Vec with push."""
         rust = self.converter.convert_code(SIMPLE_WHILE_GENERATOR)
-        assert "Vec<i32>" in rust
+        assert "Vec<i64>" in rust
         assert "__mgen_result" in rust
         assert ".push(" in rust
 
     def test_generator_with_for_loop(self) -> None:
         """Test for-loop based generator."""
         rust = self.converter.convert_code(FOR_LOOP_GENERATOR)
-        assert "Vec<i32>" in rust
+        assert "Vec<i64>" in rust
         assert ".push(" in rust
 
     def test_generator_with_conditional_yield(self) -> None:
         """Test yield inside if/else."""
         rust = self.converter.convert_code(CONDITIONAL_YIELD)
-        assert "Vec<i32>" in rust
+        assert "Vec<i64>" in rust
         assert ".push(" in rust
 
     def test_generator_return_type(self) -> None:
-        """Test that return type is Vec<i32>."""
+        """Test that return type is Vec<i64>."""
         rust = self.converter.convert_code(SIMPLE_WHILE_GENERATOR)
-        assert "-> Vec<i32>" in rust
+        assert "-> Vec<i64>" in rust
 
     def test_generator_multiple_yields(self) -> None:
         """Test multiple yield points."""
@@ -476,7 +476,7 @@ class TestRustYieldFrom:
     def test_yield_from_range(self) -> None:
         """Test yield from range produces a range loop."""
         rust = self.converter.convert_code(YIELD_FROM_RANGE)
-        assert "Vec<i32>" in rust
+        assert "Vec<i64>" in rust
         assert "__mgen_result" in rust
         assert "__mgen_yf" in rust
         assert ".push(" in rust

@@ -22,8 +22,8 @@ class OCamlSimpleAssignmentStrategy(ForLoopStrategy):
             var = expr
 
     Converts to:
-        var := List.fold_left (fun _ i -> expr) !var iter  (if mutable)
-        let var = List.fold_left (fun _ i -> expr) var iter in  (if immutable)
+        List.iter (fun i -> var := expr) iter  (if mutable)
+        let var = List.fold_left (fun var i -> expr) var iter in  (if immutable)
     """
 
     def can_handle(self, node: ast.For, context: LoopContext) -> bool:
@@ -59,13 +59,12 @@ class OCamlSimpleAssignmentStrategy(ForLoopStrategy):
         updated_var = converter._to_ocaml_var_name(stmt.targets[0].id)  # type: ignore
         value_expr = converter._convert_expression(stmt.value)
 
-        # Check if this is a mutable variable (ref)
+        # Each step must see the previous step's value, as `var = f(var)` in a loop does.
         if stmt.targets[0].id in converter.mutable_vars:  # type: ignore
-            # Use ref assignment
-            return f"{updated_var} := List.fold_left (fun _ {target} -> {value_expr}) !{updated_var} ({iter_expr})"
-        else:
-            # Use let-binding for non-ref variables
-            return f"let {updated_var} = List.fold_left (fun _ {target} -> {value_expr}) {updated_var} ({iter_expr}) in"
+            return f"List.iter (fun {target} -> {updated_var} := {value_expr}) ({iter_expr})"
+        # The accumulator takes the variable's name so expr reads the running value.
+        accumulator = "_" if updated_var == target else updated_var
+        return f"let {updated_var} = List.fold_left (fun {accumulator} {target} -> {value_expr}) {updated_var} ({iter_expr}) in"
 
 
 class OCamlAccumulationStrategy(ForLoopStrategy):

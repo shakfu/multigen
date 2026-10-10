@@ -49,11 +49,11 @@ class DataProcessor:
         # Verify struct definition
         assert "struct DataProcessor {" in rust_code
         assert "name: String," in rust_code
-        assert "threshold: i32," in rust_code
-        assert "count: i32," in rust_code
+        assert "threshold: i64," in rust_code
+        assert "count: i64," in rust_code
 
         # Verify constructor
-        assert "fn new(name: String, threshold: i32) -> Self" in rust_code
+        assert "fn new(name: String, threshold: i64) -> Self" in rust_code
 
         # Verify comprehensions
         assert "Comprehensions::list_comprehension_with_filter" in rust_code
@@ -106,11 +106,11 @@ def create_circles() -> list:
 
         # Verify Point methods
         assert rust_code.count("impl Point {") >= 1
-        assert "fn distance_squared(&mut self) -> i32" in rust_code
+        assert "fn distance_squared(&mut self) -> i64" in rust_code
 
         # Verify Circle methods
         assert rust_code.count("impl Circle {") >= 1
-        assert "fn area_approximation(&mut self) -> i32" in rust_code
+        assert "fn area_approximation(&mut self) -> i64" in rust_code
 
         # Verify comprehensions
         assert "Comprehensions::list_comprehension" in rust_code
@@ -204,7 +204,7 @@ class Calculator:
         assert "+=" in rust_code
 
         # Verify built-in functions
-        assert "Builtins::abs_i32" in rust_code
+        assert "Builtins::abs_i64" in rust_code
         assert "to_string" in rust_code
 
     def test_complex_expressions_integration(self):
@@ -310,7 +310,7 @@ def main() -> int:
         # Verify complete structure
         assert "struct MathUtils {" in rust_code
         assert "impl MathUtils {" in rust_code
-        assert "fn new(base: i32) -> Self" in rust_code
+        assert "fn new(base: i64) -> Self" in rust_code
         assert "fn process_numbers(&mut self, numbers: Vec" in rust_code and "-> std::collections::HashMap" in rust_code
         assert "fn main()" in rust_code
 

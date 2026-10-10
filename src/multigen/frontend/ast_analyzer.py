@@ -12,6 +12,27 @@ from typing import Optional
 from ..common import log
 
 
+def receiver_arg_ids(tree: ast.AST) -> frozenset[int]:
+    """Identify the `self`/`cls` parameter of every method in the tree.
+
+    The receiver's type is the enclosing class, so it needs no annotation.
+    A static method has no receiver.
+    """
+    ids: set[int] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef):
+            continue
+        for stmt in node.body:
+            if not isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            if any(isinstance(d, ast.Name) and d.id == "staticmethod" for d in stmt.decorator_list):
+                continue
+            params = stmt.args.posonlyargs + stmt.args.args
+            if params:
+                ids.add(id(params[0]))
+    return frozenset(ids)
+
+
 class NodeType(Enum):
     """Types of AST nodes we can analyze."""
 
@@ -120,12 +141,14 @@ class ASTAnalyzer(ast.NodeVisitor):
         self.current_scope = "global"
         self.type_hints: dict[str, TypeInfo] = {}
         self.node_types: dict[ast.AST, NodeType] = {}
+        self.receivers: frozenset[int] = frozenset()
 
     def analyze(self, source_code: str) -> AnalysisResult:
         """Analyze Python source code and return analysis results."""
         self._reset()
         try:
             tree = ast.parse(source_code)
+            self.receivers = receiver_arg_ids(tree)
             self.visit(tree)
             self._finalize_analysis()
             return self.result
@@ -146,6 +169,7 @@ class ASTAnalyzer(ast.NodeVisitor):
         self.current_scope = "global"
         self.type_hints = {}
         self.node_types = {}
+        self.receivers = frozenset()
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         """Analyze function definitions."""
@@ -161,6 +185,8 @@ class ASTAnalyzer(ast.NodeVisitor):
 
         # Analyze parameters
         for arg in node.args.args:
+            if id(arg) in self.receivers:
+                continue
             if arg.annotation:
                 type_info = self._extract_type_info(arg.annotation)
                 param_info = VariableInfo(

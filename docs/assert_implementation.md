@@ -45,7 +45,7 @@ assert((result == 1)); // Test failed
 **Generated Code**:
 
 ```rust
-let mut result: i32 = simple_test();
+let mut result: i64 = simple_test();
 assert!((result == 1));
 ```
 

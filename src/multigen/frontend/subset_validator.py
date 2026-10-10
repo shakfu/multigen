@@ -11,6 +11,7 @@ from enum import Enum
 from typing import Callable, Optional
 
 from ..common import log
+from .ast_analyzer import receiver_arg_ids
 from .diagnostics import Diagnostic, DiagnosticSeverity, RuleId, SourceSpan
 
 
@@ -235,6 +236,7 @@ class ValidationContext:
 
     annotation_nodes: frozenset[int] = frozenset()
     items_targets: frozenset[int] = frozenset()
+    receivers: frozenset[int] = frozenset()
 
     def in_annotation(self, node: ast.AST) -> bool:
         """Whether this node is part of a type annotation."""
@@ -299,7 +301,11 @@ class StaticPythonSubsetValidator:
         result = ValidationResult(is_valid=True, tier=SubsetTier.TIER_1_FUNDAMENTAL)
         max_tier = SubsetTier.TIER_1_FUNDAMENTAL
 
-        context = ValidationContext(annotation_nodes=_annotation_node_ids(tree), items_targets=_items_target_ids(tree))
+        context = ValidationContext(
+            annotation_nodes=_annotation_node_ids(tree),
+            items_targets=_items_target_ids(tree),
+            receivers=receiver_arg_ids(tree),
+        )
 
         # Check each node against our rules
         for node in ast.walk(tree):
@@ -451,7 +457,7 @@ class StaticPythonSubsetValidator:
             )
 
         if rule.diagnose is not None:
-            diagnostic = rule.diagnose(node)
+            diagnostic = rule.diagnose(node, context)
             if diagnostic is not None:
                 return reject(diagnostic)
         elif rule.validator is not None and not rule.validator(node):
@@ -720,6 +726,17 @@ class StaticPythonSubsetValidator:
 
         # Tier 4: Unsupported Features
 
+        rules["negative_index"] = FeatureRule(
+            name="Negative Indexing",
+            tier=SubsetTier.TIER_4_UNSUPPORTED,
+            status=FeatureStatus.NOT_SUPPORTED,
+            description="Index from the end with len(xs) - k: no backend translates xs[-k]",
+            ast_nodes=[ast.Subscript],
+            matcher=self._matches_negative_index,
+            priority=0,
+            skip_in_annotations=True,
+        )
+
         rules["metaclasses"] = FeatureRule(
             name="Metaclasses",
             tier=SubsetTier.TIER_4_UNSUPPORTED,
@@ -809,7 +826,7 @@ class StaticPythonSubsetValidator:
 
     # Validator methods for specific features
 
-    def _diagnose_function_def(self, node: ast.FunctionDef) -> Optional[Diagnostic]:
+    def _diagnose_function_def(self, node: ast.FunctionDef, context: ValidationContext) -> Optional[Diagnostic]:
         """Validate function definition constraints."""
         if not node.returns:
             return self._diagnostic(
@@ -822,7 +839,7 @@ class StaticPythonSubsetValidator:
             )
 
         for arg in node.args.args:
-            if not arg.annotation:
+            if not arg.annotation and id(arg) not in context.receivers:
                 return self._diagnostic(
                     RuleId.UNANNOTATED_PARAMETER,
                     f"Function '{node.name}' at line {node.lineno}: parameter '{arg.arg}' is missing type annotation",
@@ -886,6 +903,7 @@ class StaticPythonSubsetValidator:
 
     def _validate_dataclass(self, node: ast.ClassDef) -> bool:
         """Validate dataclass constraints. The matcher has established the decorator."""
+        context = ValidationContext(receivers=receiver_arg_ids(node))
         # Validate all fields have type annotations
         for stmt in node.body:
             if isinstance(stmt, ast.AnnAssign):
@@ -899,7 +917,7 @@ class StaticPythonSubsetValidator:
                 if stmt.name.startswith("__"):
                     continue  # Magic methods are OK
                 # Regular methods should be simple
-                if self._diagnose_function_def(stmt) is not None:
+                if self._diagnose_function_def(stmt, context) is not None:
                     return False
             elif isinstance(stmt, ast.Pass):
                 continue  # Pass statements are OK
@@ -961,6 +979,17 @@ class StaticPythonSubsetValidator:
                     return True
         return False
 
+    def _matches_negative_index(self, node: ast.Subscript) -> bool:
+        """Match `xs[-k]` for an integer constant k; every backend reads or writes out of range."""
+        index = node.slice
+        return (
+            isinstance(index, ast.UnaryOp)
+            and isinstance(index.op, ast.USub)
+            and isinstance(index.operand, ast.Constant)
+            and type(index.operand.value) is int
+            and index.operand.value > 0
+        )
+
     def _matches_union_type(self, node: ast.Subscript) -> bool:
         """Union[...] and Optional[...] subscripts, as opposed to generics."""
         target = node.value
@@ -1015,7 +1044,7 @@ class StaticPythonSubsetValidator:
             return len(node.slice.elts) <= 4
         return True
 
-    def _diagnose_f_string(self, node: ast.AST) -> Optional[Diagnostic]:
+    def _diagnose_f_string(self, node: ast.AST, context: ValidationContext) -> Optional[Diagnostic]:
         """Validate f-string constraints."""
         if isinstance(node, ast.JoinedStr):
             # Check each formatted value in the f-string
@@ -1082,7 +1111,7 @@ class StaticPythonSubsetValidator:
             return node.func.id not in forbidden_functions
         return True
 
-    def _diagnose_exception_handling(self, node: ast.AST) -> Optional[Diagnostic]:
+    def _diagnose_exception_handling(self, node: ast.AST, context: ValidationContext) -> Optional[Diagnostic]:
         """Validate exception handling constraints.
 
         Supported: try/except with optional else and finally clauses. Rejects:
@@ -1108,7 +1137,7 @@ class StaticPythonSubsetValidator:
         # ExceptHandler nodes are always valid if we get here
         return None
 
-    def _diagnose_with_statement(self, node: ast.AST) -> Optional[Diagnostic]:
+    def _diagnose_with_statement(self, node: ast.AST, context: ValidationContext) -> Optional[Diagnostic]:
         """Validate with statement constraints.
 
         Only basic with statements are supported. Rejects:
@@ -1149,7 +1178,7 @@ class StaticPythonSubsetValidator:
             return True
         return True
 
-    def _diagnose_yield_from(self, node: ast.AST) -> Optional[Diagnostic]:
+    def _diagnose_yield_from(self, node: ast.AST, context: ValidationContext) -> Optional[Diagnostic]:
         """Validate yield from statement constraints."""
         if isinstance(node, ast.YieldFrom):
             # Allow function calls, range(), and variable references

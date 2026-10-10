@@ -175,7 +175,7 @@ class DataCleaner:
         assert "let mut trimmed = StrOps::strip(&raw_data);" in rust_code
         assert 'let mut no_spaces = StrOps::replace(&trimmed, &" ".to_string(), &"_".to_string());' in rust_code
         assert "let mut upper_case = StrOps::upper(&no_spaces);" in rust_code
-        assert "(self.prefix + upper_case)" in rust_code
+        assert 'format!("{}{}", self.prefix, upper_case)' in rust_code
 
     def test_string_methods_in_conditions(self):
         """Test string methods used in conditional expressions."""
@@ -224,7 +224,7 @@ class MessageBuilder:
         rust_code = self.converter.convert_code(python_code)
 
         assert "let mut clean_content = StrOps::upper(&StrOps::strip(&content));" in rust_code
-        assert "((self.prefix + clean_content) + self.suffix)" in rust_code
+        assert 'format!("{}{}", format!("{}{}", self.prefix, clean_content), self.suffix)' in rust_code
 
 
 class TestRustStringMethodsAdvanced:
@@ -268,7 +268,7 @@ def flexible_replace(text: str, old_char: str, new_char: str) -> str:
         python_code = """
 def string_analysis(text: str) -> None:
     upper_text = text.upper()         # Should be String
-    position = text.find("hello")     # Should be i32
+    position = text.find("hello")     # Should be i64
     words = text.split()              # Should be Vec<String>
 """
         rust_code = self.converter.convert_code(python_code)

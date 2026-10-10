@@ -57,6 +57,22 @@ def normalize_ast(tree: ast.Module) -> ast.Module:
 # ============================================================================
 
 
+def is_main_guard(stmt: ast.stmt) -> bool:
+    """Check if a statement is `if __name__ == "__main__":`, which the generated entry point replaces."""
+    if not isinstance(stmt, ast.If) or stmt.orelse:
+        return False
+    test = stmt.test
+    return (
+        isinstance(test, ast.Compare)
+        and isinstance(test.left, ast.Name)
+        and test.left.id == "__name__"
+        and len(test.ops) == 1
+        and isinstance(test.ops[0], ast.Eq)
+        and isinstance(test.comparators[0], ast.Constant)
+        and test.comparators[0].value == "__main__"
+    )
+
+
 def uses_comprehensions(node: ast.Module) -> bool:
     """Check if module uses any comprehensions.
 

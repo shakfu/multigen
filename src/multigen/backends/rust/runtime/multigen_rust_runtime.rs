@@ -119,7 +119,7 @@ macro_rules! impl_py_divmod_int {
     )*};
 }
 
-impl_py_divmod_int!(i32, i64);
+impl_py_divmod_int!(i64);
 
 impl PyDivMod for f64 {
     fn py_floordiv(self, rhs: Self) -> Self {
@@ -137,7 +137,7 @@ impl PyDivMod for f64 {
     }
 }
 
-/// A number or a reference to one: closures over iterators receive `&i32`.
+/// A number or a reference to one: closures over iterators receive `&i64`.
 pub trait PyNum {
     type Val: PyDivMod;
     fn py_val(self) -> Self::Val;
@@ -156,7 +156,7 @@ macro_rules! impl_py_num {
     )*};
 }
 
-impl_py_num!(i32, i64, f64);
+impl_py_num!(i64, f64);
 
 pub fn py_floordiv<A: PyNum, B: PyNum<Val = A::Val>>(a: A, b: B) -> A::Val {
     a.py_val().py_floordiv(b.py_val())
@@ -241,9 +241,9 @@ impl StrOps {
         s.trim_matches(&chars_to_trim[..]).to_string()
     }
 
-    pub fn find(s: &str, substr: &str) -> i32 {
+    pub fn find(s: &str, substr: &str) -> i64 {
         match s.find(substr) {
-            Some(pos) => pos as i32,
+            Some(pos) => pos as i64,
             None => -1,
         }
     }
@@ -285,7 +285,7 @@ impl Builtins {
         s.len()
     }
 
-    pub fn abs_i32(x: i32) -> i32 {
+    pub fn abs_i64(x: i64) -> i64 {
         x.abs()
     }
 
@@ -293,11 +293,11 @@ impl Builtins {
         x.abs()
     }
 
-    pub fn min_i32(a: i32, b: i32) -> i32 {
+    pub fn min_i64(a: i64, b: i64) -> i64 {
         a.min(b)
     }
 
-    pub fn max_i32(a: i32, b: i32) -> i32 {
+    pub fn max_i64(a: i64, b: i64) -> i64 {
         a.max(b)
     }
 
@@ -309,7 +309,7 @@ impl Builtins {
         a.max(b)
     }
 
-    pub fn sum_i32(vec: &Vec<i32>) -> i32 {
+    pub fn sum_i64(vec: &Vec<i64>) -> i64 {
         vec.iter().sum()
     }
 
@@ -331,11 +331,11 @@ pub fn to_bool<T: PartialEq<T> + Default>(value: T) -> bool {
     value != T::default()
 }
 
-pub fn to_i32_from_f64(value: f64) -> i32 {
-    value as i32
+pub fn to_i64_from_f64(value: f64) -> i64 {
+    value as i64
 }
 
-pub fn to_f64_from_i32(value: i32) -> f64 {
+pub fn to_f64_from_i64(value: i64) -> f64 {
     value as f64
 }
 
@@ -346,14 +346,14 @@ pub fn to_string<T: Display>(value: T) -> String {
 // Range structure for Python-like iteration
 #[derive(Debug, Clone)]
 pub struct Range {
-    start: i32,
-    stop: i32,
-    step: i32,
-    current: i32,
+    start: i64,
+    stop: i64,
+    step: i64,
+    current: i64,
 }
 
 impl Range {
-    pub fn new(stop: i32) -> Self {
+    pub fn new(stop: i64) -> Self {
         Range {
             start: 0,
             stop,
@@ -362,7 +362,7 @@ impl Range {
         }
     }
 
-    pub fn new_with_start(start: i32, stop: i32) -> Self {
+    pub fn new_with_start(start: i64, stop: i64) -> Self {
         Range {
             start,
             stop,
@@ -371,7 +371,7 @@ impl Range {
         }
     }
 
-    pub fn new_with_step(start: i32, stop: i32, step: i32) -> Self {
+    pub fn new_with_step(start: i64, stop: i64, step: i64) -> Self {
         Range {
             start,
             stop,
@@ -380,7 +380,7 @@ impl Range {
         }
     }
 
-    pub fn collect(&self) -> Vec<i32> {
+    pub fn collect(&self) -> Vec<i64> {
         let mut result = Vec::new();
         let mut current = self.start;
 
@@ -401,7 +401,7 @@ impl Range {
 }
 
 impl Iterator for Range {
-    type Item = i32;
+    type Item = i64;
 
     fn next(&mut self) -> Option<Self::Item> {
         if (self.step > 0 && self.current < self.stop) || (self.step < 0 && self.current > self.stop) {
@@ -417,6 +417,8 @@ impl Iterator for Range {
 // Comprehension operations using functional programming patterns
 pub struct Comprehensions;
 
+// Every closure receives an owned element, as a Python comprehension variable
+// is a value; the filtered variants clone it for the predicate.
 impl Comprehensions {
     // List comprehensions
     pub fn list_comprehension<T, U, F>(
@@ -435,13 +437,13 @@ impl Comprehensions {
         predicate: P,
     ) -> Vec<U>
     where
-        F: Fn(&T) -> U,
-        P: Fn(&T) -> bool,
+        F: Fn(T) -> U,
+        P: Fn(T) -> bool,
         T: Clone,
     {
-        iterable.iter()
-            .filter(|&item| predicate(item))
-            .map(|item| transform(item))
+        iterable.into_iter()
+            .filter(|item| predicate(item.clone()))
+            .map(transform)
             .collect()
     }
 
@@ -463,14 +465,14 @@ impl Comprehensions {
         predicate: P,
     ) -> HashMap<K, V>
     where
-        F: Fn(&T) -> (K, V),
-        P: Fn(&T) -> bool,
+        F: Fn(T) -> (K, V),
+        P: Fn(T) -> bool,
         K: Eq + Hash,
         T: Clone,
     {
-        iterable.iter()
-            .filter(|&item| predicate(item))
-            .map(|item| key_value_transform(item))
+        iterable.into_iter()
+            .filter(|item| predicate(item.clone()))
+            .map(key_value_transform)
             .collect()
     }
 
@@ -492,14 +494,14 @@ impl Comprehensions {
         predicate: P,
     ) -> HashSet<U>
     where
-        F: Fn(&T) -> U,
-        P: Fn(&T) -> bool,
+        F: Fn(T) -> U,
+        P: Fn(T) -> bool,
         U: Eq + Hash,
         T: Clone,
     {
-        iterable.iter()
-            .filter(|&item| predicate(item))
-            .map(|item| transform(item))
+        iterable.into_iter()
+            .filter(|item| predicate(item.clone()))
+            .map(transform)
             .collect()
     }
 }
@@ -514,14 +516,14 @@ pub fn print_debug<T: std::fmt::Debug>(value: T) {
 }
 
 // Convenience functions for common operations
-pub fn new_range(stop: i32) -> Range {
+pub fn new_range(stop: i64) -> Range {
     Range::new(stop)
 }
 
-pub fn new_range_with_start(start: i32, stop: i32) -> Range {
+pub fn new_range_with_start(start: i64, stop: i64) -> Range {
     Range::new_with_start(start, stop)
 }
 
-pub fn new_range_with_step(start: i32, stop: i32, step: i32) -> Range {
+pub fn new_range_with_step(start: i64, stop: i64, step: i64) -> Range {
     Range::new_with_step(start, stop, step)
 }

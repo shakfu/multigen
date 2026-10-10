@@ -308,7 +308,7 @@ func main() {
 mod multigen_rust_runtime;
 use multigen_rust_runtime::*;
 
-fn add(x: i32, y: i32) -> i32 {
+fn add(x: i64, y: i64) -> i64 {
     (x + y)
 }
 
@@ -463,7 +463,7 @@ use multigen_rust_runtime::*;
 #[derive(Clone)]
 struct Calculator {
     name: String,
-    total: i32,
+    total: i64,
 }
 
 impl Calculator {
@@ -474,7 +474,7 @@ impl Calculator {
         }
     }
 
-    fn add(&mut self, value: i32) {
+    fn add(&mut self, value: i64) {
         self.total += value;
     }
 

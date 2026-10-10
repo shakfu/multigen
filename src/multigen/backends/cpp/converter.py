@@ -168,8 +168,8 @@ class MultiGenPythonToCppConverter:
         # Detect generator functions (contain yield)
         is_generator = any(isinstance(n, (ast.Yield, ast.YieldFrom)) for n in ast.walk(node))
 
-        # Get return type
-        return_type = self._get_return_type(node)
+        # Get return type. C++ requires `int main`; falling off its end returns 0.
+        return_type = "int" if node.name == "main" else self._get_return_type(node)
 
         # For generators, determine the yielded element type and rewrite return type
         gen_element_type = "int"  # default

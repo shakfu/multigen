@@ -147,7 +147,7 @@ def test_floor_ops_match_python_on_every_backend(tmp_path: Path, target: str) ->
 
 @pytest.mark.skipif(shutil.which("rustc") is None, reason="rustc not available")
 def test_rust_floor_ops_accept_closure_references(tmp_path: Path) -> None:
-    """Filter closures receive &i32; native % auto-derefs, so the helpers must too."""
+    """Filter closures receive &i64; native % auto-derefs, so the helpers must too."""
     source = (
         "def count() -> int:\n"
         "    s: set = {x - 6 for x in range(13) if (x - 6) % 3 == 0}\n"

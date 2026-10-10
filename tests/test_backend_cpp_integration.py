@@ -37,7 +37,7 @@ def main() -> None:
         assert "return (n * factorial((n - 1)));" in cpp_code
 
         # Check main function
-        assert "void main()" in cpp_code
+        assert "int main()" in cpp_code  # `void main` is ill-formed C++
         assert "int result = factorial(5);" in cpp_code or "auto result = factorial(5);" in cpp_code
         assert "cout << result << endl;" in cpp_code
 

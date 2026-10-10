@@ -701,6 +701,10 @@ class MultiGenPythonToCConverter:
             return_type = gen_vec_type
             self._current_gen_vec_type = gen_vec_type
 
+        # C requires `int main`; falling off its end returns 0.
+        if node.name == "main":
+            return_type = "int"
+
         # Build function signature
         params_str = ", ".join(params) if params else "void"
         signature = f"{return_type} {node.name}({params_str})"
@@ -827,13 +831,13 @@ class MultiGenPythonToCConverter:
         0 = success, non-zero = failure.
         """
         writeback = " ".join(self._writeback)
-        if stmt.value is None:
-            return f"{{ {writeback} return; }}" if writeback else "return;"
-
         # Special case: main() should always return 0 for Unix compatibility
         if self.current_function == "main":
             # If returning a value from main, just return 0 instead
             return "return 0;"
+
+        if stmt.value is None:
+            return f"{{ {writeback} return; }}" if writeback else "return;"
 
         value_expr = self._convert_expression(stmt.value)
         if writeback:

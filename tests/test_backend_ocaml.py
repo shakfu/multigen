@@ -27,6 +27,18 @@ def add(x: int, y: int) -> int:
         assert "let add x y =" in ocaml_code
         assert "(x + y)" in ocaml_code
 
+    def test_equality_is_structural(self):
+        """OCaml's == is physical identity; two equal strings may still differ under it."""
+        python_code = """
+def same(a: str, b: str) -> bool:
+    return a == b and not (a != b)
+"""
+        ocaml_code = self.converter.convert_code(python_code)
+
+        assert "(a = b)" in ocaml_code
+        assert "(a <> b)" in ocaml_code
+        assert "==" not in ocaml_code
+
     def test_function_with_no_params(self):
         """Test function with no parameters."""
         python_code = """

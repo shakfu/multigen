@@ -1156,6 +1156,7 @@ class MultiGenPipeline:
                 # Check if builder supports opt_level parameter (LLVM does)
                 import inspect
 
+                self.builder.last_error = ""
                 sig = inspect.signature(self.builder.compile_direct)
                 if "opt_level" in sig.parameters:
                     success = self.builder.compile_direct(str(source_file_path), str(output_dir), opt_level=opt_level)
@@ -1168,7 +1169,10 @@ class MultiGenPipeline:
                     result.output_files["executable"] = str(executable_path)
                 else:
                     result.success = False
-                    result.errors.append("Direct compilation failed")
+                    detail = self.builder.last_error
+                    result.errors.append(
+                        f"Direct compilation failed:\n{detail}" if detail else "Direct compilation failed"
+                    )
                     result.phase_results[PipelinePhase.BUILD] = BuildPhaseResult(
                         success=False,
                         mode=self.config.build_mode.value,

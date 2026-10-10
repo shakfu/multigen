@@ -446,6 +446,18 @@ func DictComprehensionFromRange[K comparable, V any](source Range, transform fun
 	return result
 }
 
+// DictComprehensionFromRangeWithFilter creates filtered map from a Range
+func DictComprehensionFromRangeWithFilter[K comparable, V any](source Range, transform func(int) (K, V), filter func(int) bool) map[K]V {
+	result := make(map[K]V)
+	source.ForEach(func(i int) {
+		if filter(i) {
+			k, v := transform(i)
+			result[k] = v
+		}
+	})
+	return result
+}
+
 // KV represents a key-value pair
 type KV[K comparable, V any] struct {
 	Key   K
@@ -496,6 +508,28 @@ func SetComprehensionFromRange[K comparable](source Range, transform func(int) K
 	result := make(map[K]bool)
 	source.ForEach(func(i int) {
 		result[transform(i)] = true
+	})
+	return result
+}
+
+// SetComprehensionWithFilter creates set with filtering
+func SetComprehensionWithFilter[T any, K comparable](source []T, transform func(T) K, filter func(T) bool) map[K]bool {
+	result := make(map[K]bool)
+	for _, item := range source {
+		if filter(item) {
+			result[transform(item)] = true
+		}
+	}
+	return result
+}
+
+// SetComprehensionFromRangeWithFilter creates filtered set from a Range
+func SetComprehensionFromRangeWithFilter[K comparable](source Range, transform func(int) K, filter func(int) bool) map[K]bool {
+	result := make(map[K]bool)
+	source.ForEach(func(i int) {
+		if filter(i) {
+			result[transform(i)] = true
+		}
 	})
 	return result
 }
