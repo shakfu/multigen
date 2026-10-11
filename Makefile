@@ -6,7 +6,7 @@ BENCHMARK_RESULTS_DIR := build/benchmark_results
 		test-py2c test-benchmark test-build test-memory-llvm clean lint lint-fix format format-check typecheck \
 		build docs docs-clean docs-serve docs-deploy docs-syntax capabilities benchmark benchmark-algorithms \
 		benchmark-data-structures benchmark-report benchmark-clean qa snap \
-		check publish-test publish
+		check check-dist publish-test publish
 
 # Default target
 help:
@@ -48,7 +48,7 @@ help:
 	@echo "Build & Publish:"
 	@echo "  build         Build package for distribution"
 	@echo "  clean         Clean build artifacts"
-	@echo "  check         Verify wheel with twine check"
+	@echo "  check-dist    Verify wheel with twine check"
 	@echo "  publish-test  Publish to TestPyPI"
 	@echo "  publish       Publish to PyPI"
 	@echo ""
@@ -56,6 +56,7 @@ help:
 	@echo "  docs          Build MkDocs documentation"
 	@echo "  docs-syntax   Regenerate docs/supported_syntax.md from the feature registry"
 	@echo "  capabilities  Re-measure what each backend supports"
+	@echo "  check         Regenerate both and fail if either was stale (as CI does)"
 	@echo "  docs-clean    Clean documentation build"
 	@echo "  docs-serve    Serve documentation locally"
 	@echo "  docs-deploy   Deploy documentation to GitHub Pages"
@@ -143,18 +144,18 @@ clean:
 	@find . -type f -name "*.pyc" -delete
 
 # PyPI publishing
-check:
+check-dist:
 	@echo "Checking wheel with twine..."
 	@uv run twine check dist/*
 
-publish-test: check
+publish-test: check-dist
 	@echo "Publishing to TestPyPI..."
 	@uv run twine upload --repository testpypi dist/*
 	@echo ""
 	@echo "Package published to TestPyPI"
 	@echo "Install with: pip install --index-url https://test.pypi.org/simple/ multigen"
 
-publish: check
+publish: check-dist
 	@echo "Publishing to PyPI..."
 	@uv run twine upload dist/*
 	@echo ""
@@ -167,6 +168,11 @@ docs-syntax:
 
 capabilities:
 	@uv run python scripts/generate_capability_matrix.py
+
+# Mirrors the "Generated artifacts are current" CI job, scoped to the generated files.
+check: docs-syntax capabilities
+	@git diff --exit-code -- docs/supported_syntax.md src/multigen/frontend/backend_capabilities.json \
+		|| { echo "Generated files were stale and have been regenerated; review and stage them."; exit 1; }
 
 docs:
 	@echo "Building MkDocs documentation..."

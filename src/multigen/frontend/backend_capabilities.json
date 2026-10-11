@@ -540,7 +540,7 @@
       },
       "dataclasses": {
         "emit": "ok",
-        "run": "build_failed"
+        "run": "matches"
       },
       "enums": {
         "emit": "drops",
@@ -552,7 +552,7 @@
       },
       "f_strings": {
         "emit": "ok",
-        "run": "build_failed"
+        "run": "matches"
       },
       "function_calls": {
         "emit": "ok",
@@ -580,7 +580,7 @@
       },
       "namedtuples": {
         "emit": "ok",
-        "run": "build_failed"
+        "run": "matches"
       },
       "pattern_matching": {
         "emit": "refuses",

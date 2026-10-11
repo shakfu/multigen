@@ -74,6 +74,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Changed
 
+- **`make check` now verifies the generated artifacts; the wheel check is `make check-dist`.** It regenerates `docs/supported_syntax.md` and `backend_capabilities.json` and fails if either differs from the index, as the CI job does. `make test` cannot catch a stale matrix: it re-measures emission only, so the Rust fixes below shipped with three cells still recorded as `build_failed`.
+
 - **Validation rejects a negative constant index.** `xs[-1]` failed on all seven backends: C++ read out of bounds and printed `0`, Rust and Go did not compile, the rest crashed. Rejecting it gives one clear error until the backends translate it. Write `xs[len(xs) - 1]`. Slices are unaffected.
 
 - **Rust: Python `int` is now `i64`, not `i32`.** `2**40` overflowed and panicked. `i64` matches the Go, Haskell and OCaml backends. C and C++ still use 32-bit `int`; the plan is in `docs/dev/c-cpp-int64-plan.md`.

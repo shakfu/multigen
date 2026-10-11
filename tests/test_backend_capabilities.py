@@ -52,10 +52,7 @@ KNOWN_BUILD_FAILURES = frozenset(
         "ocaml/generators",
         "ocaml/generics",
         "ocaml/yield_from",
-        "rust/dataclasses",
-        "rust/f_strings",
         "rust/generics",
-        "rust/namedtuples",
     }
 )
 
