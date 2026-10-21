@@ -343,5 +343,73 @@ class TestBoundsProverWithZ3:
         assert solver.check() == sat
 
 
+def _statuses(code: str) -> list[str]:
+    """Return the bounds-check status of each subscript access, in source order."""
+    function = ast.parse(code).body[0]
+    context = AnalysisContext(ast_node=function, source_code=code, analysis_level=AnalysisLevel.BASIC)
+    proof = BoundsProver().verify_memory_safety(context)
+    return [r.status.name for r in proof.proof_results if r.proof_property.name.startswith("bounds_check")]
+
+
+@pytest.mark.skipif(not Z3_AVAILABLE, reason="Z3 not available")
+@pytest.mark.parametrize(
+    "body,expected",
+    [
+        # Literal sizes, including annotated assignments.
+        ("a: list[int] = [1, 2, 3]\n    return a[1]", ["PROVED"]),
+        ("a: list[int] = [1, 2, 3]\n    return a[3]", ["DISPROVED"]),
+        # Path conditions: guards, early returns, short-circuit operands, conditional expressions.
+        ("if 0 <= i < len(a):\n        return a[i]\n    return 0", ["PROVED"]),
+        ("if i < 0 or i >= len(a):\n        return 0\n    return a[i]", ["PROVED"]),
+        ("if len(a) > 0 and a[0] > 1:\n        return a[len(a) - 1]\n    return 0", ["PROVED", "PROVED"]),
+        ("return a[i] if i >= 0 and i < len(a) else 0", ["PROVED"]),
+        # Loops: range bounds, a monotone counter, and a comprehension filter.
+        ("t: int = 0\n    for k in range(len(a)):\n        t += a[k]\n    return t", ["PROVED"]),
+        (
+            "t: int = 0\n    k: int = 0\n    while k < len(a):\n        t += a[k]\n        k += 1\n    return t",
+            ["PROVED"],
+        ),
+        ("b: list[int] = [a[k] for k in range(len(a)) if k % 2 == 0]\n    return 0", ["PROVED"]),
+        ("b: list[int] = [0] * i\n    for k in range(i):\n        b[k] = k\n    return 0", ["PROVED"]),
+        # Length tracking through mutation.
+        ("a.append(1)\n    return a[len(a) - 1]", ["PROVED"]),
+        ("b: list[int] = [1, 2, 3]\n    b.extend([4, 5])\n    return b[4]", ["PROVED"]),
+        # An unguarded index is safe only for some inputs.
+        ("return a[i]", ["UNKNOWN"]),
+    ],
+)
+def test_bounds_prover_models_state(body: str, expected: list[str]) -> None:
+    assert _statuses(f"def f(a: list[int], i: int) -> int:\n    {body}\n") == expected
+
+
+@pytest.mark.skipif(not Z3_AVAILABLE, reason="Z3 not available")
+@pytest.mark.parametrize(
+    "body",
+    [
+        "g(b)",  # a callee may shrink it
+        "h: list[list[int]] = [b]\n    h[0].clear()",  # stored in a container
+        "def g() -> None:\n        b.clear()\n    g()",  # a closure mutates it
+        "c: list[int] = b\n    c.clear()",  # mutated through an alias
+        "for k in range(i):\n        c = b\n        c.pop()",  # aliased inside a loop
+        "try:\n        b.clear()\n    except ValueError:\n        pass",  # unmodeled statement
+    ],
+)
+def test_bounds_prover_does_not_prove_after_hidden_mutation(body: str) -> None:
+    """Each body may empty the three-element list b, so b[2] must not be proved."""
+    code = f"def f(a: list[int], i: int) -> int:\n    b: list[int] = [1, 2, 3]\n    {body}\n    return b[2]\n"
+    assert _statuses(code)[-1] != "PROVED"
+
+
+@pytest.mark.skipif(not Z3_AVAILABLE, reason="Z3 not available")
+def test_bounds_prover_assumes_parameters_may_alias() -> None:
+    code = "def f(a: list[int], b: list[int]) -> int:\n    if len(b) > 2:\n        a.clear()\n        return b[2]\n    return 0\n"
+    assert _statuses(code) == ["UNKNOWN"]
+
+
+@pytest.mark.skipif(not Z3_AVAILABLE, reason="Z3 not available")
+def test_bounds_prover_skips_dict_lookups_and_slices() -> None:
+    assert _statuses("def f(d: dict[str, int], a: list[int]) -> int:\n    b = a[1:9]\n    return d['k']\n") == []
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

@@ -1,16 +1,8 @@
 # TODO
 
-## Critical
-
-- [ ] **OCaml `--makefile` layout is untested.** `dune-project` plus a staged `src/dune` stanza should build with `dune build ./src/<name>.exe`, but `dune` was not installed when it was written. `test_cli_makefile_builds_and_runs[ocaml]` skips without it.
-
-## High
-
-- [ ] **The bounds prover models no program state** (R-7, `verifiers/bounds_prover.py`). Partly addressed: an access whose offset or region size is not concrete is now reported UNKNOWN instead of being handed to Z3 as unconstrained integers, so guarded and annotated code is no longer reported unsafe, and annotation subscripts (`a: list[int]`) no longer invent a region. Still outstanding: path conditions and a `len()` model, without which only accesses with literal indices into literal-sized regions are decided. Strict mode fails on UNKNOWN, so until then it rejects nearly every subscript, including `a = [1, 2, 3]; a[1]`.
-
-- [ ] **The symbolic executor does not model loop bodies** (R-5, remainder). Loops now continue to the following statement, but bodies run inline through `_execute_simple_statement`, which skips `if`, `break`, `continue`, `return` and nested loops; `for` runs at most once. Each case is listed in `SymbolicExecutionReport.approximations`.
-
 ## Medium
+
+- [ ] **The bounds prover leaves nested and attribute subscripts UNKNOWN.** Element lengths are not tracked, so `m[i][j]` and `self.items[i]` are never proved, and strict mode rejects them. Loop invariants are limited to counters changed only by `+=`/`-=` a constant.
 
 - [ ] **LLVM integer `//` and `%` by zero are undefined behaviour** (`sdiv`/`srem`), not a ZeroDivisionError. The other seven backends raise.
 

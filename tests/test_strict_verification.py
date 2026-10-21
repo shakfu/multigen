@@ -180,6 +180,34 @@ def unsafe_access(arr: list[int], n: int) -> int:
         assert any("FORMAL_VERIFICATION" in warning for warning in lenient.warnings)
 
     @pytest.mark.skipif(not Z3_AVAILABLE, reason="Z3 not available")
+    def test_strict_mode_passes_guarded_and_literal_accesses(self, tmp_path):
+        test_file = tmp_path / "test_guarded.py"
+        test_file.write_text(
+            "def get(a: list[int], i: int) -> int:\n"
+            "    if i < 0 or i >= len(a):\n"
+            "        return 0\n"
+            "    return a[i]\n"
+            "\n"
+            "def total(a: list[int]) -> int:\n"
+            "    b: list[int] = [1, 2, 3]\n"
+            "    t: int = b[1]\n"
+            "    for k in range(len(a)):\n"
+            "        t += a[k]\n"
+            "    return t\n"
+        )
+
+        result = MultiGenPipeline(
+            PipelineConfig(
+                target_language="c",
+                enable_formal_verification=True,
+                strict_verification=True,
+                output_dir=str(tmp_path / "out"),
+            )
+        ).convert(test_file)
+
+        assert result.success, result.errors
+
+    @pytest.mark.skipif(not Z3_AVAILABLE, reason="Z3 not available")
     def test_strict_mode_errors_vs_warnings(self, tmp_path):
         """Test that strict mode uses errors instead of warnings."""
         test_file = tmp_path / "test_maybe_unsafe.py"

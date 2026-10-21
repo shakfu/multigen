@@ -693,18 +693,60 @@ def f(n: int) -> int:
 
         assert all(path.visited_lines[-2:] == [6, 7] for path in report.execution_paths)
 
-    def test_symbolic_executor_flags_unmodeled_loop_body(self):
-        """Control flow inside a loop body is skipped, so the report must say so."""
+    def test_symbolic_executor_runs_loop_body_control_flow(self):
+        """A concrete loop runs each iteration once, honouring if and continue."""
         code = """
-def f(n: int) -> int:
-    for i in range(n):
-        if i > 3:
-            break
-    return n
+def f() -> int:
+    total = 0
+    for i in range(3):
+        if i == 1:
+            continue
+        total += i
+    return total
 """
         report = self._symbolic_report(code)
 
-        assert any("line 3: loop body control flow not modeled" == note for note in report.approximations)
+        assert len(report.execution_paths) == 1
+        assert report.execution_paths[0].final_state.metadata["return_value"].concrete_value == 2
+        assert report.approximations == []
+
+    def test_symbolic_executor_break_skips_loop_else(self):
+        code = """
+def f(n: int) -> int:
+    for i in range(n):
+        if i > 0:
+            break
+    else:
+        n = 7
+    return n
+"""
+        report = self._symbolic_report(code)
+        broke = [path for path in report.execution_paths if 5 in path.visited_lines]
+
+        assert broke
+        assert all(7 not in path.visited_lines and path.visited_lines[-1] == 8 for path in broke)
+        assert any(7 in path.visited_lines for path in report.execution_paths)
+
+    def test_symbolic_executor_runs_nested_loops(self):
+        code = """
+def f() -> int:
+    total = 0
+    for i in range(2):
+        for j in range(3):
+            total += j
+    return total
+"""
+        report = self._symbolic_report(code)
+
+        assert len(report.execution_paths) == 1
+        assert report.execution_paths[0].final_state.metadata["return_value"].concrete_value == 6
+
+    def test_symbolic_executor_reports_unroll_bound(self):
+        """Paths needing more iterations than the bound are cut, and the report says so."""
+        report = self._symbolic_report("def f() -> int:\n    for i in range(10):\n        pass\n    return 0\n")
+
+        assert report.execution_paths == []
+        assert report.approximations == ["line 2: for loop unrolled to 3 iterations"]
 
     def test_symbolic_executor_straight_line_is_exhaustive(self):
         report = self._symbolic_report("def f(x: int) -> int:\n    y = x + 1\n    return y\n")

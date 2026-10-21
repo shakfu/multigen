@@ -5,6 +5,7 @@ tracking symbolic values, and detecting potential runtime errors without actual 
 """
 
 import ast
+import operator
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -197,6 +198,9 @@ class SymbolicExecutor(BaseAnalyzer):
             # Create initial symbolic state
             initial_state = SymbolicState()
             self._next_nodes: dict[ast.AST, Optional[ast.AST]] = {}
+            # Loop -> statement after it (skipping orelse); break/continue -> enclosing loop.
+            self._loop_after: dict[ast.AST, Optional[ast.AST]] = {}
+            self._enclosing_loop: dict[ast.AST, ast.AST] = {}
             self._register_continuations(context.ast_node)
 
             # Set up parameters if analyzing a function
@@ -347,8 +351,7 @@ class SymbolicExecutor(BaseAnalyzer):
         elif isinstance(node, ast.Expr):
             return self._execute_expression_stmt(node, state, new_history)
         elif isinstance(node, (ast.Break, ast.Continue)):
-            # For simplicity, treat as path terminators
-            return [(None, state, new_history)]
+            return self._execute_jump(node, state, new_history)
         else:
             # Generic statements continue with the next statement in their block.
             return [(self._next_nodes.get(node), state, new_history)]
@@ -356,22 +359,28 @@ class SymbolicExecutor(BaseAnalyzer):
     def _register_continuations(self, node: ast.AST) -> None:
         """Register the next statement for each sequential AST block."""
 
-        def register_block(block: list[ast.stmt], continuation: Optional[ast.stmt]) -> None:
+        def register_block(
+            block: list[ast.stmt], continuation: Optional[ast.stmt], loop: Optional[ast.stmt] = None
+        ) -> None:
             for index, statement in enumerate(block):
                 next_statement = block[index + 1] if index + 1 < len(block) else continuation
                 self._next_nodes[statement] = next_statement
                 if isinstance(statement, ast.If):
-                    register_block(statement.body, next_statement)
-                    register_block(statement.orelse, next_statement)
+                    register_block(statement.body, next_statement, loop)
+                    register_block(statement.orelse, next_statement, loop)
                 elif isinstance(statement, (ast.For, ast.While)):
-                    register_block(statement.body, next_statement)
-                    register_block(statement.orelse, next_statement)
+                    # The body falls through to the loop header, which decides the next iteration.
+                    self._loop_after[statement] = next_statement
+                    register_block(statement.body, statement, statement)
+                    register_block(statement.orelse, next_statement, loop)
                 elif isinstance(statement, ast.Try):
-                    register_block(statement.body, next_statement)
-                    register_block(statement.orelse, next_statement)
-                    register_block(statement.finalbody, next_statement)
+                    register_block(statement.body, next_statement, loop)
+                    register_block(statement.orelse, next_statement, loop)
+                    register_block(statement.finalbody, next_statement, loop)
                     for handler in statement.handlers:
-                        register_block(handler.body, next_statement)
+                        register_block(handler.body, next_statement, loop)
+                elif isinstance(statement, (ast.Break, ast.Continue)) and loop is not None:
+                    self._enclosing_loop[statement] = loop
 
         if isinstance(node, (ast.Module, ast.FunctionDef)):
             register_block(node.body, None)
@@ -395,22 +404,18 @@ class SymbolicExecutor(BaseAnalyzer):
         # Evaluate condition symbolically
         condition_value = self._evaluate_expression(if_node.test, state)
         condition_expr = condition_value.symbolic_expr
+        # A concrete condition has only one feasible branch.
+        known = bool(condition_value.concrete_value) if condition_value.is_concrete() else None
 
-        # True branch
-        true_state = state.copy()
-        true_state.add_path_condition(condition_expr)
-        if if_node.body:
-            results.append((if_node.body[0], true_state, path_history))
-        else:
-            results.append((self._next_nodes.get(if_node), true_state, path_history))
+        if known is not False:
+            true_state = state.copy()
+            true_state.add_path_condition(condition_expr)
+            results.append((self._first_or_next(if_node.body, if_node), true_state, path_history))
 
-        # False branch
-        false_state = state.copy()
-        false_state.add_path_condition(f"not ({condition_expr})")
-        if if_node.orelse:
-            results.append((if_node.orelse[0], false_state, path_history))
-        else:
-            results.append((self._next_nodes.get(if_node), false_state, path_history))
+        if known is not True:
+            false_state = state.copy()
+            false_state.add_path_condition(f"not ({condition_expr})")
+            results.append((self._first_or_next(if_node.orelse, if_node), false_state, path_history))
 
         return results
 
@@ -418,72 +423,125 @@ class SymbolicExecutor(BaseAnalyzer):
         """Return the statement a loop continues at when it terminates normally."""
         return loop_node.orelse[0] if loop_node.orelse else self._next_nodes.get(loop_node)
 
-    def _note_loop_body(self, loop_node: Union[ast.While, ast.For]) -> None:
-        """Record when a loop body contains statements the inline executor skips."""
-        if any(not isinstance(stmt, (ast.Assign, ast.AugAssign, ast.Expr, ast.Pass)) for stmt in loop_node.body):
-            self._approximations.append(f"line {loop_node.lineno}: loop body control flow not modeled")
+    def _first_or_next(self, block: list[ast.stmt], node: ast.AST) -> Optional[ast.AST]:
+        """Return the first statement of a block, or the node's continuation if the block is empty."""
+        return block[0] if block else self._next_nodes.get(node)
+
+    def _with_loop_entry(self, state: SymbolicState, loop_node: ast.AST, entry: Optional[tuple[int, Any]]) -> None:
+        """Set (or clear, with None) a loop's (iteration, iterable) entry in a copied state."""
+        loops = dict(state.metadata.get("loops", {}))
+        if entry is None:
+            loops.pop(loop_node, None)
+        else:
+            loops[loop_node] = entry
+        state.metadata["loops"] = loops
+
+    def _note_unroll_limit(self, loop_node: Union[ast.While, ast.For]) -> None:
+        """Record that paths needing more iterations than the bound were cut."""
+        kind = "while" if isinstance(loop_node, ast.While) else "for"
+        note = f"line {loop_node.lineno}: {kind} loop unrolled to {self._max_while_iterations} iterations"
+        if note not in self._approximations:
+            self._approximations.append(note)
 
     def _execute_while(
         self, while_node: ast.While, state: SymbolicState, path_history: list[int]
     ) -> list[tuple[Optional[ast.AST], SymbolicState, list[int]]]:
-        """Execute a while loop with bounded unrolling."""
+        """Visit a while header: branch on the condition, bounded by the unroll limit."""
         results: list[tuple[Optional[ast.AST], SymbolicState, list[int]]] = []
-        exit_node = self._loop_exit(while_node)
-        self._note_loop_body(while_node)
-        self._approximations.append(
-            f"line {while_node.lineno}: while loop unrolled to {self._max_while_iterations} iterations"
-        )
+        iteration = state.metadata.get("loops", {}).get(while_node, (0, None))[0]
+        condition_value = self._evaluate_expression(while_node.test, state)
+        condition_expr = condition_value.symbolic_expr
+        known = bool(condition_value.concrete_value) if condition_value.is_concrete() else None
 
-        current_state = state.copy()
-        for _iteration in range(self._max_while_iterations):
-            # Check loop condition
-            condition_value = self._evaluate_expression(while_node.test, current_state)
-            condition_expr = condition_value.symbolic_expr
-
-            # If condition can be false, add exit path
-            exit_state = current_state.copy()
+        if known is not True:
+            exit_state = state.copy()
             exit_state.add_path_condition(f"not ({condition_expr})")
-            results.append((exit_node, exit_state, path_history))
+            self._with_loop_entry(exit_state, while_node, None)
+            results.append((self._loop_exit(while_node), exit_state, path_history))
 
-            # Continue with loop body
-            continue_state = current_state.copy()
-            continue_state.add_path_condition(condition_expr)
-
-            if while_node.body:
-                # Execute loop body
-                for stmt in while_node.body:
-                    continue_state = self._execute_simple_statement(stmt, continue_state)
-
-            current_state = continue_state
+        if known is not False:
+            if iteration < self._max_while_iterations:
+                body_state = state.copy()
+                body_state.add_path_condition(condition_expr)
+                self._with_loop_entry(body_state, while_node, (iteration + 1, None))
+                results.append((self._first_or_next(while_node.body, while_node), body_state, path_history))
+            else:
+                self._note_unroll_limit(while_node)
 
         return results
+
+    def _loop_items(self, iterable: ast.expr, state: SymbolicState) -> Optional[list[SymbolicValue]]:
+        """Return the concrete items of a range() or list/tuple literal, or None if unknown."""
+        if isinstance(iterable, (ast.List, ast.Tuple)):
+            return [self._evaluate_expression(element, state) for element in iterable.elts]
+        if isinstance(iterable, ast.Call) and isinstance(iterable.func, ast.Name) and iterable.func.id == "range":
+            args = [self._evaluate_expression(arg, state) for arg in iterable.args]
+            bounds = [arg.concrete_value for arg in args if isinstance(arg.concrete_value, int)]
+            if args and not iterable.keywords and len(bounds) == len(args):
+                try:
+                    values = range(*bounds)
+                except (TypeError, ValueError):
+                    return None
+                # Items past the unroll bound are never bound; one extra keeps the limit visible.
+                return [
+                    SymbolicValue(SymbolicValueType.CONSTANT, concrete_value=v, symbolic_expr=str(v))
+                    for v in values[: self._max_while_iterations + 1]
+                ]
+        return None
 
     def _execute_for(
         self, for_node: ast.For, state: SymbolicState, path_history: list[int]
     ) -> list[tuple[Optional[ast.AST], SymbolicState, list[int]]]:
-        """Execute a for loop as zero iterations or one symbolic iteration."""
-        exit_node = self._loop_exit(for_node)
-        self._note_loop_body(for_node)
-        self._approximations.append(f"line {for_node.lineno}: for loop body executed at most once")
+        """Visit a for header: bind the next item or exit, bounded by the unroll limit."""
+        results: list[tuple[Optional[ast.AST], SymbolicState, list[int]]] = []
+        entry = state.metadata.get("loops", {}).get(for_node)
+        # The iterable is evaluated once, on entry.
+        iteration, items = entry if entry is not None else (0, self._loop_items(for_node.iter, state))
+        iter_expr = ast.unparse(for_node.iter)
 
-        # Empty iterable: the body never runs.
-        empty_state = state.copy()
-        loop_state = state.copy()
+        has_next = None if items is None else iteration < len(items)
+        if has_next is not True:
+            exit_state = state.copy()
+            if items is None:
+                exit_state.add_path_condition(f"len({iter_expr}) == {iteration}")
+            self._with_loop_entry(exit_state, for_node, None)
+            results.append((self._loop_exit(for_node), exit_state, path_history))
 
-        # Set up loop variable
-        if isinstance(for_node.target, ast.Name):
-            loop_var = SymbolicValue(
-                value_type=SymbolicValueType.VARIABLE,
-                symbolic_expr=f"loop_var_{for_node.target.id}",
-                line_number=for_node.lineno,
-            )
-            loop_state.set_variable(for_node.target.id, loop_var)
+        if has_next is not False:
+            if iteration < self._max_while_iterations:
+                body_state = state.copy()
+                if items is None:
+                    body_state.add_path_condition(f"len({iter_expr}) > {iteration}")
+                if isinstance(for_node.target, ast.Name):
+                    item = (
+                        items[iteration]
+                        if items is not None
+                        else SymbolicValue(
+                            value_type=SymbolicValueType.VARIABLE,
+                            symbolic_expr=f"loop_var_{for_node.target.id}_{iteration}",
+                            line_number=for_node.lineno,
+                        )
+                    )
+                    body_state.set_variable(for_node.target.id, item)
+                self._with_loop_entry(body_state, for_node, (iteration + 1, items))
+                results.append((self._first_or_next(for_node.body, for_node), body_state, path_history))
+            else:
+                self._note_unroll_limit(for_node)
 
-        if for_node.body:
-            for stmt in for_node.body:
-                loop_state = self._execute_simple_statement(stmt, loop_state)
+        return results
 
-        return [(exit_node, empty_state, path_history), (exit_node, loop_state, path_history)]
+    def _execute_jump(
+        self, node: Union[ast.Break, ast.Continue], state: SymbolicState, path_history: list[int]
+    ) -> list[tuple[Optional[ast.AST], SymbolicState, list[int]]]:
+        """Route break past the loop (skipping its else) and continue to the loop header."""
+        loop = self._enclosing_loop.get(node)
+        if loop is None:
+            return [(None, state, path_history)]
+        if isinstance(node, ast.Continue):
+            return [(loop, state, path_history)]
+        new_state = state.copy()
+        self._with_loop_entry(new_state, loop, None)
+        return [(self._loop_after.get(loop), new_state, path_history)]
 
     def _execute_assign(
         self, assign_node: ast.Assign, state: SymbolicState, path_history: list[int]
@@ -508,21 +566,12 @@ class SymbolicExecutor(BaseAnalyzer):
         new_state = state.copy()
 
         if isinstance(aug_assign_node.target, ast.Name):
-            var_name = aug_assign_node.target.id
-            old_value = new_state.get_variable(var_name)
-            rhs_value = self._evaluate_expression(aug_assign_node.value, new_state)
-
-            # Create symbolic representation of the operation
-            op_str = self._get_operator_string(aug_assign_node.op)
-            if old_value:
-                new_expr = f"({old_value.symbolic_expr} {op_str} {rhs_value.symbolic_expr})"
-            else:
-                new_expr = f"(unknown {op_str} {rhs_value.symbolic_expr})"
-
-            new_value = SymbolicValue(
-                value_type=SymbolicValueType.BINARY_OP, symbolic_expr=new_expr, line_number=aug_assign_node.lineno
+            # x op= v evaluates as x op v, so concrete operands stay concrete.
+            target = ast.Name(id=aug_assign_node.target.id, ctx=ast.Load())
+            binop = ast.copy_location(
+                ast.BinOp(left=target, op=aug_assign_node.op, right=aug_assign_node.value), aug_assign_node
             )
-            new_state.set_variable(var_name, new_value)
+            new_state.set_variable(aug_assign_node.target.id, self._evaluate_expression(binop, new_state))
 
         return [(self._next_nodes.get(aug_assign_node), new_state, path_history)]
 
@@ -545,20 +594,6 @@ class SymbolicExecutor(BaseAnalyzer):
         new_state = state.copy()
         self._evaluate_expression(expr_stmt.value, new_state)
         return [(self._next_nodes.get(expr_stmt), new_state, path_history)]
-
-    def _execute_simple_statement(self, stmt: ast.stmt, state: SymbolicState) -> SymbolicState:
-        """Execute a simple statement and return the modified state."""
-        if isinstance(stmt, ast.Assign):
-            paths = self._execute_assign(stmt, state, [])
-            return paths[0][1] if paths else state
-        elif isinstance(stmt, ast.AugAssign):
-            paths = self._execute_aug_assign(stmt, state, [])
-            return paths[0][1] if paths else state
-        elif isinstance(stmt, ast.Expr):
-            paths = self._execute_expression_stmt(stmt, state, [])
-            return paths[0][1] if paths else state
-        else:
-            return state
 
     def _evaluate_expression(self, expr: ast.expr, state: SymbolicState) -> SymbolicValue:
         """Evaluate an expression symbolically."""
@@ -613,6 +648,26 @@ class SymbolicExecutor(BaseAnalyzer):
                 value_type=SymbolicValueType.UNARY_OP,
                 concrete_value=concrete_result,
                 symbolic_expr=f"({op_str}{operand.symbolic_expr})",
+                line_number=getattr(expr, "lineno", 0),
+            )
+        elif isinstance(expr, ast.Compare):
+            operands = [self._evaluate_expression(operand, state) for operand in [expr.left, *expr.comparators]]
+            concrete_result = None
+            if all(operand.is_concrete() for operand in operands):
+                try:
+                    concrete_result = all(
+                        self._apply_compare_op(op, left.concrete_value, right.concrete_value)
+                        for op, left, right in zip(expr.ops, operands, operands[1:])
+                    )
+                except TypeError:
+                    pass
+            parts = [operands[0].symbolic_expr]
+            for op, operand in zip(expr.ops, operands[1:]):
+                parts += [self._COMPARE_OPS[type(op)][0], operand.symbolic_expr]
+            return SymbolicValue(
+                value_type=SymbolicValueType.BINARY_OP,
+                concrete_value=concrete_result,
+                symbolic_expr=f"({' '.join(parts)})",
                 line_number=getattr(expr, "lineno", 0),
             )
         elif isinstance(expr, ast.Call):
@@ -676,6 +731,23 @@ class SymbolicExecutor(BaseAnalyzer):
             return left**right
         else:
             raise TypeError(f"Unsupported operator: {type(op)}")
+
+    _COMPARE_OPS: dict[type, tuple[str, Any]] = {
+        ast.Eq: ("==", operator.eq),
+        ast.NotEq: ("!=", operator.ne),
+        ast.Lt: ("<", operator.lt),
+        ast.LtE: ("<=", operator.le),
+        ast.Gt: (">", operator.gt),
+        ast.GtE: (">=", operator.ge),
+        ast.Is: ("is", operator.is_),
+        ast.IsNot: ("is not", operator.is_not),
+        ast.In: ("in", lambda a, b: operator.contains(b, a)),
+        ast.NotIn: ("not in", lambda a, b: not operator.contains(b, a)),
+    }
+
+    def _apply_compare_op(self, op: ast.cmpop, left: Any, right: Any) -> bool:
+        """Apply a comparison operator to concrete values."""
+        return bool(self._COMPARE_OPS[type(op)][1](left, right))
 
     def _apply_unary_op(self, op: ast.unaryop, operand: Any) -> Any:
         """Apply a unary operator to a concrete value."""

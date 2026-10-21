@@ -108,7 +108,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 - **Strict verification requires a proof.** It halted only on a disproof, so an undecided access (`a[i]` with symbolic `i`) proceeded to generation. Strict mode now fails unless every property is PROVED; non-strict mode still warns. `MemorySafetyProof.is_proved` exposes the distinction. The prover has no `len()` model yet, so strict mode rejects nearly every non-literal subscript (TODO R-7).
 
+- **The bounds prover models program state** (R-7). Each access is checked under its path condition: `if`/`while` tests, early returns, short-circuit operands, and `range`/`enumerate` bounds. Lengths are tracked through literals, `[x] * n`, `len()`, aliasing, and `append`/`pop`/`extend`/`clear`. Strict mode now accepts guarded code such as `if 0 <= i < len(a): a[i]`. Annotated literals (`a: list[int] = [1, 2, 3]`) were previously never decided. Dict lookups and slices are no longer reported as bounds accesses.
+
+  The model over-approximates: an untracked value is a fresh symbol, a loop havocs what its body changes, and a list passed to a call or stored in a container has an unknown length. DISPROVED now means the access fails on every execution that reaches it. An access that fails only for some inputs (`a[i]` with unconstrained parameters) is UNKNOWN, since the caller may exclude those inputs. Without this rule every parameter-indexed access would be reported unsafe.
+
 ### Fixed
+
+- **The symbolic executor runs loop bodies** (R-5). Bodies ran inline and skipped `if`, `break`, `continue`, `return` and nested loops, and `for` ran at most once. Loop bodies now return to the loop header, which unrolls up to three iterations; `break` skips the loop's `else`. `range()` with constant arguments and list literals iterate exactly. Comparisons now evaluate, so a concrete `if` takes one branch. `approximations` records a loop only when its bound cut a path.
 
 - **Rust: the last translation-corpus failures.** Rust now passes every program in the differential tests.
   - `set.add`, `set.remove` and `set.discard` emitted methods `HashSet` does not have.
