@@ -7,6 +7,7 @@ It ensures that:
 3. Output matches expected results
 """
 
+import os
 import shutil
 import subprocess
 import sys
@@ -353,7 +354,9 @@ def _error_params() -> list:
 
 def cpython_failure(program: Path) -> tuple[str, int, str]:
     """Run a failing program under CPython; return its stdout, exit status and exception name."""
-    proc = subprocess.run([sys.executable, str(program)], capture_output=True, text=True, timeout=30)
+    # PYTHON_COLORS=0 overrides FORCE_COLOR (set in CI), which colorizes 3.13+ tracebacks.
+    env = {**os.environ, "PYTHON_COLORS": "0"}
+    proc = subprocess.run([sys.executable, str(program)], capture_output=True, text=True, timeout=30, env=env)
     assert proc.returncode != 0, "error fixture exited 0"
     return proc.stdout, proc.returncode, proc.stderr.strip().splitlines()[-1].split(":")[0]
 
