@@ -55,7 +55,7 @@ def test_range_filtered_comprehension(n: int) -> list:
 
         assert "listComprehensionWithFilter" in haskell_code
         assert "rangeList (range n)" in haskell_code
-        assert "(`mod` 2)" in haskell_code or "(i `mod` 2)" in haskell_code
+        assert "(`pyMod` 2)" in haskell_code or "(i `pyMod` 2)" in haskell_code
 
     def test_complex_list_comprehension(self):
         """Test complex list comprehension with mathematical operations."""
@@ -78,7 +78,7 @@ def test_nested_expression(matrix: list) -> list:
         haskell_code = self.converter.convert_code(python_code)
 
         assert "listComprehension matrix" in haskell_code
-        assert "len' row" in haskell_code
+        assert "(len' (row))" in haskell_code
 
 
 class TestHaskellDictComprehensions:
@@ -133,7 +133,7 @@ def test_string_dict_comprehension(words: list) -> dict:
 
         assert "dictComprehension words" in haskell_code
         assert "upper word" in haskell_code
-        assert "len' word" in haskell_code
+        assert "(len' (word))" in haskell_code
 
     def test_complex_dict_comprehension(self):
         """Test complex dictionary comprehension with conditions."""
@@ -144,7 +144,7 @@ def test_complex_dict_comprehension(data: list) -> dict:
         haskell_code = self.converter.convert_code(python_code)
 
         assert "dictComprehensionWithFilter data" in haskell_code
-        assert "(`mod` 3)" in haskell_code or "(x `mod` 3)" in haskell_code
+        assert "(`pyMod` 3)" in haskell_code or "(x `pyMod` 3)" in haskell_code
         assert "toString x" in haskell_code
         assert "((x * 2) + 1)" in haskell_code
 
@@ -188,7 +188,7 @@ def test_range_set_comprehension(n: int) -> set:
 
         assert "setComprehension" in haskell_code
         assert "rangeList (range n)" in haskell_code
-        assert "(`mod` 3)" in haskell_code or "(i `mod` 3)" in haskell_code
+        assert "(`pyMod` 3)" in haskell_code or "(i `pyMod` 3)" in haskell_code
 
     def test_set_comprehension_deduplication(self):
         """Test set comprehension with operations that create duplicates."""
@@ -200,7 +200,7 @@ def test_dedup_set_comprehension(numbers: list) -> set:
 
         assert "setComprehensionWithFilter numbers" in haskell_code
         assert "(x > 0)" in haskell_code
-        assert "`div`" in haskell_code
+        assert "`pyFloorDiv`" in haskell_code
 
     def test_set_comprehension_with_string_ops(self):
         """Test set comprehension with string operations."""
@@ -211,7 +211,7 @@ def test_string_set_comprehension(words: list) -> set:
         haskell_code = self.converter.convert_code(python_code)
 
         assert "setComprehensionWithFilter words" in haskell_code
-        assert "len' word" in haskell_code
+        assert "(len' (word))" in haskell_code
         assert "upper word" in haskell_code
 
 
@@ -232,7 +232,7 @@ def test_comprehension_args(numbers: list) -> int:
         haskell_code = self.converter.convert_code(python_code)
 
         assert "listComprehension numbers" in haskell_code
-        assert "sum' squares" in haskell_code
+        assert "(sum' (squares))" in haskell_code
 
     def test_comprehensions_with_multiple_operations(self):
         """Test comprehensions with multiple mathematical operations."""
@@ -260,7 +260,7 @@ def test_nested_context(matrix: list) -> dict:
 
         # First comprehension should be present
         assert "listComprehension matrix" in haskell_code
-        assert "sum' row" in haskell_code
+        assert "(sum' (row))" in haskell_code
 
         # Second comprehension should be present
         assert "listComprehensionWithFilter" in haskell_code

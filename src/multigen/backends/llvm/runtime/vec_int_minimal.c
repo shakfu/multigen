@@ -78,7 +78,7 @@ long long vec_int_at(vec_int* vec, size_t index) {
         exit(1);
     }
     if (index >= vec->size) {
-        fprintf(stderr, "vec_int error: Index %zu out of bounds (size = %zu)\n", index, vec->size);
+        fprintf(stderr, "IndexError: list index out of range\n");
         exit(1);
     }
     return vec->data[index];
@@ -91,7 +91,7 @@ void vec_int_set(vec_int* vec, size_t index, long long value) {
         exit(1);
     }
     if (index >= vec->size) {
-        fprintf(stderr, "vec_int error: Index %zu out of bounds for set (size = %zu)\n", index, vec->size);
+        fprintf(stderr, "IndexError: list assignment index out of range\n");
         exit(1);
     }
     vec->data[index] = value;

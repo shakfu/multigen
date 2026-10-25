@@ -28,7 +28,7 @@ class MultiGenPythonToRustConverter:
             "bool": "bool",
             "str": "String",
             "list": "Vec<Box<dyn std::any::Any>>",
-            "dict": "std::collections::HashMap<String, Box<dyn std::any::Any>>",
+            "dict": "OrderedHashMap<String, Box<dyn std::any::Any>>",
             "set": "std::collections::HashSet<Box<dyn std::any::Any>>",
             "void": "()",
             "None": "()",
@@ -162,6 +162,8 @@ class MultiGenPythonToRustConverter:
 
         # Add functions to parts
         parts.extend(functions)
+        if has_main:
+            parts.append("fn main() {\n    run_main(__py_main);\n}")
 
         # Add main function if not present
         if not has_main:
@@ -696,7 +698,7 @@ class MultiGenPythonToRustConverter:
             # Apply to collections only (Vec, HashMap, HashSet)
             if (
                 param_type.startswith("Vec<")
-                or param_type.startswith("std::collections::HashMap<")
+                or param_type.startswith("OrderedHashMap<")
                 or param_type.startswith("std::collections::HashSet<")
             ):
                 if arg.arg in mut_params:
@@ -723,8 +725,8 @@ class MultiGenPythonToRustConverter:
             # Check for Box<dyn Any> or default container types (HashMap<i64, i64>, Vec<i64>, etc.)
             needs_inference = (
                 "Box<dyn" in mapped_type
-                or mapped_type == "std::collections::HashMap<i64, i64>"
-                or mapped_type == "std::collections::HashMap<String, i64>"
+                or mapped_type == "OrderedHashMap<i64, i64>"
+                or mapped_type == "OrderedHashMap<String, i64>"
                 or mapped_type == "Vec<i64>"
                 or mapped_type == "std::collections::HashSet<i64>"
             )
@@ -763,7 +765,9 @@ class MultiGenPythonToRustConverter:
         self.function_return_types[node.name] = actual_return_type
 
         # Build function signature
-        func_signature = f"fn {node.name}({params_str}){return_type}"
+        # run_main wraps the program's main to report an escaping exception and exit 1.
+        func_name = "__py_main" if node.name == "main" else node.name
+        func_signature = f"fn {func_name}({params_str}){return_type}"
 
         # Convert function body
         self.current_function = node.name
@@ -781,7 +785,7 @@ class MultiGenPythonToRustConverter:
             # Store the parameter type with appropriate reference qualifier
             if (
                 param_type.startswith("Vec<")
-                or param_type.startswith("std::collections::HashMap<")
+                or param_type.startswith("OrderedHashMap<")
                 or param_type.startswith("std::collections::HashSet<")
             ):
                 if arg.arg in mut_params:
@@ -1225,16 +1229,19 @@ class MultiGenPythonToRustConverter:
             # Just omit the return statement in main
             return ""
 
+        value_expr = ""
+        if stmt.value:
+            is_f64 = self.function_return_types.get(self.current_function or "") == "f64"
+            value_expr = self._as_float(stmt.value) if is_f64 else self._convert_expression(stmt.value)
+
         if self._try_return_depth > 0:
             # Inside a catch_unwind closure: hand the value back as Some(..) so
             # _convert_try can re-issue the return outside the closure.
             if stmt.value:
-                value_expr = self._convert_expression(stmt.value)
                 return f"    return Some({value_expr});"
             return "    return Some(());"
 
         if stmt.value:
-            value_expr = self._convert_expression(stmt.value)
             return f"    return {value_expr};"
         return "    return ();"
 
@@ -1300,7 +1307,11 @@ class MultiGenPythonToRustConverter:
                     # Choose appropriate assignment syntax based on container type
                     if "Vec<" in container_type:
                         # Vector: use direct indexing with as usize cast
-                        statements.append(f"    {container_expr}[{index_expr} as usize] = {value_expr};")
+                        # Index first: xs.len() inside xs[..] = v conflicts with the IndexMut borrow
+                        statements.append(
+                            f"    {{ let __mg_i = py_index(({index_expr}) as i64, {container_expr}.len()); "
+                            f"{container_expr}[__mg_i] = {value_expr}; }}"
+                        )
                     else:
                         # HashMap/HashSet: use insert method
                         # If the key is used in the value expression, we need to clone it
@@ -1331,8 +1342,8 @@ class MultiGenPythonToRustConverter:
             # A scalar annotation is the declared type; inference can only guess it.
             if isinstance(stmt.annotation, ast.Name) and stmt.annotation.id in ("int", "float", "bool", "str"):
                 var_type = self.type_map[stmt.annotation.id]
-                if var_type == "f64" and isinstance(stmt.value, ast.Constant) and type(stmt.value.value) is int:
-                    value_expr = f"({value_expr}) as f64"
+                if var_type == "f64":
+                    value_expr = self._as_float(stmt.value)
 
             # Special case: If we inferred Vec<i64> from an empty list but annotation is 'list',
             # check if we're in a function and analyze usage to detect nested lists
@@ -1347,17 +1358,13 @@ class MultiGenPythonToRustConverter:
 
             # Special case: If we inferred HashMap<i64, i64> from an empty dict but annotation is 'dict',
             # check if we're in a function and analyze usage to detect key/value types
-            if (
-                var_type == "std::collections::HashMap<i64, i64>"
-                and isinstance(stmt.value, ast.Dict)
-                and not stmt.value.keys
-            ):
+            if var_type == "OrderedHashMap<i64, i64>" and isinstance(stmt.value, ast.Dict) and not stmt.value.keys:
                 if isinstance(stmt.target, ast.Name) and self.current_function_node:
                     # We have an empty dict - analyze how it's used
                     dict_types = self._infer_dict_types_from_usage(stmt.target.id, self.current_function_node)
                     if dict_types:
                         key_type, value_type = dict_types
-                        var_type = f"std::collections::HashMap<{key_type}, {value_type}>"
+                        var_type = f"OrderedHashMap<{key_type}, {value_type}>"
         else:
             var_type = self._map_type_annotation(stmt.annotation)
             value_expr = self._get_default_value(var_type)
@@ -1379,6 +1386,8 @@ class MultiGenPythonToRustConverter:
     def _convert_aug_assignment(self, stmt: ast.AugAssign) -> str:
         """Convert augmented assignment."""
         value_expr = self._convert_expression(stmt.value)
+        if isinstance(stmt.target, ast.Name) and self.variable_types.get(stmt.target.id) == "f64":
+            value_expr = self._as_float(stmt.value)
 
         if isinstance(stmt.op, (ast.FloorDiv, ast.Mod)) and isinstance(stmt.target, ast.Name):
             return f"    {stmt.target.id} = {self._floor_op_call(stmt.op, stmt.target.id, value_expr)};"
@@ -1454,6 +1463,10 @@ class MultiGenPythonToRustConverter:
                 raise UnsupportedFeatureError(f"For-loop target not supported: {ast.unparse(stmt.target)}")
             target = stmt.target.id
             iter_expr = self._convert_expression(stmt.iter)
+            # `for k in d` yields keys; iterating the map itself yields pairs and moves it.
+            iter_type = self._infer_type_from_value(stmt.iter).removeprefix("&mut ").removeprefix("&")
+            if iter_type.startswith("OrderedHashMap<"):
+                iter_expr = f"{iter_expr}.keys().cloned()"
             body = self._convert_statements(stmt.body)
             return f"    for {target} in {iter_expr} {{\n{body}\n    }}"
 
@@ -1527,6 +1540,14 @@ class MultiGenPythonToRustConverter:
 
     def _convert_binop(self, expr: ast.BinOp) -> str:
         """Convert binary operations."""
+        if isinstance(expr.op, self._FLOAT_OPS) and self._is_float_expr(expr):
+            left, right = self._as_float(expr.left), self._as_float(expr.right)
+            if isinstance(expr.op, ast.Pow):
+                return f"f64::powf({left}, {right})"
+            if isinstance(expr.op, (ast.FloorDiv, ast.Mod)):
+                return self._floor_op_call(expr.op, left, right)
+            return f"({left} {get_standard_binary_operator(expr.op)} {right})"
+
         left = self._convert_expression(expr.left)
         right = self._convert_expression(expr.right)
 
@@ -1544,6 +1565,60 @@ class MultiGenPythonToRustConverter:
         if op is None:
             op = "/*UNKNOWN_OP*/"
         return f"({left} {op} {right})"
+
+    _FLOAT_OPS = (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.FloorDiv, ast.Mod, ast.Pow)
+
+    def _is_float_expr(self, expr: ast.expr) -> bool:
+        """Report whether an expression is a Python float; Rust needs both operands as f64."""
+        if isinstance(expr, ast.Constant):
+            return isinstance(expr.value, float)
+        if isinstance(expr, ast.Name):
+            return self.variable_types.get(expr.id) == "f64"
+        if isinstance(expr, ast.BinOp):
+            return isinstance(expr.op, ast.Div) or self._is_float_expr(expr.left) or self._is_float_expr(expr.right)
+        if isinstance(expr, ast.UnaryOp):
+            return not isinstance(expr.op, ast.Not) and self._is_float_expr(expr.operand)
+        if isinstance(expr, ast.IfExp):
+            return self._is_float_expr(expr.body) or self._is_float_expr(expr.orelse)
+        if isinstance(expr, ast.Call) and isinstance(expr.func, ast.Name):
+            return expr.func.id == "float" or self.function_return_types.get(expr.func.id) == "f64"
+        if isinstance(expr, (ast.Call, ast.Attribute)):
+            # math constants and functions are floats, except floor and ceil.
+            target = expr.func if isinstance(expr, ast.Call) else expr
+            if isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) and target.value.id == "math":
+                return target.attr not in ("floor", "ceil")
+        if isinstance(expr, ast.Subscript):
+            return self._infer_type_from_value(expr) == "f64"
+        return False
+
+    def _is_bool_expr(self, expr: ast.expr) -> bool:
+        """Report whether an expression is a Python bool, which prints as True or False."""
+        if isinstance(expr, (ast.Compare, ast.BoolOp)):
+            return True
+        if isinstance(expr, ast.UnaryOp):
+            return isinstance(expr.op, ast.Not)
+        if isinstance(expr, ast.Constant):
+            return isinstance(expr.value, bool)
+        if isinstance(expr, ast.Name):
+            return self.variable_types.get(expr.id) == "bool"
+        if isinstance(expr, ast.Call) and isinstance(expr.func, ast.Name):
+            return expr.func.id == "bool" or self.function_return_types.get(expr.func.id) == "bool"
+        return False
+
+    def _as_float(self, expr: ast.expr) -> str:
+        """Convert an operand of float arithmetic; Python promotes an int operand, Rust does not."""
+        if isinstance(expr, ast.Constant) and type(expr.value) is int:
+            return f"{expr.value}.0"
+        code = self._convert_expression(expr)
+        return code if self._is_float_expr(expr) else f"({code} as f64)"
+
+    def _py_display(self, expr: ast.expr, code: str) -> str:
+        """Wrap a float or bool so it formats as Python's str() does; Rust's Display differs."""
+        if self._is_float_expr(expr):
+            return f"py_float_str({code})"
+        if self._is_bool_expr(expr):
+            return f"py_bool_str({code})"
+        return code
 
     def _is_string_expr(self, expr: ast.expr, class_name: Optional[str] = None) -> bool:
         """Check if an expression has Python type str, so `+` on it concatenates."""
@@ -1610,6 +1685,9 @@ class MultiGenPythonToRustConverter:
                     result = f"({result} {op_str} {comp_expr})"
             else:
                 comp_expr = self._convert_expression(comp)
+                # Python compares an int with a float by value; Rust needs one type.
+                if len(expr.ops) == 1 and self._is_float_expr(expr.left) != self._is_float_expr(comp):
+                    result, comp_expr = self._as_float(expr.left), self._as_float(comp)
                 result = f"({result} {op_str} {comp_expr})"
 
         return result
@@ -1649,7 +1727,7 @@ class MultiGenPythonToRustConverter:
         """Convert dictionary literals."""
         if not expr.keys:
             # Empty dictionary
-            return "std::collections::HashMap::new()"
+            return "OrderedHashMap::new()"
 
         # Convert key-value pairs
         pairs = []
@@ -1659,7 +1737,7 @@ class MultiGenPythonToRustConverter:
             pairs.append(f"({key_expr}, {value_expr})")
 
         # Create HashMap using collect()
-        return f"[{', '.join(pairs)}].iter().cloned().collect::<std::collections::HashMap<_, _>>()"
+        return f"[{', '.join(pairs)}].iter().cloned().collect::<OrderedHashMap<_, _>>()"
 
     def _convert_set_literal(self, expr: ast.Set) -> str:
         """Convert set literals."""
@@ -1690,12 +1768,11 @@ class MultiGenPythonToRustConverter:
 
             # Check if it's a HashMap type
             if var_type and "HashMap" in var_type:
-                # Use HashMap .get() method and dereference to get the value
-                # Rust will auto-borrow if a reference is needed
-                return f"*{value}.get(&{slice_expr}).unwrap_or(&0)"
+                # getitem raises KeyError on a missing key, as Python does
+                return f"{value}.getitem(&{slice_expr}).clone()"
             else:
-                # For Vec types, use direct indexing
-                return f"{value}[{slice_expr} as usize]"
+                # py_index counts a negative index from the end and raises IndexError
+                return f"{value}[py_index(({slice_expr}) as i64, {value}.len())]"
 
         # For complex expressions or unknown types, assume Vec (safer default)
         return f"{value}[{slice_expr} as usize]"
@@ -1761,6 +1838,7 @@ class MultiGenPythonToRustConverter:
                     format_parts.append("{" + rust_spec + "}")
                 else:
                     format_parts.append("{}")
+                    expr_code = self._py_display(value.value, expr_code)
                 args.append(expr_code)
 
         format_string = "".join(format_parts)
@@ -1804,26 +1882,31 @@ class MultiGenPythonToRustConverter:
                 # list() with no args -> vec![]
                 return "vec![]"
             elif func_name == "dict" and len(args) == 0:
-                # dict() with no args -> HashMap::new()
-                return "std::collections::HashMap::new()"
+                # dict() with no args -> OrderedHashMap::new()
+                return "OrderedHashMap::new()"
             elif func_name == "set" and len(args) == 0:
                 # set() with no args -> HashSet::new()
                 return "std::collections::HashSet::new()"
 
             # Handle built-in functions
             if func_name == "print":
-                args_str = ", ".join(args)
-                return f"print_value({args_str})"
+                shown = [self._py_display(node, code) for node, code in zip(expr.args, args)]
+                if len(shown) == 1:
+                    return f"print_value({shown[0]})"
+                # Python separates arguments with one space
+                placeholders = " ".join(["{}"] * len(shown))
+                return f'println!("{placeholders}"{"".join(", " + v for v in shown)})'
             elif func_name == "len":
                 if args:
                     # Infer which len function to use based on argument type
                     arg_expr = expr.args[0]
-                    arg_type = self._infer_type_from_value(arg_expr)
+                    # A borrowed parameter is typed `&T`; len depends on T
+                    arg_type = self._infer_type_from_value(arg_expr).removeprefix("&mut ").removeprefix("&")
 
                     # All len functions return usize, cast to i64 for Python semantics
                     if arg_type.startswith("Vec<"):
                         return f"(Builtins::len_vec(&{args[0]}) as i64)"
-                    elif arg_type.startswith("std::collections::HashMap<"):
+                    elif arg_type.startswith("OrderedHashMap<"):
                         return f"(Builtins::len_hashmap(&{args[0]}) as i64)"
                     elif arg_type.startswith("std::collections::HashSet<"):
                         return f"(Builtins::len_hashset(&{args[0]}) as i64)"
@@ -1865,7 +1948,7 @@ class MultiGenPythonToRustConverter:
             elif func_name == "float":
                 return f"to_f64_from_i64({args[0]})"
             elif func_name == "str":
-                return f"to_string({args[0]})"
+                return f"to_string({self._py_display(expr.args[0], args[0])})"
             elif func_name == "range":
                 if len(args) == 1:
                     return f"new_range({args[0]}).collect()"
@@ -1881,6 +1964,13 @@ class MultiGenPythonToRustConverter:
                     args_str = ", ".join(args)
                     return f"{func_name}::new({args_str})"
                 else:
+                    # Python passes an int to a float parameter; Rust needs the cast.
+                    callee_params = self._function_defs.get(func_name)
+                    if callee_params:
+                        callee = next(iter(callee_params.values()))
+                        for i, (param, arg_node) in enumerate(zip(callee.args.args, expr.args)):
+                            if self._infer_parameter_type(param, callee) == "f64":
+                                args[i] = self._as_float(arg_node)
                     # Check if this function has parameters that expect references
                     if func_name in self.mutability_info:
                         func_mutability = self.mutability_info[func_name]
@@ -1901,7 +1991,7 @@ class MultiGenPythonToRustConverter:
 
                                     # Determine if we need to pass by reference
                                     # Apply to collections only (Vec, HashMap, HashSet)
-                                    if var_type.startswith("Vec<") or var_type.startswith("std::collections::"):
+                                    if var_type.startswith(("Vec<", "OrderedHashMap<", "std::collections::")):
                                         if mutability == MutabilityClass.MUTABLE:
                                             modified_args.append(f"&mut {arg}")
                                         elif mutability in (MutabilityClass.READ_ONLY, MutabilityClass.IMMUTABLE):
@@ -2093,7 +2183,7 @@ class MultiGenPythonToRustConverter:
 
         items_chain = self._dict_items_comprehension(expr, [key_expr, value_expr])
         if items_chain is not None:
-            return f"{items_chain}.collect::<std::collections::HashMap<_, _>>()"
+            return f"{items_chain}.collect::<OrderedHashMap<_, _>>()"
         if not isinstance(target, ast.Name):
             raise UnsupportedFeatureError(f"Comprehension target not supported: {ast.unparse(target)}")
 
@@ -2255,8 +2345,8 @@ class MultiGenPythonToRustConverter:
                     if isinstance(annotation.slice, ast.Tuple) and len(annotation.slice.elts) == 2:
                         key_type = self._map_type_annotation(annotation.slice.elts[0])
                         value_type = self._map_type_annotation(annotation.slice.elts[1])
-                        return f"std::collections::HashMap<{key_type}, {value_type}>"
-                    return "std::collections::HashMap<String, i64>"  # Default
+                        return f"OrderedHashMap<{key_type}, {value_type}>"
+                    return "OrderedHashMap<String, i64>"  # Default
                 elif container_type == "set":
                     # set[int] -> HashSet<i64>
                     if isinstance(annotation.slice, ast.Name):
@@ -2363,8 +2453,8 @@ class MultiGenPythonToRustConverter:
                 if element_type:
                     if base_type.startswith("Vec<"):
                         return f"Vec<{element_type}>"
-                    elif base_type.startswith("std::collections::HashMap<"):
-                        return f"std::collections::HashMap<String, {element_type}>"
+                    elif base_type.startswith("OrderedHashMap<"):
+                        return f"OrderedHashMap<String, {element_type}>"
                     elif base_type.startswith("std::collections::HashSet<"):
                         return f"std::collections::HashSet<{element_type}>"
 
@@ -2490,7 +2580,7 @@ class MultiGenPythonToRustConverter:
                         # Only check empty LITERALS, not function calls or other expressions
                         if isinstance(stmt.value, ast.Dict) and len(stmt.value.keys) == 0:
                             # Empty dict literal - check if it has a generic type
-                            if "std::collections::HashMap<" in base_type and (
+                            if "OrderedHashMap<" in base_type and (
                                 "Box<dyn" in base_type or base_type.endswith("<i64, i64>")
                             ):
                                 # Generic or default dict type - infer from usage
@@ -2700,7 +2790,7 @@ class MultiGenPythonToRustConverter:
                         dict_types = self._infer_dict_types_from_usage(var_name, func)
                         if dict_types:
                             key_type, value_type = dict_types
-                            return f"std::collections::HashMap<{key_type}, {value_type}>"
+                            return f"OrderedHashMap<{key_type}, {value_type}>"
                         # Try list type inference
                         element_type = self._infer_list_element_type_from_appends(var_name, func)
                         if element_type:
@@ -2713,17 +2803,17 @@ class MultiGenPythonToRustConverter:
                                 dict_types = self._infer_dict_types_from_usage(var_name, func)
                                 if dict_types:
                                     key_type, value_type = dict_types
-                                    return f"std::collections::HashMap<{key_type}, {value_type}>"
+                                    return f"OrderedHashMap<{key_type}, {value_type}>"
                             elif "Vec<" in inferred_type:
                                 element_type = self._infer_list_element_type_from_appends(var_name, func)
                                 if element_type:
                                     return f"Vec<{element_type}>"
-                        elif inferred_type == "std::collections::HashMap<i64, i64>":
+                        elif inferred_type == "OrderedHashMap<i64, i64>":
                             # Default int dict - try to get more specific type from usage
                             dict_types = self._infer_dict_types_from_usage(var_name, func)
                             if dict_types:
                                 key_type, value_type = dict_types
-                                return f"std::collections::HashMap<{key_type}, {value_type}>"
+                                return f"OrderedHashMap<{key_type}, {value_type}>"
                         elif inferred_type == "Vec<i64>":
                             # Default int vec - try to get more specific element type
                             element_type = self._infer_list_element_type_from_appends(var_name, func)
@@ -2785,8 +2875,8 @@ class MultiGenPythonToRustConverter:
             return "Vec::new()"
 
         # Handle HashMap<K, V> types
-        if rust_type.startswith("std::collections::HashMap<"):
-            return "std::collections::HashMap::new()"
+        if rust_type.startswith("OrderedHashMap<"):
+            return "OrderedHashMap::new()"
 
         # Handle HashSet<T> types
         if rust_type.startswith("std::collections::HashSet<"):

@@ -382,7 +382,7 @@ def lookup_score(scores: dict[str, int], name: str) -> int:
         rust_code = self.converter.convert_code(python_code)
 
         # Immutability analysis detects read-only parameter, generates immutable reference
-        assert "fn lookup_score(scores: &std::collections::HashMap<String, i64>, name: String) -> i64" in rust_code
+        assert "fn lookup_score(scores: &OrderedHashMap<String, i64>, name: String) -> i64" in rust_code
 
     def test_subscripted_set_type(self):
         """Test subscripted set type annotation (Python 3.9+)."""
@@ -415,7 +415,7 @@ def create_dict() -> dict[str, int]:
 """
         rust_code = self.converter.convert_code(python_code)
 
-        assert "let mut mapping: std::collections::HashMap<String, i64>" in rust_code
+        assert "let mut mapping: OrderedHashMap<String, i64>" in rust_code
 
     @pytest.mark.parametrize(
         "annotation,test",
@@ -455,12 +455,12 @@ def create_dict() -> dict[str, int]:
         rust_code = self.converter.convert_code(python_code)
 
         assert "let mut found: bool =" in rust_code
-        assert "let mut x: f64 = (1) as f64;" in rust_code
+        assert "let mut x: f64 = 1.0;" in rust_code
 
     @pytest.mark.parametrize(
         "annotation,value,rust_type",
         [
-            ("dict[str, int]", "{}", "std::collections::HashMap<String, i64>"),
+            ("dict[str, int]", "{}", "OrderedHashMap<String, i64>"),
             ("list[str]", "[]", "Vec<String>"),
             ("set[str]", "set()", "std::collections::HashSet<String>"),
         ],

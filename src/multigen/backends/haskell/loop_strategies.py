@@ -26,6 +26,13 @@ def _reject_fold_capture(expr: ast.expr, accumulated: str) -> None:
             )
 
 
+def _fold_operand(converter: "MultiGenPythonToHaskellConverter", stmt: ast.AugAssign) -> str:
+    """Convert an augmented assignment's value; a Double accumulator promotes an Int value."""
+    if converter._scalar_type(stmt.target) == "float":
+        return converter._as_double(stmt.value)
+    return converter._convert_expression(stmt.value)
+
+
 class HaskellNestedListBuildingStrategy(ForLoopStrategy):
     """Strategy for nested loop pattern building 2D lists.
 
@@ -221,7 +228,7 @@ class HaskellAccumulationStrategy(ForLoopStrategy):
         assert isinstance(stmt, ast.AugAssign) and isinstance(stmt.target, ast.Name)
         var_name_target = converter._to_haskell_var_name(stmt.target.id)
         _reject_fold_capture(stmt.value, stmt.target.id)
-        value_expr = converter._convert_expression(stmt.value)
+        value_expr = _fold_operand(converter, stmt)
         op = converter._convert_operator(stmt.op)
 
         if context.current_function != "main":
@@ -270,7 +277,7 @@ class HaskellConditionalAccumulationStrategy(ForLoopStrategy):
         _reject_fold_capture(stmt.value, stmt.target.id)
         target = converter._to_haskell_var_name(stmt.target.id)
         condition = converter._convert_expression(if_stmt.test)
-        value_expr = converter._convert_expression(stmt.value)
+        value_expr = _fold_operand(converter, stmt)
         op = converter._convert_operator(stmt.op)
         step = f"if {condition} then acc {op} ({value_expr}) else acc"
 

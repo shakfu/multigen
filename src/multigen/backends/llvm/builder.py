@@ -121,7 +121,7 @@ all: $(TARGET)
 
 # Link object files to create executable
 $(TARGET): $(OBJECT_FILES) $(RUNTIME_OBJECTS)
-\t$(CLANG) $(OBJECT_FILES) $(RUNTIME_OBJECTS) -o $(TARGET)
+\t$(CLANG) $(OBJECT_FILES) $(RUNTIME_OBJECTS) -o $(TARGET) -lm
 
 # Clean build artifacts
 clean:
@@ -184,6 +184,7 @@ run: $(TARGET)
             *runtime_objects,
             "-o",
             str(paths.executable_path),
+            "-lm",  # frem and llvm.floor lower to fmod and floor
         ]
 
         # Add ASAN flags to linker if requested

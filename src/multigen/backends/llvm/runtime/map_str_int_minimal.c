@@ -142,21 +142,16 @@ void map_str_int_set(map_str_int* map, const char* key, long long value) {
     entry->value = value;
 }
 
-// Get value by key (returns 0 if key doesn't exist)
+// Get value by key: a missing key raises KeyError, as Python's d[k] does
 long long map_str_int_get(map_str_int* map, const char* key) {
-    if (!map || !key) {
-        return 0;
+    map_entry* entry = NULL;
+    if (map && map->capacity > 0 && key) {
+        entry = find_entry(map->entries, map->capacity, key);
     }
-
-    if (map->capacity == 0) {
-        return 0;
-    }
-
-    map_entry* entry = find_entry(map->entries, map->capacity, key);
     if (!entry || !entry->is_occupied || !entry->key) {
-        return 0;
+        fprintf(stderr, "KeyError: '%s'\n", key ? key : "");
+        exit(1);
     }
-
     return entry->value;
 }
 

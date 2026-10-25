@@ -235,7 +235,7 @@ class Calculator:
 
         assert "obj.Total += value" in go_code
         assert "obj.Count += 1" in go_code
-        assert "obj.Total *= (1 + rate)" in go_code
+        assert "obj.Total *= (1.0 + rate)" in go_code
         assert "obj.Total -= (obj.Total * percent)" in go_code
 
     def test_augassign_with_method_calls(self):
@@ -285,6 +285,6 @@ def test_account() -> float:
 
         assert "obj.Balance += amount" in go_code
         assert "obj.Balance -= amount" in go_code
-        assert "obj.Balance *= (1 + rate)" in go_code
-        assert "account := NewBankAccount(1000)" in go_code
-        assert "account.Deposit(500)" in go_code
+        assert "obj.Balance *= (1.0 + rate)" in go_code
+        assert "account := NewBankAccount(1000.0)" in go_code
+        assert "account.Deposit(500.0)" in go_code

@@ -73,6 +73,52 @@ def is_main_guard(stmt: ast.stmt) -> bool:
     )
 
 
+def synthesize_field_init(node: ast.ClassDef) -> Optional[ast.FunctionDef]:
+    """Return the __init__ a dataclass or NamedTuple gets from its annotated class-body fields.
+
+    Returns None when the class defines __init__ itself or declares no fields.
+    """
+    if any(isinstance(stmt, ast.FunctionDef) and stmt.name == "__init__" for stmt in node.body):
+        return None
+    fields = [stmt for stmt in node.body if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name)]
+    if not fields:
+        return None
+    args = [ast.arg(arg="self")]
+    body: list[ast.stmt] = []
+    for field in fields:
+        assert isinstance(field.target, ast.Name)
+        name = field.target.id
+        args.append(ast.arg(arg=name, annotation=field.annotation))
+        self_attr = ast.Attribute(value=ast.Name(id="self", ctx=ast.Load()), attr=name, ctx=ast.Store())
+        body.append(
+            ast.AnnAssign(
+                target=self_attr, annotation=field.annotation, value=ast.Name(id=name, ctx=ast.Load()), simple=0
+            )
+        )
+    init = ast.FunctionDef(
+        name="__init__",
+        args=ast.arguments(posonlyargs=[], args=args, kwonlyargs=[], kw_defaults=[], defaults=[]),
+        body=body,
+        decorator_list=[],
+        returns=ast.Constant(value=None),
+    )
+    setattr(init, "type_params", [])  # noqa: B010 - a field from Python 3.12; mypy targets 3.9
+    return ast.fix_missing_locations(ast.copy_location(init, node))
+
+
+def with_field_init(node: ast.ClassDef) -> ast.ClassDef:
+    """Return the class with its dataclass/NamedTuple __init__ in place of the class-body field annotations."""
+    init = synthesize_field_init(node)
+    if init is None:
+        return node
+    body = [init, *(stmt for stmt in node.body if not isinstance(stmt, ast.AnnAssign))]
+    new = ast.ClassDef(
+        name=node.name, bases=node.bases, keywords=node.keywords, body=body, decorator_list=node.decorator_list
+    )
+    setattr(new, "type_params", getattr(node, "type_params", []))  # noqa: B010 - a field from Python 3.12
+    return ast.copy_location(new, node)
+
+
 def uses_comprehensions(node: ast.Module) -> bool:
     """Check if module uses any comprehensions.
 

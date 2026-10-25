@@ -59,7 +59,7 @@ class DataProcessor:
         assert "Comprehensions::list_comprehension_with_filter" in rust_code
 
         # Verify dictionary literal (not comprehension)
-        assert "std::collections::HashMap" in rust_code
+        assert "OrderedHashMap" in rust_code
 
         # Verify string methods
         assert "StrOps::upper" in rust_code
@@ -311,7 +311,7 @@ def main() -> int:
         assert "struct MathUtils {" in rust_code
         assert "impl MathUtils {" in rust_code
         assert "fn new(base: i64) -> Self" in rust_code
-        assert "fn process_numbers(&mut self, numbers: Vec" in rust_code and "-> std::collections::HashMap" in rust_code
+        assert "fn process_numbers(&mut self, numbers: Vec" in rust_code and "-> OrderedHashMap" in rust_code
         assert "fn main()" in rust_code
 
         # Verify all features work together

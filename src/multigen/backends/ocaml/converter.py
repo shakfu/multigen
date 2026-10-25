@@ -42,6 +42,9 @@ class MultiGenPythonToOCamlConverter:
         # Track class definitions and variables
         self.classes: dict[str, Any] = {}
         self.variables: dict[str, str] = {}
+        self.function_return_types: dict[str, str] = {}  # Python annotation names
+        # Python container kind per variable: "list" is an OCaml array, "dict" and "set" are lists
+        self.py_kinds: dict[str, str] = {}
         self.current_class: Optional[str] = None
         self.mutable_vars: set[str] = set()  # Variables that need to be refs
         self.declared_refs: set[str] = set()  # Refs already bound in the current function
@@ -66,6 +69,13 @@ class MultiGenPythonToOCamlConverter:
         ocaml_code.append("open Multigen_runtime")
         ocaml_code.append("")
 
+        # Return types let calls take part in float arithmetic
+        self.function_return_types = {
+            stmt.name: stmt.returns.id
+            for stmt in node.body
+            if isinstance(stmt, ast.FunctionDef) and isinstance(stmt.returns, ast.Name)
+        }
+
         # Track if main function exists
         has_main = False
         for stmt in node.body:
@@ -88,7 +98,7 @@ class MultiGenPythonToOCamlConverter:
         # Add main execution
         ocaml_code.append("(* Main execution *)")
         if has_main:
-            ocaml_code.append("let () = ignore (main ())")
+            ocaml_code.append("let () = run_main main")
         else:
             ocaml_code.append('let () = print_value "Generated OCaml code executed successfully"')
 
@@ -469,8 +479,8 @@ class MultiGenPythonToOCamlConverter:
                                 mutable.add(target.id)
                     elif isinstance(stmt, ast.AugAssign) and isinstance(stmt.target, ast.Name):
                         mutable.add(stmt.target.id)
-            # If statements with regular assignments (conditional mutations)
-            elif isinstance(child, ast.If):
+            # Assignments under if, and in with/try bodies, which run inside closures
+            elif isinstance(child, (ast.If, ast.With, ast.Try)):
                 for stmt in ast.walk(child):
                     if isinstance(stmt, ast.Assign):
                         for target in stmt.targets:
@@ -499,9 +509,13 @@ class MultiGenPythonToOCamlConverter:
 
         # Track parameter types for type-aware code generation (e.g., string slicing)
         for arg in node.args.args:
-            if arg.annotation and isinstance(arg.annotation, ast.Name):
+            if arg.annotation:
                 ocaml_name = self._to_ocaml_var_name(arg.arg)
-                self.variables[ocaml_name] = arg.annotation.id
+                if isinstance(arg.annotation, ast.Name):
+                    self.variables[ocaml_name] = arg.annotation.id
+                else:
+                    self.variables[ocaml_name] = self._get_type_annotation(arg.annotation)
+                self._record_py_kind(ocaml_name, arg.annotation)
 
         # Check if function is recursive
         is_recursive = self._is_recursive_function(node, node.name)
@@ -555,39 +569,50 @@ class MultiGenPythonToOCamlConverter:
             lines.append(f"  {expr}")
         else:
             # Multiple statements - use let expressions
-            body_lines = []
-            for _i, stmt in enumerate(filtered_body):
-                if isinstance(stmt, ast.Return):
-                    if stmt.value:
-                        body_lines.append(self._convert_expression(stmt.value))
-                    else:
-                        body_lines.append("()")
-                else:
-                    converted = self._convert_statement(stmt)
-                    if isinstance(converted, list):
-                        body_lines.extend(converted)
-                    else:
-                        body_lines.append(converted)
-
-            # Properly sequence statements with semicolons where needed
-            if body_lines:
-                for i, line in enumerate(body_lines):
-                    if i < len(body_lines) - 1:  # Not the last statement
-                        if not line.rstrip().endswith(" in"):
-                            lines.append(f"  {line};")
-                        else:
-                            lines.append(f"  {line}")
-                    else:
-                        # Last statement - if it ends with 'in', add ()
-                        if line.rstrip().endswith(" in"):
-                            lines.append(f"  {line}")
-                            lines.append("  ()")
-                        else:
-                            lines.append(f"  {line}")
-            else:
-                lines.append("  ()")
+            lines.extend(f"  {line}" for line in self._sequence_body(filtered_body))
 
         return lines
+
+    def _sequence_body(self, stmts: list[ast.stmt]) -> list[str]:
+        """Sequence statements into one OCaml expression, one output line per entry.
+
+        `if c: return v` with no else takes the rest of the body as its else branch.
+        """
+        body_lines: list[str] = []
+        tail: list[str] = []  # The early-return if, which ends the sequence
+        for i, stmt in enumerate(stmts):
+            if isinstance(stmt, ast.Return):
+                body_lines.append(self._convert_expression(stmt.value) if stmt.value else "()")
+                break
+            if (
+                isinstance(stmt, ast.If)
+                and not stmt.orelse
+                and len(stmt.body) == 1
+                and isinstance(stmt.body[0], ast.Return)
+            ):
+                returned = stmt.body[0].value
+                value = self._convert_expression(returned) if returned else "()"
+                rest = self._sequence_body(stmts[i + 1 :])
+                tail = [f"if {self._convert_expression(stmt.test)} then {value} else (", *(f"  {r}" for r in rest), ")"]
+                break
+            converted = self._convert_statement(stmt)
+            if isinstance(converted, list):
+                body_lines.extend(converted)
+            else:
+                body_lines.append(converted)
+
+        # Properly sequence statements with semicolons where needed
+        sequenced: list[str] = []
+        for i, line in enumerate(body_lines):
+            if (i < len(body_lines) - 1 or tail) and not line.rstrip().endswith(" in"):
+                sequenced.append(f"{line};")
+            else:
+                sequenced.append(line)
+        sequenced.extend(tail)
+        # A body ending in a binding still needs a value
+        if not sequenced or sequenced[-1].rstrip().endswith(" in"):
+            sequenced.append("()")
+        return sequenced
 
     def _convert_generator_function(
         self, node: ast.FunctionDef, params: list[tuple[str, str]], return_type: str
@@ -635,8 +660,9 @@ class MultiGenPythonToOCamlConverter:
             else:
                 body_lines.append(converted)
 
+        # A `let ... in` binding scopes over what follows; only statements take `;`
         for line in body_lines:
-            lines.append(f"  {line};")
+            lines.append(f"  {line}" if line.rstrip().endswith(" in") else f"  {line};")
 
         lines.append("  List.rev !__mgen_result")
 
@@ -926,8 +952,99 @@ class MultiGenPythonToOCamlConverter:
         else:
             return var_name
 
+    def _is_float_expr(self, node: ast.expr) -> bool:
+        """Report whether an expression is a Python float; OCaml needs float operators for it."""
+        if isinstance(node, ast.Constant):
+            return isinstance(node.value, float)
+        if isinstance(node, ast.Name):
+            return self.variables.get(self._to_ocaml_var_name(node.id)) == "float"
+        if isinstance(node, ast.BinOp):
+            return isinstance(node.op, ast.Div) or self._is_float_expr(node.left) or self._is_float_expr(node.right)
+        if isinstance(node, ast.UnaryOp):
+            return self._is_float_expr(node.operand)
+        if isinstance(node, ast.IfExp):
+            return self._is_float_expr(node.body) or self._is_float_expr(node.orelse)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            return node.func.id == "float" or self.function_return_types.get(node.func.id) == "float"
+        return False
+
+    def _print_string(self, node: ast.expr) -> str:
+        """Return OCaml code for Python's str() of a print argument."""
+        arg = self._convert_expression(node)
+        conversion_func: Optional[str] = "string_of_int"  # Default to int
+        if self._is_float_expr(node):
+            conversion_func = "py_string_of_float"
+        elif self._is_bool_expr(node):
+            conversion_func = "py_string_of_bool"
+        elif isinstance(node, ast.Name):
+            if self.variables.get(self._to_ocaml_var_name(node.id)) in ("string", "str"):
+                conversion_func = None
+        elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+            conversion_func = None
+        return f"({conversion_func} {arg})" if conversion_func else arg
+
+    def _record_py_kind(self, var_name: str, annotation: ast.expr) -> None:
+        """Record whether an annotation names a Python list, dict or set."""
+        base = annotation.value if isinstance(annotation, ast.Subscript) else annotation
+        if isinstance(base, ast.Name) and base.id in ("list", "dict", "set"):
+            self.py_kinds[var_name] = base.id
+        else:
+            self.py_kinds.pop(var_name, None)
+
+    def _is_array_expr(self, node: ast.expr) -> bool:
+        """Report whether an expression is a Python list, which this backend represents as an OCaml array."""
+        if isinstance(node, (ast.List, ast.ListComp)):
+            return True
+        return isinstance(node, ast.Name) and self.py_kinds.get(self._to_ocaml_var_name(node.id)) == "list"
+
+    def _list_source(self, node: ast.expr) -> str:
+        """Convert an iterable for List-based runtime functions; a Python list (OCaml array) is converted."""
+        code = self._convert_expression(node)
+        return f"(Array.to_list {code})" if self._is_array_expr(node) else code
+
+    def _is_string_expr(self, node: ast.expr) -> bool:
+        """Report whether an expression is a Python str."""
+        if isinstance(node, ast.JoinedStr) or (isinstance(node, ast.Constant) and isinstance(node.value, str)):
+            return True
+        if isinstance(node, ast.Name):
+            return self.variables.get(self._to_ocaml_var_name(node.id)) in ("str", "string")
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            return node.func.id == "str" or self.function_return_types.get(node.func.id) == "str"
+        return False
+
+    def _is_bool_expr(self, node: ast.expr) -> bool:
+        """Report whether an expression is a Python bool, which prints as True or False."""
+        if isinstance(node, (ast.Compare, ast.BoolOp)):
+            return True
+        if isinstance(node, ast.UnaryOp):
+            return isinstance(node.op, ast.Not)
+        if isinstance(node, ast.Constant):
+            return isinstance(node.value, bool)
+        if isinstance(node, ast.Name):
+            return self.variables.get(self._to_ocaml_var_name(node.id)) == "bool"
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            return node.func.id == "bool" or self.function_return_types.get(node.func.id) == "bool"
+        return False
+
+    def _as_float(self, node: ast.expr) -> str:
+        """Convert an operand of float arithmetic; Python promotes an int operand, OCaml does not."""
+        code = self._convert_expression(node)
+        return code if self._is_float_expr(node) else f"(float_of_int {code})"
+
     def _convert_binary_operation(self, node: ast.BinOp) -> str:
         """Convert Python binary operation to OCaml."""
+        float_ops: dict[type, str] = {
+            ast.Add: "+.",
+            ast.Sub: "-.",
+            ast.Mult: "*.",
+            ast.Div: "/.",
+            ast.FloorDiv: "///.",
+            ast.Mod: "%%.",
+            ast.Pow: "**",
+        }
+        if type(node.op) in float_ops and self._is_float_expr(node):
+            return f"({self._as_float(node.left)} {float_ops[type(node.op)]} {self._as_float(node.right)})"
+
         left = self._convert_expression(node.left)
         right = self._convert_expression(node.right)
 
@@ -965,7 +1082,7 @@ class MultiGenPythonToOCamlConverter:
         if isinstance(node.op, ast.UAdd):
             return f"(+{operand})"
         elif isinstance(node.op, ast.USub):
-            return f"(-{operand})"
+            return f"(-. {operand})" if self._is_float_expr(node.operand) else f"(-{operand})"
         elif isinstance(node.op, ast.Not):
             return f"(not {operand})"
         elif isinstance(node.op, ast.Invert):
@@ -981,6 +1098,11 @@ class MultiGenPythonToOCamlConverter:
         left = self._convert_expression(node.left)
         right = self._convert_expression(node.comparators[0])
         op = node.ops[0]
+        # OCaml compares only equal types; Python promotes an int compared with a float.
+        if not isinstance(op, (ast.In, ast.NotIn)) and (
+            self._is_float_expr(node.left) != self._is_float_expr(node.comparators[0])
+        ):
+            left, right = self._as_float(node.left), self._as_float(node.comparators[0])
 
         # OCaml's == and != compare physical identity, so equal strings or lists
         # at different addresses would differ. Python's == is structural.
@@ -1013,34 +1135,11 @@ class MultiGenPythonToOCamlConverter:
             elif func_name == "range":
                 return self._convert_range_call(node.args)
             elif func_name == "print":
-                if node.args:
-                    arg_node = node.args[0]
-                    arg = self._convert_expression(arg_node)
-
-                    # Determine the conversion function based on type
-                    conversion_func: Optional[str] = "string_of_int"  # Default to int
-
-                    # Check if argument is a variable with known type
-                    if isinstance(arg_node, ast.Name):
-                        var_name = self._to_ocaml_var_name(arg_node.id)
-                        if var_name in self.variables:
-                            var_type = self.variables[var_name]
-                            if var_type == "string" or var_type == "str":
-                                conversion_func = None  # No conversion needed
-                            elif var_type == "float":
-                                conversion_func = "string_of_float"
-                            elif var_type == "bool":
-                                conversion_func = "Conversions.string_of_bool"
-                    # Check if argument is a string literal
-                    elif isinstance(arg_node, ast.Constant) and isinstance(arg_node.value, str):
-                        conversion_func = None  # No conversion needed
-
-                    if conversion_func:
-                        return f"print_value ({conversion_func} {arg})"
-                    else:
-                        return f"print_value {arg}"
-                else:
-                    return 'print_value ""'
+                shown = [self._print_string(arg) for arg in node.args]
+                if len(shown) == 1:
+                    return f"print_value {shown[0]}"
+                # Python separates arguments with one space
+                return f'print_value (String.concat " " [{"; ".join(shown)}])'
             else:
                 # Regular function call. OCaml application binds tighter than
                 # nothing at all, so an unparenthesized `f x` used as an argument
@@ -1091,21 +1190,24 @@ class MultiGenPythonToOCamlConverter:
                     else:
                         use_array_len = False
 
-            # The arg might have been converted with dereferencing (!)
-            # Check if it starts with ! and adjust the function accordingly
-            if use_array_len:
-                return f"len_array {arg}"
-            else:
-                return f"len' {arg}"
+            # Parenthesized: as an argument, `string_of_int len' xs` would apply to two arguments
+            if self._is_string_expr(args[0]):
+                return f"(String.length {arg})"
+            kind = self.py_kinds.get(self._to_ocaml_var_name(args[0].id)) if isinstance(args[0], ast.Name) else None
+            if self._is_array_expr(args[0]) or (use_array_len and kind not in ("dict", "set")):
+                return f"(len_array {arg})"
+            return f"(len' {arg})"
 
+        # sum/any/all fold an OCaml list; a Python list argument is an array
+        seq = f"({self._list_source(args[0])})"
         builtin_map = {
             "abs": f"abs' {arg}",
             "bool": f"bool' {arg}",
             "min": f"min' {arg} {self._convert_expression(args[1]) if len(args) > 1 else arg}",
             "max": f"max' {arg} {self._convert_expression(args[1]) if len(args) > 1 else arg}",
-            "sum": f"sum' {arg}",
-            "any": f"any' {arg}",
-            "all": f"all' {arg}",
+            "sum": f"sum' {seq}",
+            "any": f"any' {seq}",
+            "all": f"all' {seq}",
         }
 
         return builtin_map.get(func_name, f"{func_name}' {arg}")
@@ -1281,7 +1383,7 @@ class MultiGenPythonToOCamlConverter:
 
         gen = node.generators[0]
         target = self._comprehension_target(gen)
-        iterable = self._convert_expression(gen.iter)
+        iterable = self._list_source(gen.iter)
 
         # Wrap iterable in parentheses if it contains spaces (function calls)
         if " " in iterable and not iterable.startswith("("):
@@ -1290,9 +1392,11 @@ class MultiGenPythonToOCamlConverter:
         if gen.ifs:
             conditions = [self._convert_expression(if_clause) for if_clause in gen.ifs]
             condition = " && ".join(conditions)
-            return f"list_comprehension_with_filter {iterable} (fun {target} -> {condition}) (fun {target} -> {expr})"
+            mapped = f"list_comprehension_with_filter {iterable} (fun {target} -> {condition}) (fun {target} -> {expr})"
         else:
-            return f"list_comprehension {iterable} (fun {target} -> {expr})"
+            mapped = f"list_comprehension {iterable} (fun {target} -> {expr})"
+        # The result is a Python list, which this backend represents as an array
+        return f"(Array.of_list ({mapped}))"
 
     def _convert_dict_comprehension(self, node: ast.DictComp) -> str:
         """Convert Python dict comprehension to OCaml."""
@@ -1405,10 +1509,10 @@ class MultiGenPythonToOCamlConverter:
                 # Array assignment
                 if is_ref:
                     # For array refs, just modify the element (no need to reassign the ref)
-                    return f"let _ = !{base_var_name}.({index}) <- {value} in"
+                    return f"let _ = !{base_var_name}.({self._checked_index(f'!{base_var_name}', index)}) <- {value} in"
                 else:
                     container = self._convert_expression(target.value)
-                    return f"let _ = {container}.({index}) <- {value} in"
+                    return f"let _ = {container}.({self._checked_index(container, index)}) <- {value} in"
         else:
             raise UnsupportedFeatureError("Complex assignment targets not supported")
 
@@ -1431,6 +1535,7 @@ class MultiGenPythonToOCamlConverter:
             # Track variable type for type-aware code generation
             # Store the Python type name (not OCaml type) for accurate type checking
             if node.annotation:
+                self._record_py_kind(var_name, node.annotation)
                 if isinstance(node.annotation, ast.Name):
                     # Store the original Python type name
                     self.variables[var_name] = node.annotation.id
@@ -1482,10 +1587,10 @@ class MultiGenPythonToOCamlConverter:
                 # Array assignment
                 if is_ref:
                     # For array refs, just modify the element (no need to reassign the ref)
-                    return f"let _ = !{base_var_name}.({index}) <- {value} in"
+                    return f"let _ = !{base_var_name}.({self._checked_index(f'!{base_var_name}', index)}) <- {value} in"
                 else:
                     container = self._convert_expression(target.value)
-                    return f"let _ = {container}.({index}) <- {value} in"
+                    return f"let _ = {container}.({self._checked_index(container, index)}) <- {value} in"
         else:
             raise UnsupportedFeatureError("Complex assignment targets not supported")
 
@@ -1518,6 +1623,14 @@ class MultiGenPythonToOCamlConverter:
         """Convert Python augmented assignment to OCaml."""
         if isinstance(node.target, ast.Name):
             var_name = self._to_ocaml_var_name(node.target.id)
+            if self._is_float_expr(node.target) or self._is_float_expr(node.value):
+                # Reuse binary conversion for float operators; a ref target reads as !x
+                expr = self._convert_binary_operation(
+                    ast.BinOp(left=ast.Name(id=node.target.id, ctx=ast.Load()), op=node.op, right=node.value)
+                )
+                if node.target.id in self.mutable_vars:
+                    return f"{var_name} := {expr}"
+                return f"let {var_name} = {expr} in"
             value = self._convert_expression(node.value)
             op = self._convert_operator(node.op)
 
@@ -1914,10 +2027,14 @@ class MultiGenPythonToOCamlConverter:
 
         if is_dict:
             # Dictionary access - use List.assoc for association lists
-            return f"List.assoc {slice_expr} {value}"
+            # py_assoc raises Key_error where List.assoc raises the generic Not_found
+            return f"(py_assoc {slice_expr} {value})"
         else:
-            # Array access - use array indexing notation
-            return f"{value}.({slice_expr})"
+            return f"{value}.({self._checked_index(value, slice_expr)})"
+
+    def _checked_index(self, container: str, index: str) -> str:
+        """Return a Python list index: negative counts from the end, out of range raises Index_error."""
+        return f"py_index {index} (Array.length {container})"
 
     def _convert_slice(self, node: ast.Subscript) -> str:
         """Convert slice operation to OCaml Array.sub or String.sub.
@@ -2005,7 +2122,7 @@ class MultiGenPythonToOCamlConverter:
             elif isinstance(node.value, int):
                 return f"(string_of_int {expr_code})"
             elif isinstance(node.value, float):
-                return f"(string_of_float {expr_code})"
+                return f"(py_string_of_float {expr_code})"
 
         # Variable names - heuristic based on name
         if isinstance(node, ast.Name):

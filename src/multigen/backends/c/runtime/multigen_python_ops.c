@@ -10,6 +10,24 @@
 // Global exception state
 multigen_exception_t multigen_current_exception = {MGEN_OK, "", ""};
 
+char* multigen_float_repr(double x, char* buf) {
+    if (isnan(x)) {
+        strcpy(buf, "nan");
+        return buf;
+    }
+    if (x == floor(x) && fabs(x) < 1e16) {
+        snprintf(buf, 32, "%.1f", x);
+        return buf;
+    }
+    // Python uses exponent notation from 1e16; %g switches once the exponent reaches the precision.
+    int sci = fabs(x) >= 1e16;
+    for (int p = 1; p <= 17; p++) {
+        snprintf(buf, 32, sci ? "%.*e" : "%.*g", sci ? p - 1 : p, x);
+        if (strtod(buf, NULL) == x) break;
+    }
+    return buf;
+}
+
 /**
  * Python bool() function implementations
  */

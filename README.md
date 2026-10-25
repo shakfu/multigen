@@ -783,7 +783,7 @@ All backends support core Python features:
 
 - **C**: STC (Smart Template Container) library with optimized C containers (864KB integrated library)
 
-- **C++**: STL containers (`std::vector`, `std::unordered_map`, `std::unordered_set`)
+- **C++**: STL containers (`std::vector`, `std::unordered_set`) and an insertion-ordered `multigen::Dict`
 
 - **Rust**: Standard library collections (`Vec`, `HashMap`, `HashSet`) with memory safety
 

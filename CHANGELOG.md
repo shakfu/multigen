@@ -24,6 +24,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
+- **`floats.py` and `print_args.py` differential fixtures**: int promotion, true division, float comparison, float and bool printing, and `print` with several arguments. All seven backends pass both.
+
+- **Differential tests for uncaught exceptions.** `test_uncaught_exception_matches_cpython` runs the programs in `tests/fixtures/differential_errors/` on seven backends. Each must print CPython's stdout, exit with its status, and name the exception on stderr. The success-path tests required exit status 0, so no backend's failure behaviour was compared. 34 of the 42 pairs failed at first; all now pass, and `KNOWN_ERROR_FAILURES` is empty.
+
 - **Differential compile-and-run tests.** `test_compiled_output_matches_cpython` builds every program in `tests/translation/` and `tests/fixtures/differential/` on seven backends, runs it, and requires CPython's stdout and exit status 0. Known failures sit in `KNOWN_FAILURES` as strict xfails, so a fix fails the run until its entry is deleted. Converter tests compare generated text, which missed code that does not compile; the first run found 124 failing pairs, 15 of them on Rust.
 
 - **`for k, v in d.items()`** in for loops and list, dict and set comprehensions, on all eight backends. The validator admits exactly two names unpacking a no-argument `.items()` call; every other tuple stays rejected. It was the last benchmark blocker: all eight backends now pass 7/7 (`dict_ops` needed it everywhere; Haskell also gained guarded-sum and dict-insert folds, which `set_ops` needed).
@@ -113,6 +117,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   The model over-approximates: an untracked value is a fresh symbol, a loop havocs what its body changes, and a list passed to a call or stored in a container has an unknown length. DISPROVED now means the access fails on every execution that reaches it. An access that fails only for some inputs (`a[i]` with unconstrained parameters) is UNKNOWN, since the caller may exclude those inputs. Without this rule every parameter-indexed access would be reported unsafe.
 
 ### Fixed
+
+- **Haskell: pure functions with loops or rebindings outside the fold patterns.** The where-clause form cannot order rebindings, so `for` loops matching no fold pattern, `while` loops, item stores and `if` statements that assign were refused, or for an assigning `if`, emitted code that did not parse. Such a function is now translated statement by statement: each assignment is `case e of x -> rest`, which binds without recursion, so `x = x * 2` reads the old `x`. A `for` loop folds the variables its body updates, and a `while` loop is a local recursive function over them. `break`, `continue` and a `return` inside a loop are still refused. Six differential known failures pass, and the capability matrix's Haskell `control_flow` cell now matches CPython. Four tests that asserted the old refusals are replaced by `tests/test_haskell_sequential.py`, which builds each case with GHC and compares it with CPython.
+
+- **The capability matrix has no cell left that emits source which does not build** (TypeScript, which has no toolchain here, aside). Of the 23 such cells, 20 now build and match CPython, and 3 refuse. `KNOWN_BUILD_FAILURES` is empty, so any new one fails the build. The fixes, most of which also apply beyond the probes:
+  - Dataclasses and NamedTuples got no constructor in C++, Go or Haskell. `converter_utils.with_field_init` gives them the `__init__` Python generates from the class-body fields.
+  - Go imported only the runtime, so `fmt.Sprintf`, `os.Open` and `math.Pow` did not build. Imports are now read off the generated body.
+  - OCaml loops, comprehensions and `sum` used `List` functions on Python lists, which are OCaml arrays; array sources now go through `Array.to_list`, and a list comprehension returns an array. `if c: return v` mid-function now takes the rest of the body as its else branch. Assignments inside `with` and `try` mark the variable mutable. `len` of a string is `String.length`.
+  - Haskell builtin wrappers (`len'`, `sum'`, ...) did not parenthesize, so `sum' listComprehension xs f` passed three arguments. Bindings before an early return join its `where` clause.
+  - Rust `len` of a borrowed `&OrderedHashMap` parameter called `len_vec`. C++ now includes `<fstream>` for `with open(...)`.
+  - Refused instead of emitted: `Union`/`Optional`/`X | Y` annotations in C, and `try`/`except` and `with` in Haskell, whose output did not build anywhere. Three Haskell context-manager tests and five Haskell `try` tests asserted that output; they now assert the refusal.
+  - Eleven differential known failures now pass and left `KNOWN_FAILURES`.
+
+- **`print` with several arguments.** C printed every argument with `%d`, so strings and floats came out as garbage numbers. Haskell and OCaml printed only the first argument and dropped the rest. Rust did not build, and LLVM refused. Each argument is now formatted by its type and separated by one space, as Python does.
+
+- **C, C++, Rust, Go, Haskell and LLVM: int-to-float promotion, true division and Python float printing.** Rust, Go, Haskell and LLVM did not build `float * int`; C and C++ computed `7 / 2` as int division. An int operand in float arithmetic or comparison is now converted, `/` is always true division, and `print` writes floats as Python's repr (`3.0`, `0.1`, `1e-05`) and bools as `True`/`False`. C++ needs no type inference for this: `multigen::truediv` and overloaded `multigen::print_value` select by argument type. C++ `x / 0.0` now raises `ZeroDivisionError` instead of giving `inf`. Gaps are listed in TODO.md.
+
+- **Rust: map reads were typed `i64` for every map.** The value type was sliced out of `OrderedHashMap<K, V>` with the length of the old `std::collections::HashMap<` prefix, so `prices["a"]` on a `dict[str, float]` did not build.
+
+- **OCaml: float arithmetic emitted int operators**, so a function adding two floats did not build, and `7 / 2` was int division. Float expressions now use `+.`, `-.`, `*.` and `/.`, promote an int operand with `float_of_int`, and compare an int with a float as floats. Float `//` and `%` follow CPython's `float_divmod`. `print` writes floats as Python's repr (`3.0`, not OCaml's `3.`) and bools as `True`/`False`, not `true`/`false`. Types come from annotations and function return types; an unannotated float is still int.
+
+- **Haskell and OCaml: uncaught exceptions now print `Name: message` and exit 1.** OCaml exited 2 with OCaml constructor names; Haskell printed GHC's `divide by zero` and `!!` errors. Both wrap the program's `main` in a runtime `runMain`/`run_main`, and list and dict reads call checked `pyIndex`/`py_index` and `pyLookup`/`py_assoc`. OCaml dict reads were also unparenthesized, so `print(d[k])` did not build.
+
+- **Haskell: a guard `raise` in a pure function did not build.** `if c: raise E(m)` before the body emitted a `where` clause holding an `if`. Leading guards now wrap the body as `if c then throw (E m) else ...`.
+
+- **Float `//` and `%` did not build in Haskell or LLVM.** Haskell emitted `div`, which needs an `Integral` type; LLVM had no float lowering. Both now follow CPython's `float_divmod` and raise on a zero divisor. Haskell uses a `PyNum` class, since the converter does not know operand types there. The LLVM build now links `-lm`.
+
+- **C++, Rust, Go and LLVM: a missing dict key read 0 and the program continued.** C++ also read past the end of a list. Each now raises `KeyError` or `IndexError`, and a negative variable index counts from the end (except LLVM). C++ routes reads through `multigen::getitem` and stores through `multigen::setitem`, so a dict store still inserts.
+
+- **Uncaught exceptions now print `Name: message` and exit 1 in C++, Rust, Go and LLVM.** C++ aborted (-6), Rust exited 101, Go exited 2, and LLVM `raise` called `abort()`. Rust and Go emit the program's `main` as `__py_main`/`pyMain` and wrap it in a runtime `run_main`/`RunMain`. A panic hook could not set the status, because `try`/`except` also catches panics. C++ installs a `std::terminate` handler.
+
+- **C: uncaught exceptions called `abort()`**, which discarded buffered stdout and exited with SIGABRT. They now exit with status 1. `ZeroDivisionError` was an alias of `ValueError`, so `except ValueError` caught it; it now has its own error code.
+
+- **C: list indexing and dict lookup were unchecked.** An index past the end tripped STC's `assert`, and a missing key dereferenced NULL. Both now raise `IndexError` and `KeyError`, and a negative variable index counts from the end.
+
+- **LLVM: `if __name__ == "__main__":` was refused**, and a `None`-returning `main` exited with an undefined status. The guard is now dropped, as on the other backends, and such a `main` returns 0.
+
+- **C++, Rust and Go: dicts iterate in insertion order.** `std::unordered_map`, `HashMap` and Go maps do not keep it, so key order in loops and comprehensions differed from Python; Go's also changed between runs. Each runtime now has an ordered map: `multigen::Dict` (C++), `OrderedHashMap` (Rust) and `*multigen.Dict` (Go). Go cannot overload `m[k]`, so every Go dict operation is now a method call. Fixing it also made `for k in d` compile in C++ and Rust, and `.keys()` compile in C++ and Go; none of them compiled before.
+
+- **LLVM: integer `//` and `%` by zero** were `sdiv`/`srem` by zero, which is undefined behaviour. The program now writes `ZeroDivisionError` to stderr and exits with status 1, as an uncaught Python exception does. The backend has no exception unwinding, so `try`/`except` still cannot catch it.
+
+- **C: float `//` was true division** (`7.0 // 2` gave 3.5), and float `%` emitted C `%` on doubles, which does not compile. Both now call runtime helpers that follow CPython's `float_divmod` and raise on a zero divisor. The C builder now links `-lm`, which `pow()` also needed. `print` of a float expression other than a bare variable used `%d`; it now uses `%f`.
+
+- **`BoundsChecker` reported every negative constant index as an error.** `a[-k]` is valid for `1 <= k <= len(a)`; only indices outside `[-len(a), len(a))` are now reported. The validator still rejects `xs[-k]`, since no backend translates it.
 
 - **The symbolic executor runs loop bodies** (R-5). Bodies ran inline and skipped `if`, `break`, `continue`, `return` and nested loops, and `for` ran at most once. Loop bodies now return to the loop header, which unrolls up to three iterations; `break` skips the loop's `else`. `range()` with constant arguments and list literals iterate exactly. Comparisons now evaluate, so a concrete `if` takes one branch. `approximations` records a loop only when its bound cut a path.
 

@@ -6,8 +6,37 @@ package multigen
 import (
 	"fmt"
 	"math"
+	"os"
+	"strconv"
 	"strings"
 )
+
+// RunMain runs the program's main. An escaping exception or Go runtime panic
+// prints "Name: message" and exits 1, as CPython does; Go's default is status 2.
+func RunMain(pyMain func()) {
+	defer func() {
+		if r := recover(); r != nil {
+			if exc, ok := r.(MultiGenException); ok {
+				fmt.Fprintln(os.Stderr, exc.Error())
+			} else {
+				fmt.Fprintf(os.Stderr, "Exception: %v\n", r)
+			}
+			os.Exit(1)
+		}
+	}()
+	pyMain()
+}
+
+// PyIndex returns a list index: a negative index counts from the end; out of range raises IndexError.
+func PyIndex(index int, length int) int {
+	if index < 0 {
+		index += length
+	}
+	if index < 0 || index >= length {
+		panic(NewIndexError("list index out of range"))
+	}
+	return index
+}
 
 // Python-like Exception Types
 // These are used with panic/recover for exception handling
@@ -427,32 +456,32 @@ func ListComprehensionFromRangeWithFilter[R any](source Range, transform func(in
 }
 
 // DictComprehension creates map by applying transform function
-func DictComprehension[T any, K comparable, V any](source []T, transform func(T) (K, V)) map[K]V {
-	result := make(map[K]V)
+func DictComprehension[T any, K comparable, V any](source []T, transform func(T) (K, V)) *Dict[K, V] {
+	result := NewDict[K, V](nil, nil)
 	for _, item := range source {
 		k, v := transform(item)
-		result[k] = v
+		result.Set(k, v)
 	}
 	return result
 }
 
 // DictComprehensionFromRange creates map from a Range
-func DictComprehensionFromRange[K comparable, V any](source Range, transform func(int) (K, V)) map[K]V {
-	result := make(map[K]V)
+func DictComprehensionFromRange[K comparable, V any](source Range, transform func(int) (K, V)) *Dict[K, V] {
+	result := NewDict[K, V](nil, nil)
 	source.ForEach(func(i int) {
 		k, v := transform(i)
-		result[k] = v
+		result.Set(k, v)
 	})
 	return result
 }
 
 // DictComprehensionFromRangeWithFilter creates filtered map from a Range
-func DictComprehensionFromRangeWithFilter[K comparable, V any](source Range, transform func(int) (K, V), filter func(int) bool) map[K]V {
-	result := make(map[K]V)
+func DictComprehensionFromRangeWithFilter[K comparable, V any](source Range, transform func(int) (K, V), filter func(int) bool) *Dict[K, V] {
+	result := NewDict[K, V](nil, nil)
 	source.ForEach(func(i int) {
 		if filter(i) {
 			k, v := transform(i)
-			result[k] = v
+			result.Set(k, v)
 		}
 	})
 	return result
@@ -464,31 +493,79 @@ type KV[K comparable, V any] struct {
 	Value V
 }
 
-// MapItems converts a map to a slice of key-value pairs
-func MapItems[K comparable, V any](m map[K]V) []KV[K, V] {
-	result := make([]KV[K, V], 0, len(m))
-	for k, v := range m {
-		result = append(result, KV[K, V]{Key: k, Value: v})
+// Dict is a map that iterates in insertion order, like a Python dict.
+type Dict[K comparable, V any] struct {
+	keys []K
+	m    map[K]V
+}
+
+// NewDict builds a Dict from parallel key and value slices, in order.
+func NewDict[K comparable, V any](keys []K, values []V) *Dict[K, V] {
+	d := &Dict[K, V]{m: make(map[K]V, len(keys))}
+	for i, k := range keys {
+		d.Set(k, values[i])
+	}
+	return d
+}
+
+// Get returns the value for k; a missing key raises KeyError, as Python's d[k] does.
+func (d *Dict[K, V]) Get(k K) V {
+	v, ok := d.m[k]
+	if !ok {
+		panic(NewKeyError(fmt.Sprint(k)))
+	}
+	return v
+}
+
+// Set stores v under k; a new key goes last, an existing key keeps its place.
+func (d *Dict[K, V]) Set(k K, v V) {
+	if _, ok := d.m[k]; !ok {
+		d.keys = append(d.keys, k)
+	}
+	d.m[k] = v
+}
+
+// Has reports whether k is present.
+func (d *Dict[K, V]) Has(k K) bool {
+	_, ok := d.m[k]
+	return ok
+}
+
+// Len returns the number of keys.
+func (d *Dict[K, V]) Len() int {
+	return len(d.keys)
+}
+
+// MapItems returns the key-value pairs of a Dict in insertion order
+func MapItems[K comparable, V any](d *Dict[K, V]) []KV[K, V] {
+	result := make([]KV[K, V], 0, len(d.keys))
+	for _, k := range d.keys {
+		result = append(result, KV[K, V]{Key: k, Value: d.m[k]})
 	}
 	return result
 }
 
-// MapValues returns a slice of all values from a map
-func MapValues[K comparable, V any](m map[K]V) []V {
-	result := make([]V, 0, len(m))
-	for _, v := range m {
-		result = append(result, v)
+// MapKeys returns the keys of a Dict in insertion order
+func MapKeys[K comparable, V any](d *Dict[K, V]) []K {
+	return append([]K(nil), d.keys...)
+}
+
+// MapValues returns the values of a Dict in insertion order
+func MapValues[K comparable, V any](d *Dict[K, V]) []V {
+	result := make([]V, 0, len(d.keys))
+	for _, k := range d.keys {
+		result = append(result, d.m[k])
 	}
 	return result
 }
 
 // DictComprehensionWithFilter creates map with filtering
-func DictComprehensionWithFilter[T any, K comparable, V any](source []T, transform func(T) (K, V), filter func(T) bool) map[K]V {
-	result := make(map[K]V)
+func DictComprehensionWithFilter[T any, K comparable, V any](source []T, transform func(T) (K, V), filter func(T) bool) *Dict[K, V] {
+	result := NewDict[K, V](nil, nil)
 	for _, item := range source {
 		if filter(item) {
 			k, v := transform(item)
-			result[k] = v
+			result.Set(k, v)
 		}
 	}
 	return result
@@ -578,11 +655,34 @@ func ToStr(x interface{}) string {
 		return "False"
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		return fmt.Sprintf("%d", v)
-	case float32, float64:
-		return fmt.Sprintf("%g", v)
+	case float32:
+		return FormatFloat(float64(v))
+	case float64:
+		return FormatFloat(v)
 	default:
 		return fmt.Sprintf("%v", v)
 	}
+}
+
+// FormatFloat formats f as Python's repr does: shortest round-trip digits,
+// exponent form when the exponent is below -4 or at least 16, ".0" on whole numbers.
+func FormatFloat(f float64) string {
+	switch {
+	case math.IsNaN(f):
+		return "nan"
+	case math.IsInf(f, 1):
+		return "inf"
+	case math.IsInf(f, -1):
+		return "-inf"
+	}
+	if a := math.Abs(f); a != 0 && (a < 1e-4 || a >= 1e16) {
+		return strconv.FormatFloat(f, 'e', -1, 64)
+	}
+	s := strconv.FormatFloat(f, 'f', -1, 64)
+	if !strings.Contains(s, ".") {
+		s += ".0"
+	}
+	return s
 }
 
 // Print provides Python-like print function

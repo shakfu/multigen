@@ -778,6 +778,24 @@ def array_access(arr: list[int], index: int) -> int:
         assert report.success
         assert report.execution_time_ms > 0
 
+    def test_bounds_checker_accepts_in_range_negative_indices(self):
+        """a[-k] is valid Python for 1 <= k <= len(a); only a[-4] and a[3] leave a 3-element list."""
+        import ast
+
+        code = (
+            "def f() -> int:\n"
+            "    a = [1, 2, 3]\n"
+            "    x = a[-1]\n"
+            "    y = a[-3]\n"
+            "    z = a[-4]\n"
+            "    w = a[3]\n"
+            "    return x\n"
+        )
+        report = BoundsChecker().analyze(AnalysisContext(source_code=code, ast_node=ast.parse(code).body[0]))
+
+        errors = sorted(v.description for v in report.violations if v.severity == "error")
+        assert errors == ["Index -4 out of bounds for 'a' (size: 3)", "Index 3 out of bounds for 'a' (size: 3)"]
+
     def test_call_graph_analyzer_basic(self):
         """Test CallGraphAnalyzer on simple code."""
         code = """

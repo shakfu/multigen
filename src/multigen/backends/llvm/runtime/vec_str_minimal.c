@@ -66,6 +66,7 @@ void vec_str_push(vec_str* vec, char* value) {
 // Get string pointer at index
 char* vec_str_at(vec_str* vec, size_t index) {
     if (!vec || index >= vec->size) {
+        fprintf(stderr, "IndexError: list index out of range\n");
         exit(1);
     }
     return vec->data[index];
@@ -74,6 +75,7 @@ char* vec_str_at(vec_str* vec, size_t index) {
 // Set string at index
 void vec_str_set(vec_str* vec, size_t index, char* value) {
     if (!vec || index >= vec->size) {
+        fprintf(stderr, "IndexError: list assignment index out of range\n");
         exit(1);
     }
     vec->data[index] = value;

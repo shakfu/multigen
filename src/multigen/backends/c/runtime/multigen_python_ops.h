@@ -13,6 +13,8 @@
 #include <string.h>
 #include <ctype.h>
 #include <limits.h>
+#include <math.h>
+#include <stddef.h>
 #include "multigen_error_handling.h"
 
 #ifdef __cplusplus
@@ -80,6 +82,78 @@ static inline int multigen_mod_int(int a, int b) {
     }
     return r;
 }
+
+/**
+ * Python list index: count a negative index from the end; raise IndexError when out of range.
+ */
+static inline ptrdiff_t multigen_index(ptrdiff_t index, ptrdiff_t size) {
+    if (index < 0) {
+        index += size;
+    }
+    if (index < 0 || index >= size) {
+        mgen_throw(MGEN_INDEX_ERROR, "list index out of range");
+    }
+    return index;
+}
+
+/**
+ * Python dict lookup: raise KeyError when a map's get returned NULL for a missing key.
+ */
+static inline const void* multigen_check_key(const void* entry) {
+    if (entry == NULL) {
+        mgen_throw(MGEN_KEY_ERROR, "key not found");
+    }
+    return entry;
+}
+
+/**
+ * Python // and % on floats, following CPython's float_divmod.
+ * Raise ZeroDivisionError on b == 0.0.
+ */
+static inline void multigen_divmod_float(double a, double b, double* div_out, double* mod_out) {
+    if (b == 0.0) {
+        mgen_throw(MGEN_ZERO_DIVISION_ERROR, "float division by zero");
+    }
+    double mod = fmod(a, b);
+    double div = (a - mod) / b;
+    if (mod != 0.0) {
+        if ((b < 0) != (mod < 0)) {
+            mod += b;
+            div -= 1.0;
+        }
+    } else {
+        mod = copysign(0.0, b);
+    }
+    double floordiv;
+    if (div != 0.0) {
+        floordiv = floor(div);
+        if (div - floordiv > 0.5) {
+            floordiv += 1.0;
+        }
+    } else {
+        floordiv = copysign(0.0, a / b);
+    }
+    *div_out = floordiv;
+    *mod_out = mod;
+}
+
+static inline double multigen_floordiv_float(double a, double b) {
+    double div, mod;
+    multigen_divmod_float(a, b, &div, &mod);
+    return div;
+}
+
+static inline double multigen_mod_float(double a, double b) {
+    double div, mod;
+    multigen_divmod_float(a, b, &div, &mod);
+    return mod;
+}
+
+/**
+ * Python repr() of a float: shortest digits that round-trip, plus ".0" on whole numbers.
+ * Write into buf (at least 32 bytes) and return it.
+ */
+char* multigen_float_repr(double x, char* buf);
 
 /**
  * Python min() and max() for arrays

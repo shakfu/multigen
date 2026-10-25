@@ -1,6 +1,7 @@
 """Enhanced Haskell code emitter for MultiGen with comprehensive Python language support."""
 
 import ast
+import re
 from typing import TYPE_CHECKING, Any, Optional
 
 from ..converter_utils import (
@@ -10,6 +11,7 @@ from ..converter_utils import (
     get_standard_binary_operator,
     get_standard_comparison_operator,
     normalize_ast,
+    with_field_init,
 )
 from ..errors import TypeMappingError, UnsupportedFeatureError
 from ..loop_conversion_strategies import LoopContext
@@ -52,6 +54,8 @@ class MultiGenPythonToHaskellConverter:
         self.current_function: Optional[str] = None  # Track current function context
         self.declared_vars: set[str] = set()  # Track declared variables in current function
         self.dict_vars: set[str] = set()  # Python names known to hold dicts in the current function
+        self.scalar_vars: dict[str, str] = {}  # Python name -> "int", "float" or "bool" in the current function
+        self.function_return_types: dict[str, str] = {}  # Module function -> scalar return annotation
         self.needed_imports: set[str] = set()  # Track which imports are needed
         self._loop_converter: Optional[ForLoopConverter] = None  # Lazy-initialized loop converter
 
@@ -186,14 +190,23 @@ class MultiGenPythonToHaskellConverter:
                 parts.append(data_def)
                 parts.append("")
 
+        self.function_return_types = {
+            item.name: item.returns.id
+            for item in node.body
+            if isinstance(item, ast.FunctionDef) and isinstance(item.returns, ast.Name)
+        }
+
         # Convert functions
         functions = []
         has_main = False
         for item in node.body:
             if isinstance(item, ast.FunctionDef):
+                func_code = self._convert_function(item)
                 if item.name == "main":
                     has_main = True
-                func_code = self._convert_function(item)
+                    # runMain wraps the program's main to report an escaping exception and exit 1.
+                    func_code = re.sub(r"^main\b", "pyMain", func_code, flags=re.MULTILINE)
+                    func_code += "\n\nmain :: IO ()\nmain = runMain pyMain"
                 functions.append(func_code)
 
         # Add functions to parts
@@ -224,6 +237,8 @@ main = printValue "Generated Haskell code executed successfully"'''
 
     def _convert_class(self, node: ast.ClassDef) -> str:
         """Convert Python class to Haskell data type with functions."""
+        # A dataclass or NamedTuple declares its fields in the class body
+        node = with_field_init(node)
         class_name = self._to_camel_case(node.name)
 
         # Extract fields from __init__ method
@@ -533,85 +548,8 @@ main = printValue "Generated Haskell code executed successfully"'''
             return f'if not ({test_expr}) then error "assertion failed" else {success_value}'
 
     def _convert_try_statement(self, node: ast.Try) -> str:
-        r"""Convert Python try/except to Haskell catch pattern.
-
-        Python's try/except maps to Haskell's catch from Control.Exception.
-
-        Example:
-            try:
-                x = 1 // 0
-            except ZeroDivisionError:
-                return 0
-
-            Becomes:
-            catch (do
-                -- try body
-            ) (\e -> case e of
-                ZeroDivisionError _ -> return 0
-                _ -> throw e
-            )
-        """
-        lines: list[str] = []
-
-        # Start the catch expression
-        lines.append("catch (do")
-
-        # Convert try body
-        for stmt in node.body:
-            body_line = self._convert_statement(stmt)
-            if body_line:
-                lines.append(f"    {body_line}")
-
-        # else clause: runs if no exception (appended to try body)
-        if node.orelse:
-            lines.append("    -- else (no exception)")
-            for stmt in node.orelse:
-                body_line = self._convert_statement(stmt)
-                if body_line:
-                    lines.append(f"    {body_line}")
-
-        lines.append(") (\\e -> case (fromException e) of")
-
-        # Convert exception handlers
-        for handler in node.handlers:
-            if handler.type is None:
-                # Bare except: - catch all
-                lines.append("    Just _ -> do")
-                for stmt in handler.body:
-                    body_line = self._convert_statement(stmt)
-                    if body_line:
-                        lines.append(f"        {body_line}")
-            else:
-                # Specific exception type
-                exc_type = handler.type.id if isinstance(handler.type, ast.Name) else "SomeException"
-                haskell_exc_type = self.exception_map.get(exc_type, exc_type)
-
-                if handler.name:
-                    # Exception with variable name
-                    lines.append(f"    Just ({haskell_exc_type} {handler.name}) -> do")
-                else:
-                    lines.append(f"    Just ({haskell_exc_type} _) -> do")
-
-                for stmt in handler.body:
-                    body_line = self._convert_statement(stmt)
-                    if body_line:
-                        lines.append(f"        {body_line}")
-
-        # Add re-throw for unhandled exceptions
-        if node.handlers and node.handlers[-1].type is not None:
-            lines.append("    _ -> throw e")
-
-        lines.append(")")
-
-        # Convert finally clause if present
-        if node.finalbody:
-            lines.append("-- finally")
-            for stmt in node.finalbody:
-                body_line = self._convert_statement(stmt)
-                if body_line:
-                    lines.append(body_line)
-
-        return "\n".join(lines)
+        """Refuse try/except: catch runs in IO; the emitted catch blocks did not build in pure functions or in main."""
+        raise UnsupportedFeatureError(f"Haskell backend does not support try/except (line {node.lineno})")
 
     def _convert_raise_statement(self, node: ast.Raise) -> str:
         """Convert Python raise to Haskell throw.
@@ -640,40 +578,8 @@ main = printValue "Generated Haskell code executed successfully"'''
         return 'error "Unknown exception"'
 
     def _convert_with_statement(self, node: ast.With) -> str:
-        r"""Convert Python with statement to Haskell bracket pattern.
-
-        Example:
-            with open("file.txt", "r") as f:
-                content = f.read()
-
-        Becomes:
-            bracket (openFile "file.txt" ReadMode) hClose $ \f -> do
-                content <- hGetContents f
-                ...
-        """
-        item = node.items[0]
-        var_name = self._to_haskell_var_name(item.optional_vars.id) if isinstance(item.optional_vars, ast.Name) else "f"
-        context_expr = item.context_expr
-
-        if isinstance(context_expr, ast.Call) and isinstance(context_expr.func, ast.Name):
-            if context_expr.func.id == "open":
-                filename = self._convert_expression(context_expr.args[0])
-                mode = "ReadMode"
-                if len(context_expr.args) > 1 and isinstance(context_expr.args[1], ast.Constant):
-                    mode_val = context_expr.args[1].value
-                    if isinstance(mode_val, str) and "w" in mode_val:
-                        mode = "WriteMode"
-
-                # Add import for System.IO if not already present
-                self.needed_imports.add("System.IO")
-                self.needed_imports.add("Control.Exception")
-
-                body_lines = [self._convert_statement(s) for s in node.body]
-                body = "\n        ".join(body_lines)
-
-                return f"bracket (openFile {filename} {mode}) hClose $ \\{var_name} -> do\n        {body}"
-
-        return "-- Unsupported context manager"
+        """Refuse with statements: a pure function cannot run IO, and the bracket form did not build in main either."""
+        raise UnsupportedFeatureError(f"Haskell backend does not support with statements (line {node.lineno})")
 
     def _convert_expression(self, node: ast.expr) -> str:
         """Convert Python expression to Haskell."""
@@ -746,10 +652,54 @@ main = printValue "Generated Haskell code executed successfully"'''
         else:
             return str(node.value)
 
+    def _scalar_type(self, node: ast.expr) -> Optional[str]:
+        """Return "int", "float" or "bool" for an expression of known Python scalar type, else None."""
+        if isinstance(node, ast.Constant):
+            return type(node.value).__name__ if type(node.value) in (int, float, bool) else None
+        if isinstance(node, ast.Name):
+            return self.scalar_vars.get(node.id)
+        if isinstance(node, ast.BinOp):
+            operands = {self._scalar_type(node.left), self._scalar_type(node.right)}
+            if isinstance(node.op, ast.Div) or "float" in operands:
+                return "float"
+            return "int" if operands == {"int"} else None
+        if isinstance(node, ast.UnaryOp):
+            return "bool" if isinstance(node.op, ast.Not) else self._scalar_type(node.operand)
+        if isinstance(node, (ast.Compare, ast.BoolOp)):
+            return "bool"
+        if isinstance(node, ast.IfExp):
+            branches = {self._scalar_type(node.body), self._scalar_type(node.orelse)}
+            if branches == {"int", "float"}:
+                return "float"
+            return branches.pop() if len(branches) == 1 else None
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            name = node.func.id
+            if name in ("int", "float", "bool"):
+                return name
+            if name == "len":
+                return "int"
+            if name == "abs" and len(node.args) == 1:
+                return self._scalar_type(node.args[0])
+            return self.function_return_types.get(name)
+        return None
+
+    def _as_double(self, node: ast.expr) -> str:
+        """Convert an operand of float arithmetic; Python promotes an Int operand, Haskell does not.
+
+        An int literal needs no conversion, since GHC types it from context.
+        """
+        code = self._convert_expression(node)
+        if self._scalar_type(node) == "int" and not isinstance(node, ast.Constant):
+            return f"(fromIntegral {code})"
+        return code
+
     def _convert_binary_operation(self, node: ast.BinOp) -> str:
         """Convert Python binary operation to Haskell."""
-        left = self._convert_expression(node.left)
-        right = self._convert_expression(node.right)
+        float_ops = (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.FloorDiv, ast.Mod, ast.Pow)
+        if isinstance(node.op, float_ops) and self._scalar_type(node) == "float":
+            left, right = self._as_double(node.left), self._as_double(node.right)
+        else:
+            left, right = self._convert_expression(node.left), self._convert_expression(node.right)
 
         # Handle list concatenation: use ++ instead of + for lists
         if isinstance(node.op, ast.Add):
@@ -762,9 +712,9 @@ main = printValue "Generated Haskell code executed successfully"'''
 
         # Handle Haskell-specific operators
         if isinstance(node.op, ast.FloorDiv):
-            return f"({left} `div` {right})"
+            return f"({left} `pyFloorDiv` {right})"
         elif isinstance(node.op, ast.Mod):
-            return f"({left} `mod` {right})"
+            return f"({left} `pyMod` {right})"
         elif isinstance(node.op, ast.Pow):
             return f"({left} ** {right})"
         elif isinstance(node.op, ast.BitOr):
@@ -807,6 +757,8 @@ main = printValue "Generated Haskell code executed successfully"'''
         if len(node.ops) == 1 and len(node.comparators) == 1:
             op = node.ops[0]
             right = self._convert_expression(node.comparators[0])
+            if {self._scalar_type(node.left), self._scalar_type(node.comparators[0])} == {"int", "float"}:
+                left, right = self._as_double(node.left), self._as_double(node.comparators[0])
 
             # Handle Haskell-specific operators
             if isinstance(op, ast.NotEq):
@@ -847,6 +799,9 @@ main = printValue "Generated Haskell code executed successfully"'''
 
             # Handle built-in functions
             if func_name == "print":
+                if len(args) > 1:
+                    # Python separates arguments with one space
+                    return f"putStrLn (unwords [{', '.join(f'toString ({arg})' for arg in args)}])"
                 if args:
                     # Parenthesize applications: `printValue f x` would pass f and x separately.
                     if " " in args[0] and not isinstance(node.args[0], ast.Constant):
@@ -855,43 +810,44 @@ main = printValue "Generated Haskell code executed successfully"'''
                 else:
                     return 'printValue ""'
             elif func_name == "len":
+                # Builtin wrappers parenthesize: `sum' listComprehension xs f` passes three arguments
                 if args:
-                    return f"len' {args[0]}"
+                    return f"(len' ({args[0]}))"
                 else:
                     return "0"  # Default len value
             elif func_name == "abs":
                 if args:
-                    return f"abs' {args[0]}"
+                    return f"(abs' ({args[0]}))"
                 else:
                     return "abs' 0"  # Default abs value
             elif func_name == "min":
                 if args:
-                    return f"min' {args[0]}"
+                    return f"(min' ({args[0]}))"
                 else:
                     return "0"  # Default min value
             elif func_name == "max":
                 if args:
-                    return f"max' {args[0]}"
+                    return f"(max' ({args[0]}))"
                 else:
                     return "0"  # Default max value
             elif func_name == "sum":
                 if args:
-                    return f"sum' {args[0]}"
+                    return f"(sum' ({args[0]}))"
                 else:
                     return "0"  # Default sum value
             elif func_name == "any":
                 if args:
-                    return f"or {args[0]}"
+                    return f"(or ({args[0]}))"
                 else:
                     return "False"
             elif func_name == "all":
                 if args:
-                    return f"and {args[0]}"
+                    return f"(and ({args[0]}))"
                 else:
                     return "True"
             elif func_name == "bool":
                 if args:
-                    return f"bool' {args[0]}"
+                    return f"(bool' ({args[0]}))"
                 else:
                     return "False"  # Default bool value
             elif func_name == "str":
@@ -1015,16 +971,13 @@ main = printValue "Generated Haskell code executed successfully"'''
 
         index = self._convert_expression(node.slice)
 
-        if isinstance(node.value, ast.Name) and node.value.id in self.dict_vars:
-            return f"({obj} Map.! {index})"
-
-        # Heuristic: if index is a string literal, it's likely a dict access
-        # For maps: obj Map.! index
-        # For lists: obj !! index
-        if isinstance(node.slice, ast.Constant) and isinstance(node.slice.value, str):
-            return f"({obj} Map.! {index})"
-        else:
-            return f"({obj} !! {index})"
+        # Heuristic: a string literal index is a dict access.
+        # pyLookup and pyIndex throw KeyError and IndexError, as Python does.
+        if (isinstance(node.value, ast.Name) and node.value.id in self.dict_vars) or (
+            isinstance(node.slice, ast.Constant) and isinstance(node.slice.value, str)
+        ):
+            return f"(pyLookup ({obj}) ({index}))"
+        return f"(pyIndex ({obj}) ({index}))"
 
     def _convert_f_string(self, node: ast.JoinedStr) -> str:
         """Convert f-string to Haskell string concatenation with show.
@@ -1049,6 +1002,9 @@ main = printValue "Generated Haskell code executed successfully"'''
                     parts.append(f'(Text.Printf.printf "{printf_fmt}" {expr_code} :: String)')
                 elif self._is_string_expression(value.value):
                     parts.append(expr_code)
+                elif self._scalar_type(value.value) == "float":
+                    # show writes 1.0e-2; toString writes Python's repr, 0.01
+                    parts.append(f"(toString {expr_code})")
                 else:
                     parts.append(f"(show {expr_code})")
 
@@ -1263,9 +1219,9 @@ main = printValue "Generated Haskell code executed successfully"'''
     def _convert_operator(self, op_node: ast.operator) -> str:
         """Convert AST operator to Haskell operator string."""
         if isinstance(op_node, ast.FloorDiv):
-            return "`div`"
+            return "`pyFloorDiv`"
         elif isinstance(op_node, ast.Mod):
-            return "`mod`"
+            return "`pyMod`"
         elif isinstance(op_node, ast.Pow):
             return "**"
         elif isinstance(op_node, ast.BitOr):
@@ -1288,9 +1244,7 @@ main = printValue "Generated Haskell code executed successfully"'''
     def _convert_augmented_assignment(self, node: ast.AugAssign) -> str:
         """Convert Python augmented assignment to Haskell."""
         target = self._convert_expression(node.target)
-        value = self._convert_expression(node.value)
-        op = self._convert_operator(node.op)
-        return f"{target} = ({target} {op} {value})"
+        return f"{target} = {self._convert_binary_operation(ast.BinOp(left=node.target, op=node.op, right=node.value))}"
 
     def _convert_if_statement(self, node: ast.If) -> str:
         """Convert Python if statement to Haskell."""

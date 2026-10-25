@@ -28,33 +28,7 @@ from multigen.frontend.subset_validator import StaticPythonSubsetValidator
 # here so a new one fails the build instead of being filed away. The list is
 # allowed to shrink and nothing else: removing an entry is the fix, and a
 # stale entry is a failure too (see TestNoNewBrokenEmissions).
-KNOWN_BUILD_FAILURES = frozenset(
-    {
-        "c/union_types",
-        "cpp/context_managers",
-        "cpp/dataclasses",
-        "cpp/namedtuples",
-        "go/context_managers",
-        "go/dataclasses",
-        "go/f_strings",
-        "go/namedtuples",
-        "haskell/basic_types",
-        "haskell/context_managers",
-        "haskell/dataclasses",
-        "haskell/exceptions",
-        "haskell/generator_expressions",
-        "haskell/namedtuples",
-        "ocaml/basic_types",
-        "ocaml/comprehensions",
-        "ocaml/context_managers",
-        "ocaml/f_strings",
-        "ocaml/generator_expressions",
-        "ocaml/generators",
-        "ocaml/generics",
-        "ocaml/yield_from",
-        "rust/generics",
-    }
-)
+KNOWN_BUILD_FAILURES: frozenset[str] = frozenset()
 
 
 def emitted_but_unbuildable(matrix: dict[str, dict[str, dict[str, str]]]) -> set[str]:

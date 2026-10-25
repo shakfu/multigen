@@ -75,8 +75,8 @@
         "run": "skipped"
       },
       "union_types": {
-        "emit": "ok",
-        "run": "build_failed"
+        "emit": "refuses",
+        "run": "skipped"
       },
       "variable_declarations": {
         "emit": "ok",
@@ -102,7 +102,7 @@
       },
       "context_managers": {
         "emit": "ok",
-        "run": "build_failed"
+        "run": "matches"
       },
       "control_flow": {
         "emit": "ok",
@@ -110,7 +110,7 @@
       },
       "dataclasses": {
         "emit": "ok",
-        "run": "build_failed"
+        "run": "matches"
       },
       "enums": {
         "emit": "drops",
@@ -150,7 +150,7 @@
       },
       "namedtuples": {
         "emit": "ok",
-        "run": "build_failed"
+        "run": "matches"
       },
       "pattern_matching": {
         "emit": "refuses",
@@ -188,7 +188,7 @@
       },
       "context_managers": {
         "emit": "ok",
-        "run": "build_failed"
+        "run": "matches"
       },
       "control_flow": {
         "emit": "ok",
@@ -196,7 +196,7 @@
       },
       "dataclasses": {
         "emit": "ok",
-        "run": "build_failed"
+        "run": "matches"
       },
       "enums": {
         "emit": "drops",
@@ -208,7 +208,7 @@
       },
       "f_strings": {
         "emit": "ok",
-        "run": "build_failed"
+        "run": "matches"
       },
       "function_calls": {
         "emit": "ok",
@@ -236,7 +236,7 @@
       },
       "namedtuples": {
         "emit": "ok",
-        "run": "build_failed"
+        "run": "matches"
       },
       "pattern_matching": {
         "emit": "error",
@@ -266,31 +266,31 @@
       },
       "basic_types": {
         "emit": "ok",
-        "run": "build_failed"
+        "run": "matches"
       },
       "comprehensions": {
         "emit": "ok",
         "run": "matches"
       },
       "context_managers": {
-        "emit": "ok",
-        "run": "build_failed"
-      },
-      "control_flow": {
         "emit": "refuses",
         "run": "skipped"
       },
+      "control_flow": {
+        "emit": "ok",
+        "run": "matches"
+      },
       "dataclasses": {
         "emit": "ok",
-        "run": "build_failed"
+        "run": "matches"
       },
       "enums": {
         "emit": "drops",
         "run": "skipped"
       },
       "exceptions": {
-        "emit": "ok",
-        "run": "build_failed"
+        "emit": "refuses",
+        "run": "skipped"
       },
       "f_strings": {
         "emit": "ok",
@@ -306,7 +306,7 @@
       },
       "generator_expressions": {
         "emit": "ok",
-        "run": "build_failed"
+        "run": "matches"
       },
       "generators": {
         "emit": "ok",
@@ -322,7 +322,7 @@
       },
       "namedtuples": {
         "emit": "ok",
-        "run": "build_failed"
+        "run": "matches"
       },
       "pattern_matching": {
         "emit": "refuses",
@@ -438,15 +438,15 @@
       },
       "basic_types": {
         "emit": "ok",
-        "run": "build_failed"
+        "run": "matches"
       },
       "comprehensions": {
         "emit": "ok",
-        "run": "build_failed"
+        "run": "matches"
       },
       "context_managers": {
         "emit": "ok",
-        "run": "build_failed"
+        "run": "matches"
       },
       "control_flow": {
         "emit": "ok",
@@ -466,7 +466,7 @@
       },
       "f_strings": {
         "emit": "ok",
-        "run": "build_failed"
+        "run": "matches"
       },
       "function_calls": {
         "emit": "ok",
@@ -478,15 +478,15 @@
       },
       "generator_expressions": {
         "emit": "ok",
-        "run": "build_failed"
+        "run": "matches"
       },
       "generators": {
         "emit": "ok",
-        "run": "build_failed"
+        "run": "matches"
       },
       "generics": {
         "emit": "ok",
-        "run": "build_failed"
+        "run": "matches"
       },
       "lists": {
         "emit": "ok",
@@ -514,7 +514,7 @@
       },
       "yield_from": {
         "emit": "ok",
-        "run": "build_failed"
+        "run": "matches"
       }
     },
     "rust": {
@@ -572,7 +572,7 @@
       },
       "generics": {
         "emit": "ok",
-        "run": "build_failed"
+        "run": "matches"
       },
       "lists": {
         "emit": "ok",

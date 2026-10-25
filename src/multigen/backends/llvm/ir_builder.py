@@ -1,6 +1,7 @@
 """LLVM-specific Static IR builder.
 
-Extends the shared `IRBuilder` with `for k, v in d.items()` loops.
+Extends the shared `IRBuilder` with `for k, v in d.items()` loops and
+Python's numeric result types for `/` and mixed int/float arithmetic.
 """
 
 import ast
@@ -8,6 +9,7 @@ from typing import Any, Optional, Union
 
 from ...errors import UnsupportedFeatureError
 from ...frontend.static_ir import (
+    IRBinaryOperation,
     IRBuilder,
     IRDataType,
     IRExpression,
@@ -19,6 +21,7 @@ from ...frontend.static_ir import (
     IRVariable,
     IRVisitor,
 )
+from ..converter_utils import is_main_guard
 
 
 def items_unpack_names(target: ast.expr, iterable: ast.expr) -> Optional[tuple[str, str, ast.expr]]:
@@ -82,6 +85,15 @@ class IRDictItemsFor(IRStatement):
 class LLVMIRBuilder(IRBuilder):
     """Static IR builder for the LLVM backend."""
 
+    def _build_binary_operation(self, node: ast.BinOp) -> IRBinaryOperation:
+        """Build a binary operation; `/` and any float operand give a float result."""
+        binop = super()._build_binary_operation(node)
+        numeric = (IRDataType.INT, IRDataType.FLOAT, IRDataType.BOOL)
+        kinds = (binop.left.result_type.base_type, binop.right.result_type.base_type)
+        if all(k in numeric for k in kinds) and (binop.operator == "/" or IRDataType.FLOAT in kinds):
+            binop.result_type = IRType(IRDataType.FLOAT)
+        return binop
+
     def _build_for(self, node: ast.For) -> Optional[Union[IRFor, IRDictItemsFor]]:  # type: ignore[override]
         """Build a for loop, adding `for k, v in d.items()`."""
         if node.orelse:
@@ -121,4 +133,6 @@ class LLVMIRBuilder(IRBuilder):
 
 def build_llvm_ir_from_code(source_code: str, module_name: str = "main") -> IRModule:
     """Build Static IR for the LLVM backend from Python source."""
-    return LLVMIRBuilder().build_from_ast(ast.parse(source_code), module_name)
+    tree = ast.parse(source_code)
+    tree.body = [stmt for stmt in tree.body if not is_main_guard(stmt)]
+    return LLVMIRBuilder().build_from_ast(tree, module_name)

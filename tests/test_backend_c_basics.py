@@ -251,7 +251,7 @@ def div_test(a: int, b: int) -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "return (a / b);" in c_code
+        assert "return ((double)a / b);" in c_code
 
     def test_modulo_operation(self):
         """Test modulo operation."""

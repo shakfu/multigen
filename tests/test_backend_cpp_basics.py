@@ -57,7 +57,7 @@ def print_message(msg: str) -> None:
         cpp_code = self.converter.convert_code(python_code)
 
         assert "void print_message(std::string msg)" in cpp_code
-        assert "cout << msg << endl;" in cpp_code
+        assert "cout << multigen::print_value(msg) << endl;" in cpp_code
 
     def test_auto_type_inference(self):
         """Test automatic type inference when annotations are missing."""
@@ -220,7 +220,7 @@ def test_ops(a: int, b: int) -> int:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "return ((a + b) - ((a * b) / a));" in cpp_code
+        assert "return ((a + b) - multigen::truediv((a * b), a));" in cpp_code
 
     def test_comparison_operations(self):
         """Test comparison operations."""
@@ -283,8 +283,8 @@ def test_print(msg: str) -> None:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "cout << msg << endl;" in cpp_code
-        assert 'cout << "Hello" << " " << "World" << endl;' in cpp_code
+        assert "cout << multigen::print_value(msg) << endl;" in cpp_code
+        assert 'cout << multigen::print_value("Hello") << " " << multigen::print_value("World") << endl;' in cpp_code
 
     def test_len_function(self):
         """Test len() function conversion."""

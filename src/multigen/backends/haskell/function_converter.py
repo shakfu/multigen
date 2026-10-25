@@ -57,13 +57,41 @@ def _dict_variables(node: ast.FunctionDef) -> set[str]:
     return names
 
 
+def _scalar_variables(node: ast.FunctionDef) -> dict[str, str]:
+    """Map names annotated int, float or bool, and range loop targets, to that type; drop conflicts."""
+    found: list[tuple[str, str]] = []
+    annotated = [(arg.arg, arg.annotation) for arg in node.args.args]
+    for sub in ast.walk(node):
+        if isinstance(sub, ast.AnnAssign) and isinstance(sub.target, ast.Name):
+            annotated.append((sub.target.id, sub.annotation))
+        elif (
+            isinstance(sub, ast.For)
+            and isinstance(sub.target, ast.Name)
+            and isinstance(sub.iter, ast.Call)
+            and isinstance(sub.iter.func, ast.Name)
+            and sub.iter.func.id == "range"
+        ):
+            found.append((sub.target.id, "int"))
+    for name, annotation in annotated:
+        if isinstance(annotation, ast.Name) and annotation.id in ("int", "float", "bool"):
+            found.append((name, annotation.id))
+    types: dict[str, str] = {}
+    conflicts: set[str] = set()
+    for name, type_name in found:
+        if types.setdefault(name, type_name) != type_name:
+            conflicts.add(name)
+    return {name: t for name, t in types.items() if name not in conflicts}
+
+
 def convert_function_with_visitor(converter: "MultiGenPythonToHaskellConverter", node: ast.FunctionDef) -> str:
-    """Convert a Python function, with its dict variables known while converting it."""
+    """Convert a Python function, with its dict and scalar variables known while converting it."""
     converter.dict_vars = _dict_variables(node)
+    converter.scalar_vars = _scalar_variables(node)
     try:
         return _convert_function(converter, node)
     finally:
         converter.dict_vars = set()
+        converter.scalar_vars = {}
 
 
 def _convert_function(converter: "MultiGenPythonToHaskellConverter", node: ast.FunctionDef) -> str:
@@ -85,8 +113,6 @@ def _convert_function(converter: "MultiGenPythonToHaskellConverter", node: ast.F
     is_mutating, mutated_params = _mutates_array_parameter(converter, node)
     if is_mutating and node.name != "main":
         params_list = ", ".join(sorted(mutated_params))
-        from ..errors import UnsupportedFeatureError
-
         raise UnsupportedFeatureError(
             f"Function '{node.name}' mutates array parameter(s): {params_list}. "
             f"In-place array mutations cannot be directly translated to pure Haskell "
@@ -107,7 +133,14 @@ def _convert_function(converter: "MultiGenPythonToHaskellConverter", node: ast.F
         return _convert_generator_function(converter, node, func_name)
 
     # Handle regular pure functions
-    return _convert_pure_function(converter, node, func_name)
+    try:
+        return _convert_pure_function(converter, node, func_name)
+    except UnsupportedFeatureError:
+        # Loops and rebindings the where-clause form cannot order; translate statement by statement
+        sequential = _convert_sequential_function(converter, node, func_name)
+        if sequential is None:
+            raise
+        return sequential
 
 
 def _mutates_array_parameter(
@@ -258,17 +291,10 @@ def _convert_main_function(converter: "MultiGenPythonToHaskellConverter", node: 
     return f"{signature}\n{body}"
 
 
-def _convert_pure_function(converter: "MultiGenPythonToHaskellConverter", node: ast.FunctionDef, func_name: str) -> str:
-    """Convert pure (non-main) function.
-
-    Args:
-        converter: Reference to converter
-        node: Function definition node
-        func_name: Converted Haskell function name
-
-    Returns:
-        Converted Haskell function
-    """
+def _pure_signature(
+    converter: "MultiGenPythonToHaskellConverter", node: ast.FunctionDef, func_name: str
+) -> tuple[str, list[tuple[str, str]]]:
+    """Return a pure function's type signature line and its (name, type) parameters."""
     # Extract parameters
     params = []
     for arg in node.args.args:
@@ -317,6 +343,21 @@ def _convert_pure_function(converter: "MultiGenPythonToHaskellConverter", node: 
         signature = f"{func_name} :: ({constraint_str}) => {base_signature}"
     else:
         signature = f"{func_name} :: {base_signature}"
+    return signature, params
+
+
+def _convert_pure_function(converter: "MultiGenPythonToHaskellConverter", node: ast.FunctionDef, func_name: str) -> str:
+    """Convert pure (non-main) function.
+
+    Args:
+        converter: Reference to converter
+        node: Function definition node
+        func_name: Converted Haskell function name
+
+    Returns:
+        Converted Haskell function
+    """
+    signature, params = _pure_signature(converter, node, func_name)
 
     # Convert function body
     converter.current_function = func_name
@@ -331,8 +372,28 @@ def _convert_pure_function(converter: "MultiGenPythonToHaskellConverter", node: 
         )
     ]
 
+    # A where clause cannot rebind a name, so an if that assigns needs the sequential translation
+    for stmt in filtered_body:
+        if isinstance(stmt, ast.If) and _assigned_names(stmt.body + stmt.orelse):
+            raise UnsupportedFeatureError(f"if at line {stmt.lineno} assigns in a pure function")
+
+    # Leading `if c: raise E(m)` guards wrap the body as `if c then throw (E m) else ...`
+    guards: list[ast.If] = []
+    while len(filtered_body) > 1 and _is_guard_raise(filtered_body[0]):
+        guard = filtered_body.pop(0)
+        assert isinstance(guard, ast.If)
+        guards.append(guard)
+
     # Check for early return pattern
-    early_return = FunctionBodyAnalyzer.detect_early_return_pattern(filtered_body)
+    # Bindings before an early return join its where clause, if each name is bound once
+    lead = 0
+    while lead < len(filtered_body) and _bound_name(filtered_body[lead]):
+        lead += 1
+    early_return = FunctionBodyAnalyzer.detect_early_return_pattern(filtered_body[lead:])
+    binding_stmts = [*filtered_body[:lead], *filtered_body[lead + 1 : -1]]
+    names = [_bound_name(stmt) for stmt in binding_stmts]
+    if early_return and len(set(names)) < len(names):
+        early_return = None
     if early_return:
         if_stmt, final_return = early_return
         condition = converter._convert_expression(if_stmt.test)
@@ -345,15 +406,13 @@ def _convert_pure_function(converter: "MultiGenPythonToHaskellConverter", node: 
             then_value = converter._convert_expression(then_expr)
             else_value = converter._convert_expression(else_expr)
 
-            # Handle bindings between the if and final return
+            # Bindings before the if and between the if and the final return
             bindings: list[str] = []
-            if len(filtered_body) > 2:
-                # Convert the middle statements (bindings)
-                visitor = PureFunctionVisitor(converter)
-                for stmt in filtered_body[1:-1]:
-                    converted_stmt = visitor.visit(stmt)
-                    if converted_stmt:
-                        bindings.append(converted_stmt)
+            visitor = PureFunctionVisitor(converter)
+            for stmt in binding_stmts:
+                converted_stmt = visitor.visit(stmt)
+                if converted_stmt:
+                    bindings.append(converted_stmt)
 
             # Build function body with conditional
             body = f"if {condition} then {then_value} else {else_value}"
@@ -364,7 +423,7 @@ def _convert_pure_function(converter: "MultiGenPythonToHaskellConverter", node: 
             converter.current_function = None
             converter.declared_vars = set()
             param_pattern = f" {param_names}" if param_names else ""
-            return f"{signature}\n{func_name}{param_pattern} = {body}"
+            return f"{signature}\n{func_name}{param_pattern} = {_with_guards(converter, guards, body)}"
 
     # Normal conversion using visitor
     visitor = PureFunctionVisitor(converter)
@@ -412,10 +471,36 @@ def _convert_pure_function(converter: "MultiGenPythonToHaskellConverter", node: 
             if bindings:
                 body = f"{last_stmt}\n  where\n    " + "\n    ".join(bindings)
 
+    body = _with_guards(converter, guards, body)
     converter.current_function = None
     converter.declared_vars = set()
     param_pattern = f" {param_names}" if param_names else ""
     return f"{signature}\n{func_name}{param_pattern} = {body}"
+
+
+def _bound_name(stmt: ast.stmt) -> Optional[str]:
+    """Return the name a plain `x = v` or `x: T = v` statement binds, else None."""
+    if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Name):
+        return stmt.targets[0].id
+    if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name) and stmt.value is not None:
+        return stmt.target.id
+    return None
+
+
+def _is_guard_raise(stmt: ast.stmt) -> bool:
+    """Match `if cond: raise E(...)` with no else branch."""
+    return isinstance(stmt, ast.If) and not stmt.orelse and len(stmt.body) == 1 and isinstance(stmt.body[0], ast.Raise)
+
+
+def _with_guards(converter: "MultiGenPythonToHaskellConverter", guards: list[ast.If], body: str) -> str:
+    """Wrap a function body in its guards; a `where` clause stays attached to the equation."""
+    head, sep, where = body.partition("\n  where")
+    for guard in reversed(guards):
+        raise_stmt = guard.body[0]
+        assert isinstance(raise_stmt, ast.Raise)
+        condition = converter._convert_expression(guard.test)
+        head = f"if {condition} then {converter._convert_raise_statement(raise_stmt)} else {head}"
+    return head + sep + where
 
 
 def _param_used_as_2d_list(
@@ -648,3 +733,215 @@ def _convert_for_generator(
 
 
 __all__ = ["convert_function_with_visitor"]
+
+
+def _convert_sequential_function(
+    converter: "MultiGenPythonToHaskellConverter", node: ast.FunctionDef, func_name: str
+) -> Optional[str]:
+    """Translate a pure function as one expression that runs its statements in order.
+
+    Each assignment becomes `case e of x -> rest`: `case` binds without recursion, so
+    `x = x * 2` refers to the old x, as in Python. A `for` loop becomes a foldl over the
+    variables its body updates. Returns None when the body holds a statement this cannot express.
+    """
+    signature, params = _pure_signature(converter, node, func_name)
+    converter.current_function = func_name
+    converter.declared_vars = set()
+    try:
+        body = _sequential_body(converter, node.body, {arg.arg for arg in node.args.args}, None)
+    except UnsupportedFeatureError:
+        return None
+    finally:
+        converter.current_function = None
+        converter.declared_vars = set()
+    param_names = " ".join(name for name, _ in params)
+    return f"{signature}\n{func_name}{' ' + param_names if param_names else ''} =\n  {body}"
+
+
+def _sequential_body(
+    converter: "MultiGenPythonToHaskellConverter", stmts: list[ast.stmt], defined: set[str], out: Optional[list[str]]
+) -> str:
+    """Translate statements into one expression.
+
+    `out` names the variables a loop or if branch hands back as a tuple when its
+    statements run out; None means the function body, which must end in return.
+    """
+    if not stmts:
+        if out is None:
+            raise UnsupportedFeatureError("function body can end without return")
+        return _state(converter, out)
+    stmt, rest = stmts[0], stmts[1:]
+    name = converter._to_haskell_var_name
+
+    def bind(var: str, value: str) -> str:
+        return f"(case {value} of {name(var)} -> {_sequential_body(converter, rest, defined | {var}, out)})"
+
+    if isinstance(stmt, (ast.Return, ast.Raise)):
+        if out is not None:
+            raise UnsupportedFeatureError("return or raise inside a loop or branch that falls through")
+        if isinstance(stmt, ast.Raise):
+            return str(converter._convert_raise_statement(stmt))
+        return converter._convert_expression(stmt.value) if stmt.value else "()"
+    if isinstance(stmt, ast.Pass) or (isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Constant)):
+        return _sequential_body(converter, rest, defined, out)
+    target = _store_target(stmt)
+    if target is not None and isinstance(target, ast.Name) and isinstance(stmt, (ast.Assign, ast.AnnAssign)):
+        assert stmt.value is not None
+        return bind(target.id, converter._convert_expression(stmt.value))
+    if isinstance(stmt, ast.AugAssign) and isinstance(stmt.target, ast.Name):
+        load = ast.Name(id=stmt.target.id, ctx=ast.Load())
+        return bind(stmt.target.id, converter._convert_expression(ast.BinOp(left=load, op=stmt.op, right=stmt.value)))
+    if target is not None and isinstance(target, ast.Subscript) and isinstance(target.value, ast.Name):
+        base = target.value.id
+        index = converter._convert_expression(target.slice)
+        if isinstance(stmt, ast.AugAssign):
+            current = ast.Subscript(value=ast.Name(id=base, ctx=ast.Load()), slice=target.slice, ctx=ast.Load())
+            value = converter._convert_expression(ast.BinOp(left=current, op=stmt.op, right=stmt.value))
+        else:
+            assert isinstance(stmt, (ast.Assign, ast.AnnAssign)) and stmt.value is not None
+            value = converter._convert_expression(stmt.value)
+        update = "Map.insert" if base in converter.dict_vars else "updateAt"
+        return bind(base, f"({update} ({index}) ({value}) {name(base)})")
+    appended = _appended_list(stmt)
+    if appended is not None:
+        assert isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Call)
+        item = converter._convert_expression(stmt.value.args[0])
+        return bind(appended, f"({name(appended)} ++ [{item}])")
+    if isinstance(stmt, ast.If):
+        return _sequential_if(converter, stmt, rest, defined, out)
+    if isinstance(stmt, ast.For) and not stmt.orelse:
+        return _sequential_for(converter, stmt, rest, defined, out)
+    if isinstance(stmt, ast.While) and not stmt.orelse:
+        return _sequential_while(converter, stmt, rest, defined, out)
+    raise UnsupportedFeatureError(f"{type(stmt).__name__} at line {stmt.lineno} in a sequential translation")
+
+
+def _sequential_if(
+    converter: "MultiGenPythonToHaskellConverter",
+    stmt: ast.If,
+    rest: list[ast.stmt],
+    defined: set[str],
+    out: Optional[list[str]],
+) -> str:
+    """An if that ends in return takes the rest as its else; otherwise both branches hand back what they update."""
+    condition = converter._convert_expression(stmt.test)
+    if _ends_function(stmt.body):
+        then = _sequential_body(converter, stmt.body, defined, out)
+        return f"(if {condition} then {then} else {_sequential_body(converter, stmt.orelse + rest, defined, out)})"
+    if _has_exit(stmt.body + stmt.orelse):
+        raise UnsupportedFeatureError(f"return inside an if at line {stmt.lineno} that can fall through")
+    updated = sorted(_assigned_names(stmt.body + stmt.orelse) & defined)
+    if not updated:
+        return _sequential_body(converter, rest, defined, out)
+    then = _sequential_body(converter, stmt.body, defined, updated)
+    other = _sequential_body(converter, stmt.orelse, defined, updated)
+    following = _sequential_body(converter, rest, defined, out)
+    return f"(case (if {condition} then {then} else {other}) of {_state(converter, updated)} -> {following})"
+
+
+def _sequential_for(
+    converter: "MultiGenPythonToHaskellConverter",
+    stmt: ast.For,
+    rest: list[ast.stmt],
+    defined: set[str],
+    out: Optional[list[str]],
+) -> str:
+    """A for loop folds the variables its body updates over the iterable."""
+    if _has_exit(stmt.body):
+        raise UnsupportedFeatureError(f"return, break or continue in the loop at line {stmt.lineno}")
+    if isinstance(stmt.target, ast.Name):
+        loop_names = {stmt.target.id}
+    elif isinstance(stmt.target, ast.Tuple) and all(isinstance(e, ast.Name) for e in stmt.target.elts):
+        loop_names = {e.id for e in stmt.target.elts if isinstance(e, ast.Name)}
+    else:
+        raise UnsupportedFeatureError(f"loop target at line {stmt.lineno}")
+    updated = sorted(_assigned_names(stmt.body) & defined)
+    if not updated:
+        return _sequential_body(converter, rest, defined, out)
+    iterable = converter._convert_expression(stmt.iter)
+    # Iterating a dict yields its keys; folding the Map itself would visit values
+    if isinstance(stmt.iter, ast.Name) and stmt.iter.id in converter.dict_vars:
+        iterable = f"Map.keys {iterable}"
+    state = _state(converter, updated)
+    body = _sequential_body(converter, stmt.body, defined | loop_names, updated)
+    target = converter._convert_expression(stmt.target)
+    folded = f"(foldl (\\{state} {target} -> {body}) {state} ({iterable}))"
+    return f"(case {folded} of {state} -> {_sequential_body(converter, rest, defined, out)})"
+
+
+def _sequential_while(
+    converter: "MultiGenPythonToHaskellConverter",
+    stmt: ast.While,
+    rest: list[ast.stmt],
+    defined: set[str],
+    out: Optional[list[str]],
+) -> str:
+    """A while loop is a local recursive function over the variables its body updates."""
+    if _has_exit(stmt.body):
+        raise UnsupportedFeatureError(f"return, break or continue in the loop at line {stmt.lineno}")
+    updated = sorted(_assigned_names(stmt.body) & defined)
+    if not updated:
+        raise UnsupportedFeatureError(f"while loop at line {stmt.lineno} updates no variable, so it cannot end")
+    state = _state(converter, updated)
+    step = f"go{stmt.lineno}"
+    condition = converter._convert_expression(stmt.test)
+    body = _sequential_body(converter, stmt.body, defined, updated)
+    loop = f"let {step} {state} = if {condition} then {step} ({body}) else {state} in {step} {state}"
+    return f"(case ({loop}) of {state} -> {_sequential_body(converter, rest, defined, out)})"
+
+
+def _state(converter: "MultiGenPythonToHaskellConverter", names: list[str]) -> str:
+    """The tuple pattern and expression for a set of variables; one variable needs no tuple."""
+    converted = [converter._to_haskell_var_name(n) for n in names]
+    return converted[0] if len(converted) == 1 else f"({', '.join(converted)})"
+
+
+def _store_target(stmt: ast.stmt) -> Optional[ast.expr]:
+    """The single target of an assignment statement, else None."""
+    if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1:
+        return stmt.targets[0]
+    if isinstance(stmt, ast.AnnAssign) and stmt.value is not None:
+        return stmt.target
+    if isinstance(stmt, ast.AugAssign):
+        return stmt.target
+    return None
+
+
+def _appended_list(stmt: ast.stmt) -> Optional[str]:
+    """The list name in an `xs.append(v)` statement, else None."""
+    if (
+        isinstance(stmt, ast.Expr)
+        and isinstance(stmt.value, ast.Call)
+        and isinstance(stmt.value.func, ast.Attribute)
+        and stmt.value.func.attr == "append"
+        and isinstance(stmt.value.func.value, ast.Name)
+        and len(stmt.value.args) == 1
+    ):
+        return stmt.value.func.value.id
+    return None
+
+
+def _assigned_names(stmts: list[ast.stmt]) -> set[str]:
+    """Names rebound anywhere in the statements: assignments, item stores and appends."""
+    names: set[str] = set()
+    for stmt in (n for s in stmts for n in ast.walk(s) if isinstance(n, ast.stmt)):
+        target = _store_target(stmt)
+        if isinstance(target, ast.Name):
+            names.add(target.id)
+        elif isinstance(target, ast.Subscript) and isinstance(target.value, ast.Name):
+            names.add(target.value.id)
+        appended = _appended_list(stmt)
+        if appended is not None:
+            names.add(appended)
+    return names
+
+
+def _ends_function(stmts: list[ast.stmt]) -> bool:
+    """Whether the statements always end the function with return or raise."""
+    return bool(stmts) and isinstance(stmts[-1], (ast.Return, ast.Raise))
+
+
+def _has_exit(stmts: list[ast.stmt]) -> bool:
+    """Whether a return, raise, break or continue appears anywhere in the statements."""
+    exits = (ast.Return, ast.Raise, ast.Break, ast.Continue)
+    return any(isinstance(n, exits) for s in stmts for n in ast.walk(s))

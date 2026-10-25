@@ -8,6 +8,34 @@ exception Zero_division_error of string
 exception Index_error of string
 exception Runtime_error of string
 
+(* Run the program's main: an escaping exception prints "Name: message" and exits 1,
+   as CPython does. OCaml's default report uses OCaml names and exits 2. *)
+let run_main main =
+  try ignore (main ()) with e ->
+    let report =
+      match e with
+      | Value_error m -> "ValueError: " ^ m
+      | Type_error m -> "TypeError: " ^ m
+      | Key_error m -> "KeyError: " ^ m
+      | Zero_division_error m -> "ZeroDivisionError: " ^ m
+      | Index_error m -> "IndexError: " ^ m
+      | Runtime_error m -> "RuntimeError: " ^ m
+      | Division_by_zero -> "ZeroDivisionError: integer division or modulo by zero"
+      | e -> "Exception: " ^ Printexc.to_string e
+    in
+    flush stdout;
+    prerr_endline report;
+    exit 1
+
+(* Python list index: a negative index counts from the end; out of range raises Index_error. *)
+let py_index i n =
+  let i = if i < 0 then i + n else i in
+  if i < 0 || i >= n then raise (Index_error "list index out of range");
+  i
+
+(* Python d[k] on an association list: a missing key raises Key_error. *)
+let py_assoc k d = try List.assoc k d with Not_found -> raise (Key_error "key not found")
+
 (* Python // and %: round toward negative infinity. OCaml's / and mod truncate toward zero. *)
 let ( /// ) a b =
   if b = 0 then raise (Zero_division_error "integer division or modulo by zero");
@@ -18,6 +46,38 @@ let ( %% ) a b =
   if b = 0 then raise (Zero_division_error "integer division or modulo by zero");
   let r = a mod b in
   if r <> 0 && (r < 0) <> (b < 0) then r + b else r
+
+(* Python // and % on floats, following CPython's float_divmod. *)
+let py_float_divmod a b =
+  if b = 0.0 then raise (Zero_division_error "float division by zero");
+  let m = Float.rem a b in
+  let adjust = m <> 0.0 && (b < 0.0) <> (m < 0.0) in
+  let r = if adjust then m +. b else if m <> 0.0 then m else Float.copy_sign 0.0 b in
+  let d = ((a -. m) /. b) -. if adjust then 1.0 else 0.0 in
+  let q =
+    if d <> 0.0 then
+      let f = Float.floor d in
+      if d -. f > 0.5 then f +. 1.0 else f
+    else Float.copy_sign 0.0 (a /. b)
+  in
+  (q, r)
+
+let ( ///. ) a b = fst (py_float_divmod a b)
+let ( %%. ) a b = snd (py_float_divmod a b)
+
+(* Python's str of a bool *)
+let py_string_of_bool b = if b then "True" else "False"
+
+(* Python's repr of a float: the shortest digits that round-trip, and "3.0" where OCaml prints "3." *)
+let py_string_of_float f =
+  if Float.is_integer f && Float.abs f < 1e16 then Printf.sprintf "%.1f" f
+  else
+    let rec shortest p =
+      let s = Printf.sprintf "%.*g" p f in
+      if p >= 17 || float_of_string s = f then s else shortest (p + 1)
+    in
+    let s = shortest 1 in
+    if String.exists (fun c -> c = '.' || c = 'e' || c = 'n' || c = 'i') s then s else s ^ ".0"
 
 (* String operations module *)
 module StrOps = struct

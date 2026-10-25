@@ -79,7 +79,7 @@ class MultiGenPythonToCConverter:
             "RuntimeError": "MGEN_ERROR_RUNTIME",
             "IndexError": "MGEN_ERROR_INDEX",
             "KeyError": "MGEN_ERROR_KEY",
-            "ZeroDivisionError": "MGEN_ERROR_VALUE",  # No specific zero division error in C
+            "ZeroDivisionError": "MGEN_ERROR_ZERO_DIVISION",
         }
         self.container_system = CContainerSystem()
         self.current_function: str | None = None
@@ -1149,6 +1149,15 @@ class MultiGenPythonToCConverter:
                 raise TypeMappingError(f"Variable '{stmt.target.id}' must be declared before augmented assignment")
             call = self._int_floor_op_call(stmt.op, stmt.target.id, self._convert_expression(stmt.value))
             return f"{stmt.target.id} = {call};"
+        elif (
+            isinstance(stmt.op, (ast.FloorDiv, ast.Mod))
+            and isinstance(stmt.target, ast.Name)
+            and self._is_float_operation(stmt.target, stmt.value)
+        ):
+            if stmt.target.id not in self.variable_context:
+                raise TypeMappingError(f"Variable '{stmt.target.id}' must be declared before augmented assignment")
+            call = self._float_floor_op_call(stmt.op, stmt.target.id, self._convert_expression(stmt.value))
+            return f"{stmt.target.id} = {call};"
         elif isinstance(stmt.op, ast.FloorDiv):
             op_str = "/="
         else:
@@ -1243,8 +1252,13 @@ class MultiGenPythonToCConverter:
         elif isinstance(expr.op, (ast.FloorDiv, ast.Mod)) and self._is_int_operation(expr.left, expr.right):
             # C truncates toward zero; Python floors.
             return self._int_floor_op_call(expr.op, left, right)
+        elif isinstance(expr.op, (ast.FloorDiv, ast.Mod)) and self._is_float_operation(expr.left, expr.right):
+            return self._float_floor_op_call(expr.op, left, right)
         elif isinstance(expr.op, ast.FloorDiv):
             return f"({left} / {right})"
+        elif isinstance(expr.op, ast.Div):
+            # Python / is true division even on two ints.
+            return f"((double){left} / {right})"
         elif isinstance(expr.op, ast.Add) and (self._is_string_type(expr.left) or self._is_string_type(expr.right)):
             # String concatenation using multigen_str_concat
             self.includes_needed.add('#include "multigen_string_ops.h"')
@@ -1275,6 +1289,35 @@ class MultiGenPythonToCConverter:
         if isinstance(expr, (ast.Constant, ast.Name, ast.Call)):
             return self._infer_expression_type(expr) in ("int", "bool")
         return False
+
+    def _is_float_operation(self, left: ast.expr, right: ast.expr) -> bool:
+        """Report whether a numeric operation is done in double: one double operand suffices."""
+        return self._is_float_expr(left) or self._is_float_expr(right)
+
+    def _is_float_expr(self, expr: ast.expr) -> bool:
+        """Report whether an expression is a double."""
+        if isinstance(expr, ast.BinOp):
+            return isinstance(expr.op, ast.Div) or self._is_float_operation(expr.left, expr.right)
+        if isinstance(expr, ast.UnaryOp):
+            return self._is_float_expr(expr.operand)
+        if isinstance(expr, (ast.Constant, ast.Name, ast.Call)):
+            return self._infer_expression_type(expr) in ("double", "float")
+        return False
+
+    def _is_bool_expr(self, expr: ast.expr) -> bool:
+        """Report whether an expression is a bool."""
+        if isinstance(expr, ast.Compare) or (isinstance(expr, ast.UnaryOp) and isinstance(expr.op, ast.Not)):
+            return True
+        if isinstance(expr, ast.BoolOp):
+            return all(self._is_bool_expr(v) for v in expr.values)
+        if isinstance(expr, (ast.Constant, ast.Name, ast.Call)):
+            return self._infer_expression_type(expr) == "bool"
+        return False
+
+    def _float_floor_op_call(self, op: ast.operator, left: str, right: str) -> str:
+        """Return the runtime call implementing Python float // or %."""
+        func = "multigen_floordiv_float" if isinstance(op, ast.FloorDiv) else "multigen_mod_float"
+        return f"{func}({left}, {right})"
 
     def _int_floor_op_call(self, op: ast.operator, left: str, right: str) -> str:
         """Return the runtime call implementing Python int // or %."""
@@ -1551,37 +1594,23 @@ class MultiGenPythonToCConverter:
             return f"{func_name}({', '.join(args)})"
 
     def _convert_print_call(self, ast_args: list[ast.expr], converted_args: list[str]) -> str:
-        """Convert print() to printf() with appropriate format specifiers."""
-        if len(ast_args) == 0:
-            return 'printf("\\n")'
+        """Convert print() to printf(): one format per argument, separated by spaces as Python does."""
+        specs = [self._print_format(arg, c_arg) for arg, c_arg in zip(ast_args, converted_args)]
+        formats = " ".join(fmt for fmt, _ in specs)
+        values = "".join(f", {value}" for _, value in specs)
+        return f'printf("{formats}\\n"{values})'
 
-        if len(ast_args) == 1:
-            # Single argument - detect type and use appropriate format
-            arg_expr = ast_args[0]
-            c_arg = converted_args[0]
-
-            # Check if it's a string literal
-            if isinstance(arg_expr, ast.Constant) and isinstance(arg_expr.value, str):
-                return f'printf("%s\\n", {c_arg})'
-
-            # Check variable type from context
-            if isinstance(arg_expr, ast.Name):
-                var_name = arg_expr.id
-                if var_name in self.variable_context:
-                    var_type = self.variable_context[var_name]
-                    if var_type in ["str", "char*"]:
-                        return f'printf("%s\\n", {c_arg})'
-                    elif var_type == "double":
-                        return f'printf("%f\\n", {c_arg})'
-                    elif var_type == "bool":
-                        return f'printf("%s\\n", {c_arg} ? "true" : "false")'
-
-            # Default to integer
-            return f'printf("%d\\n", {c_arg})'
-        else:
-            # Multiple arguments - use %d for all (simplified)
-            format_specs = " ".join(["%d"] * len(ast_args))
-            return f'printf("{format_specs}\\n", {", ".join(converted_args)})'
+    def _print_format(self, arg_expr: ast.expr, c_arg: str) -> tuple[str, str]:
+        """Return the printf format and argument that print Python's str() of an expression."""
+        if (isinstance(arg_expr, ast.Constant) and isinstance(arg_expr.value, str)) or self._is_string_type(arg_expr):
+            return "%s", c_arg
+        if isinstance(arg_expr, ast.Name) and self.variable_context.get(arg_expr.id) in ("str", "char*"):
+            return "%s", c_arg
+        if self._is_bool_expr(arg_expr):
+            return "%s", f'({c_arg}) ? "True" : "False"'
+        if self._is_float_expr(arg_expr):
+            return "%s", f"multigen_float_repr({c_arg}, (char[32]){{0}})"
+        return "%d", c_arg
 
     def _convert_method_call(self, expr: ast.Call) -> str:
         """Convert method calls: obj.method(args) -> ClassName_method(&obj, args)."""
@@ -1841,6 +1870,14 @@ class MultiGenPythonToCConverter:
 
     def _get_type_annotation(self, annotation: ast.expr) -> str:
         """Extract type from annotation."""
+        # A C variable has one type; passing Union through emitted an unknown type name.
+        is_union = isinstance(annotation, ast.BinOp) and isinstance(annotation.op, ast.BitOr)
+        if is_union or (
+            isinstance(annotation, ast.Subscript)
+            and isinstance(annotation.value, ast.Name)
+            and annotation.value.id in ("Union", "Optional")
+        ):
+            raise UnsupportedFeatureError(f"C backend does not support union types: {ast.unparse(annotation)}")
         if isinstance(annotation, ast.Name):
             return annotation.id
         elif isinstance(annotation, ast.Constant):
@@ -1918,6 +1955,8 @@ class MultiGenPythonToCConverter:
                 return self.inferred_types[var_name].c_type
             # Default fallback
             return "int"
+        elif isinstance(expr, (ast.BinOp, ast.UnaryOp)) and self._is_float_expr(expr):
+            return "double"
         elif isinstance(expr, ast.DictComp):
             # Infer dict comprehension type from key and value expressions
             key_type = self._infer_expression_type(expr.key)
@@ -2611,19 +2650,19 @@ class MultiGenPythonToCConverter:
                     return f"multigen_string_array_get({obj}, {index})"
                 # If it's a nested vector (vec_vec_int), first access returns a vec_int*
                 elif c_type == "vec_vec_int":
-                    return f"vec_vec_int_at(&{obj}, {index})"
+                    return f"vec_vec_int_at(&{obj}, multigen_index({index}, vec_vec_int_size(&{obj})))"
                 # If it's an STC vector type, use vec_*_at() function
                 elif c_type.startswith("vec_"):
                     # DEBUG
                     # print(f"DEBUG SUBSCRIPT: var={var_name}, c_type={c_type}, generating *{c_type}_at")
-                    return f"*{c_type}_at(&{obj}, {index})"
+                    return f"*{c_type}_at(&{obj}, multigen_index({index}, {c_type}_size(&{obj})))"
                 # If it's a map type, use appropriate get function
                 elif c_type == "map_str_int":
                     # Vanilla C string map: returns int*, dereference it
-                    return f"*multigen_str_int_map_get({obj}, {index})"
+                    return f"*(const int*)multigen_check_key(multigen_str_int_map_get({obj}, {index}))"
                 elif c_type.startswith("map_"):
                     # STC map get returns a pointer to entry, need ->second for value
-                    return f"{c_type}_get(&{obj}, {index})->second"
+                    return f"((const {c_type}_value*)multigen_check_key({c_type}_get(&{obj}, {index})))->second"
 
         # Default: use direct array subscript
         return f"{obj}[{index}]"

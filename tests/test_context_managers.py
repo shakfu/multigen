@@ -17,6 +17,7 @@ from multigen.backends.go.converter import MultiGenPythonToGoConverter
 from multigen.backends.haskell.converter import MultiGenPythonToHaskellConverter
 from multigen.backends.ocaml.converter import MultiGenPythonToOCamlConverter
 from multigen.backends.rust.converter import MultiGenPythonToRustConverter
+from multigen.errors import UnsupportedFeatureError
 from multigen.frontend.subset_validator import StaticPythonSubsetValidator
 
 
@@ -215,44 +216,20 @@ def write_file(filename: str, data: str) -> None:
 
 
 class TestHaskellContextManagers:
-    """Test Haskell context manager conversion using bracket."""
+    """Haskell refuses with statements: the bracket form it emitted did not build."""
 
     def setup_method(self) -> None:
         self.converter = MultiGenPythonToHaskellConverter()
 
-    def test_simple_file_read(self) -> None:
-        """Test basic file reading with bracket."""
-        code = """
-def read_file(filename: str) -> str:
-    with open(filename, "r") as f:
-        content: str = f.read()
-    return content
+    @pytest.mark.parametrize("mode", ["r", "w"])
+    def test_with_open_is_refused(self, mode: str) -> None:
+        code = f"""
+def use_file(path: str) -> None:
+    with open(path, "{mode}") as f:
+        f.read()
 """
-        haskell = self.converter.convert_code(code)
-        assert "bracket" in haskell
-        assert "openFile" in haskell
-        assert "hClose" in haskell
-
-    def test_read_mode(self) -> None:
-        """Test ReadMode for read operations."""
-        code = """
-def read_file(path: str) -> str:
-    with open(path, "r") as f:
-        data: str = f.read()
-    return data
-"""
-        haskell = self.converter.convert_code(code)
-        assert "ReadMode" in haskell
-
-    def test_write_mode(self) -> None:
-        """Test WriteMode for write operations."""
-        code = """
-def write_file(path: str) -> None:
-    with open(path, "w") as f:
-        f.write("hello")
-"""
-        haskell = self.converter.convert_code(code)
-        assert "WriteMode" in haskell
+        with pytest.raises(UnsupportedFeatureError, match="with statements"):
+            self.converter.convert_code(code)
 
 
 class TestOCamlContextManagers:

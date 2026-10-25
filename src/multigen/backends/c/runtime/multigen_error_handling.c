@@ -117,6 +117,8 @@ const char* multigen_error_name(multigen_error_t code) {
             return "PermissionError";
         case MGEN_ERROR_RUNTIME:
             return "RuntimeError";
+        case MGEN_ERROR_ZERO_DIVISION:
+            return "ZeroDivisionError";
         default:
             return "UnknownError";
     }
@@ -168,10 +170,10 @@ void mgen_throw(multigen_error_t type, const char* message) {
         }
         longjmp(mgen_exception_stack[mgen_exception_depth].env, 1);
     } else {
-        // No try block active, print error and abort
+        // No try block active: report and exit 1 like CPython. exit() flushes stdout; abort() lost it.
         fprintf(stderr, "Unhandled exception: %s: %s\n",
                 multigen_error_name(type), message ? message : "");
-        abort();
+        exit(1);
     }
 }
 

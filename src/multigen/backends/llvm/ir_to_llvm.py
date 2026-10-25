@@ -86,7 +86,7 @@ class IRToLLVMConverter(IRVisitor):
         # Declare every function before emitting bodies so calls can reference
         # functions that appear later in the Python module.
         for func_node in node.functions:
-            ret_type = self._convert_type(func_node.return_type)
+            ret_type = self._return_type(func_node)
             param_types = [self._convert_type(p.ir_type) for p in func_node.parameters]
             self.func_symtab[func_node.name] = ir.Function(
                 self.module, ir.FunctionType(ret_type, param_types), func_node.name
@@ -108,7 +108,7 @@ class IRToLLVMConverter(IRVisitor):
             LLVM function with generated body
         """
         # Map IRType → llvmlite type
-        ret_type = self._convert_type(node.return_type)
+        ret_type = self._return_type(node)
         param_types = [self._convert_type(p.ir_type) for p in node.parameters]
 
         # Create LLVM function type and function
@@ -148,6 +148,13 @@ class IRToLLVMConverter(IRVisitor):
                 self.builder.ret(ir.Constant(ret_type, 0))
 
         return func
+
+    def _return_type(self, node: IRFunction) -> ir.Type:
+        """Return the LLVM return type; a `None`-returning main returns exit status 0 to the C runtime."""
+        ret_type = self._convert_type(node.return_type)
+        if node.name == "main" and ret_type == ir.VoidType():
+            return ir.IntType(32)
+        return ret_type
 
     def visit_variable(self, node: IRVariable) -> Union[ir.AllocaInstr, ir.GlobalVariable]:
         """Visit a variable node (used for declarations).
@@ -268,6 +275,13 @@ class IRToLLVMConverter(IRVisitor):
         left = node.left.accept(self)
         right = node.right.accept(self)
 
+        # Python promotes int and bool operands of float arithmetic and comparisons.
+        double = ir.DoubleType()
+        if node.result_type.base_type == IRDataType.FLOAT or (
+            node.result_type.base_type == IRDataType.BOOL and double in (left.type, right.type)
+        ):
+            left, right = self._to_double(left), self._to_double(right)
+
         # String operations
         if node.left.result_type.base_type == IRDataType.STRING:
             if node.operator == "+":
@@ -283,7 +297,8 @@ class IRToLLVMConverter(IRVisitor):
             elif node.operator == "*":
                 return self.builder.mul(left, right, name="mul_tmp")
             elif node.operator == "/":
-                return self.builder.sdiv(left, right, name="div_tmp")
+                # Only `n /= d` on an int variable reaches here; Python rebinds n to a float.
+                raise UnsupportedFeatureError("LLVM backend does not support `/=` on an int variable")
             elif node.operator == "//":
                 return self._floored_divmod(left, right)[0]
             elif node.operator == "%":
@@ -304,16 +319,23 @@ class IRToLLVMConverter(IRVisitor):
             if node.operator == "+":
                 return self.builder.fadd(left, right, name="fadd_tmp")
             elif node.operator == "-":
+                # Unary minus builds `0 - x` with an int 0 typed float; fneg keeps -0.0.
+                if isinstance(node.left, IRLiteral) and type(node.left.value) is int and node.left.value == 0:
+                    return self.builder.fneg(right, name="fneg_tmp")
                 return self.builder.fsub(left, right, name="fsub_tmp")
             elif node.operator == "*":
                 return self.builder.fmul(left, right, name="fmul_tmp")
             elif node.operator == "/":
                 return self.builder.fdiv(left, right, name="fdiv_tmp")
+            elif node.operator == "//":
+                return self._float_floored_divmod(left, right)[0]
+            elif node.operator == "%":
+                return self._float_floored_divmod(left, right)[1]
 
         # Boolean operations (comparisons)
         elif node.result_type.base_type == IRDataType.BOOL:
             # Determine operand types to choose correct comparison instruction
-            left_type = node.left.result_type.base_type
+            left_type = IRDataType.FLOAT if left.type == double else node.left.result_type.base_type
 
             if left_type == IRDataType.INT:
                 # Integer comparisons (icmp)
@@ -1560,12 +1582,15 @@ class IRToLLVMConverter(IRVisitor):
 
         sdiv and srem truncate toward zero. When the remainder is non-zero and
         its sign differs from the divisor's, Python's quotient is one lower and
-        its remainder one divisor higher.
+        its remainder one divisor higher. A zero divisor exits with status 1,
+        since sdiv and srem by zero are undefined behaviour.
         """
         assert self.builder is not None
+        zero = ir.Constant(right.type, 0)
+        with self.builder.if_then(self.builder.icmp_signed("==", right, zero, name="div_by_zero"), likely=False):
+            self._exit_with_error("ZeroDivisionError: integer division or modulo by zero\n")
         quotient = self.builder.sdiv(left, right, name="c_div")
         remainder = self.builder.srem(left, right, name="c_rem")
-        zero = ir.Constant(remainder.type, 0)
         rem_neg = self.builder.icmp_signed("<", remainder, zero, name="rem_neg")
         divisor_neg = self.builder.icmp_signed("<", right, zero, name="divisor_neg")
         signs_differ = self.builder.xor(rem_neg, divisor_neg, name="signs_differ")
@@ -1579,6 +1604,75 @@ class IRToLLVMConverter(IRVisitor):
             adjust, self.builder.add(remainder, right, name="r_plus_d"), remainder, name="mod_tmp"
         )
         return floor_q, floor_r
+
+    def _write_value(self, arg: IRExpression, printf_func: ir.Function) -> None:
+        """Write Python's str() of one print argument, without a newline."""
+        assert self.builder is not None
+        base = arg.result_type.base_type
+        if base == IRDataType.FLOAT:
+            write_float = self._get_or_create_c_function("multigen_write_float", ir.VoidType(), [ir.DoubleType()])
+            self.builder.call(write_float, [self._to_double(arg.accept(self))])
+            return
+        value = arg.accept(self)
+        if base == IRDataType.INT:
+            fmt = "%lld"
+        elif base == IRDataType.BOOL:
+            fmt = "%s"
+            value = self.builder.select(
+                value, self._create_string_constant("True"), self._create_string_constant("False"), name="bool_str"
+            )
+        elif base == IRDataType.STRING:
+            fmt = "%s"
+        else:
+            raise NotImplementedError(f"Print for type {base} not implemented")
+        self.builder.call(printf_func, [self._create_string_constant(fmt), value])
+
+    def _float_floored_divmod(self, left: ir.Value, right: ir.Value) -> tuple[ir.Value, ir.Value]:
+        """Return Python's (left // right, left % right) for doubles, following CPython's float_divmod."""
+        assert self.builder is not None
+        b = self.builder
+        double = ir.DoubleType()
+        zero, one, half = ir.Constant(double, 0.0), ir.Constant(double, 1.0), ir.Constant(double, 0.5)
+        floor = self.module.declare_intrinsic("llvm.floor", [double])
+        copysign = self.module.declare_intrinsic("llvm.copysign", [double], ir.FunctionType(double, [double, double]))
+        with b.if_then(b.fcmp_ordered("==", right, zero), likely=False):
+            self._exit_with_error("ZeroDivisionError: float division by zero\n")
+        mod = b.frem(left, right)
+        div = b.fdiv(b.fsub(left, mod), right)
+        mod_nonzero = b.fcmp_ordered("!=", mod, zero)
+        signs_differ = b.xor(b.fcmp_ordered("<", right, zero), b.fcmp_ordered("<", mod, zero))
+        adjust = b.and_(mod_nonzero, signs_differ)
+        div = b.select(adjust, b.fsub(div, one), div)
+        mod = b.select(mod_nonzero, b.select(adjust, b.fadd(mod, right), mod), b.call(copysign, [zero, right]))
+        floored = b.call(floor, [div])
+        floored = b.select(b.fcmp_ordered(">", b.fsub(div, floored), half), b.fadd(floored, one), floored)
+        quotient = b.select(b.fcmp_ordered("!=", div, zero), floored, b.call(copysign, [zero, b.fdiv(left, right)]))
+        return quotient, mod
+
+    def _to_double(self, value: ir.Value) -> ir.Value:
+        """Convert an i64 or i1 value to double, as Python's int-to-float promotion does."""
+        assert self.builder is not None
+        if value.type == ir.DoubleType():
+            return value
+        if value.type == ir.IntType(1):
+            return self.builder.uitofp(value, ir.DoubleType(), name="promote_tmp")
+        return self.builder.sitofp(value, ir.DoubleType(), name="promote_tmp")
+
+    def _write_stderr(self, text: ir.Value) -> None:
+        """Write a NUL-terminated string to stderr."""
+        assert self.builder is not None
+        i32, i64, i8_ptr = ir.IntType(32), ir.IntType(64), ir.IntType(8).as_pointer()
+        strlen_func = self._get_or_create_c_function("strlen", i64, [i8_ptr])
+        write_func = self._get_or_create_c_function("write", i64, [i32, i8_ptr, i64])
+        self.builder.call(write_func, [ir.Constant(i32, 2), text, self.builder.call(strlen_func, [text])])
+
+    def _exit_with_error(self, message: str) -> None:
+        """Write message to stderr and exit with status 1, as an uncaught Python exception does."""
+        assert self.builder is not None
+        self._write_stderr(self._create_string_constant(message))
+        exit_func = self._get_or_create_c_function("exit", ir.VoidType(), [ir.IntType(32)])
+        self.builder.call(exit_func, [ir.Constant(ir.IntType(32), 1)])
+        self.builder.unreachable()
 
     def _get_or_create_builtin(self, name: str, arg_types: list[ir.Type]) -> ir.Function:
         """Get or create a builtin function declaration.
@@ -1965,10 +2059,11 @@ class IRToLLVMConverter(IRVisitor):
                 if arg.result_type.base_type == IRDataType.INT:
                     fmt_bytes = b"%lld\n\x00"  # %lld\n\0 as bytes
                 elif arg.result_type.base_type == IRDataType.FLOAT:
-                    fmt_bytes = b"%f\n\x00"  # %f\n\0 as bytes
-                elif arg.result_type.base_type == IRDataType.BOOL:
-                    fmt_bytes = b"%d\n\x00"  # %d\n\0 as bytes
-                elif arg.result_type.base_type == IRDataType.STRING:
+                    print_float = self._get_or_create_c_function(
+                        "multigen_print_float", ir.VoidType(), [ir.DoubleType()]
+                    )
+                    return self.builder.call(print_float, [self._to_double(arg.accept(self))])
+                elif arg.result_type.base_type in (IRDataType.BOOL, IRDataType.STRING):
                     fmt_bytes = b"%s\n\x00"  # %s\n\0 as bytes
                 else:
                     raise NotImplementedError(f"Print for type {arg.result_type.base_type} not implemented")
@@ -1983,11 +2078,19 @@ class IRToLLVMConverter(IRVisitor):
                 # Get pointer to the format string
                 fmt_ptr = self.builder.gep(fmt_global, [ir.Constant(ir.IntType(32), 0), ir.Constant(ir.IntType(32), 0)])
 
-                # Evaluate argument and call printf
+                # Evaluate argument and call printf; bools print as True/False
                 llvm_arg = arg.accept(self)
+                if arg.result_type.base_type == IRDataType.BOOL:
+                    true_str, false_str = self._create_string_constant("True"), self._create_string_constant("False")
+                    llvm_arg = self.builder.select(llvm_arg, true_str, false_str, name="bool_str")
                 return self.builder.call(printf_func, [fmt_ptr, llvm_arg], name="print_tmp")
             else:
-                raise NotImplementedError("Print with multiple arguments not implemented")
+                # Several arguments, or none: write each, separated by one space, then a newline
+                for i, arg in enumerate(node.arguments):
+                    if i > 0:
+                        self.builder.call(printf_func, [self._create_string_constant(" ")])
+                    self._write_value(arg, printf_func)
+                return self.builder.call(printf_func, [self._create_string_constant("\n")], name="print_tmp")
 
         # Regular function call
         func = self.func_symtab.get(node.function_name)
@@ -2058,6 +2161,8 @@ class IRToLLVMConverter(IRVisitor):
         if node.value:
             ret_val = node.value.accept(self)
             self.builder.ret(ret_val)
+        elif self.current_function is not None and self.current_function.return_value.type != ir.VoidType():
+            self.builder.ret(ir.Constant(self.current_function.return_value.type, 0))
         else:
             self.builder.ret_void()
 
@@ -2305,20 +2410,20 @@ class IRToLLVMConverter(IRVisitor):
         Args:
             node: IR raise statement to convert
         """
-        # LLVM exception raising requires runtime unwinding support.
-        # For now, call abort() to terminate the program.
+        # No unwinding support: report "Name: message" and exit 1, as an uncaught Python exception does.
         if self.builder is None:
             raise RuntimeError("Builder not initialized - must be inside a function")
 
-        # Call the abort() function from C runtime
-        abort_func = self.module.globals.get("abort")
-        if abort_func is None:
-            abort_type = ir.FunctionType(ir.VoidType(), [])
-            abort_func = ir.Function(self.module, abort_type, name="abort")
-
-        self.builder.call(abort_func, [])
-        self.builder.unreachable()
-        # TODO: Implement proper LLVM exception throwing with resume instruction
+        name = node.exception_type or "Exception"
+        message = node.exception_message
+        if isinstance(message, IRLiteral) and isinstance(message.value, str):
+            self._exit_with_error(f"{name}: {message.value}\n")
+        elif message is not None and message.result_type.base_type == IRDataType.STRING:
+            self._write_stderr(self._create_string_constant(f"{name}: "))
+            self._write_stderr(message.accept(self))
+            self._exit_with_error("\n")
+        else:
+            self._exit_with_error(f"{name}\n")
 
     def visit_with(self, node: IRWith) -> None:
         """Visit a with statement node (context manager).

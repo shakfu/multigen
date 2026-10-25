@@ -12,6 +12,8 @@ from ..base import AbstractBuilder
 # declaration. Requesting POSIX keeps ISO C11 semantics and declares them.
 _POSIX_FEATURE_TEST = "-D_POSIX_C_SOURCE=200809L"
 _BASE_FLAGS = ["-Wall", "-Wextra", _POSIX_FEATURE_TEST, "-O2"]
+# The runtime's float // and % call fmod and floor, which live in libm.
+_BASE_LIBRARIES = ["m"]
 
 
 class CBuilder(AbstractBuilder):
@@ -91,7 +93,7 @@ class CBuilder(AbstractBuilder):
             build_dir="build",
             flags=_BASE_FLAGS + self._extra_flags,
             include_dirs=include_dirs + self._extra_include_dirs,
-            libraries=self._libraries,
+            libraries=[*self._libraries, *_BASE_LIBRARIES],
             compiler=self._compiler,
             std="c11",
             use_stc=True,
@@ -120,7 +122,7 @@ class CBuilder(AbstractBuilder):
 
         # Add main source file and output
         cmd.extend([str(paths.source_path), "-o", str(paths.executable_path)])
-        cmd.extend(f"-l{lib}" for lib in self._libraries)
+        cmd.extend(f"-l{lib}" for lib in [*self._libraries, *_BASE_LIBRARIES])
 
         # Run compilation using base class helper
         result = self._run_command(cmd)

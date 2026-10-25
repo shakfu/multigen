@@ -10,6 +10,7 @@ import pytest
 
 from multigen.backends.cpp.converter import MultiGenPythonToCppConverter
 from multigen.backends.ocaml.converter import MultiGenPythonToOCamlConverter
+from multigen.errors import UnsupportedFeatureError
 from multigen.frontend.subset_validator import StaticPythonSubsetValidator
 
 
@@ -613,7 +614,11 @@ def always_fail() -> int:
 
 
 class TestHaskellExceptionHandling:
-    """Test Haskell exception handling conversion."""
+    """Test Haskell exception handling conversion.
+
+    try/except is refused: catch runs in IO, and the catch blocks it used to emit
+    did not build in pure functions or in main.
+    """
 
     def setup_method(self) -> None:
         """Set up test fixtures."""
@@ -631,10 +636,8 @@ def safe_divide(a: int, b: int) -> int:
     except ZeroDivisionError:
         return 0
 """
-        haskell_code = self.converter.convert_code(python_code)
-
-        assert "catch" in haskell_code
-        assert "ZeroDivisionError" in haskell_code
+        with pytest.raises(UnsupportedFeatureError, match="try/except"):
+            self.converter.convert_code(python_code)
 
     def test_try_except_with_variable(self) -> None:
         """Test try/except with exception variable capture."""
@@ -646,12 +649,8 @@ def handle_error() -> str:
     except ValueError as e:
         return "error"
 """
-        haskell_code = self.converter.convert_code(python_code)
-
-        assert "catch" in haskell_code
-        assert "ValueError" in haskell_code
-        # Should capture the exception variable
-        assert "ValueError e" in haskell_code
+        with pytest.raises(UnsupportedFeatureError, match="try/except"):
+            self.converter.convert_code(python_code)
 
     def test_multiple_except_handlers(self) -> None:
         """Test try with multiple exception handlers."""
@@ -664,10 +663,8 @@ def multi_handler(x: int) -> int:
     except ValueError:
         return -2
 """
-        haskell_code = self.converter.convert_code(python_code)
-
-        assert "ZeroDivisionError" in haskell_code
-        assert "ValueError" in haskell_code
+        with pytest.raises(UnsupportedFeatureError, match="try/except"):
+            self.converter.convert_code(python_code)
 
     def test_raise_exception(self) -> None:
         """Test raise statement conversion."""

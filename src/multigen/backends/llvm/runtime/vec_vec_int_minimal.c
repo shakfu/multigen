@@ -91,6 +91,7 @@ void vec_vec_int_push(vec_vec_int* vec, vec_int* row) {
 // Get pointer to row at index
 vec_int* vec_vec_int_at(vec_vec_int* vec, size_t index) {
     if (!vec || index >= vec->size) {
+        fprintf(stderr, "IndexError: list index out of range\n");
         exit(1);
     }
     return &vec->data[index];

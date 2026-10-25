@@ -91,22 +91,22 @@ class RustDictInferenceStrategy(DictInferenceStrategy):
     """Rust-specific dict type inference with HashMap<K,V> formatting."""
 
     def _format_dict_type(self, key_type: str, value_type: str, context: InferenceContext) -> str:
-        """Format as std::collections::HashMap<K,V>."""
-        return f"std::collections::HashMap<{key_type}, {value_type}>"
+        """Format as OrderedHashMap<K,V>."""
+        return f"OrderedHashMap<{key_type}, {value_type}>"
 
     def infer(self, value: ast.expr, context: InferenceContext) -> str:
         assert isinstance(value, ast.Dict), "Expected ast.Dict"
 
         if not value.keys or not value.values:
             # Empty dict - use default i64 keys/values
-            return "std::collections::HashMap<i64, i64>"
+            return "OrderedHashMap<i64, i64>"
 
         # Use parent implementation
         result = super().infer(value, context)
 
         # If parent returns generic "dict", convert to HashMap<i64, i64> default
         if result == context.type_mapper("dict"):
-            return "std::collections::HashMap<i64, i64>"
+            return "OrderedHashMap<i64, i64>"
 
         return result
 
@@ -161,8 +161,8 @@ class RustComprehensionInferenceStrategy(ComprehensionInferenceStrategy):
         if self.element_type_inferrer:
             key_type = self.element_type_inferrer(value.key)
             value_type = self.element_type_inferrer(value.value)
-            return f"std::collections::HashMap<{key_type}, {value_type}>"
-        return "std::collections::HashMap<i64, i64>"
+            return f"OrderedHashMap<{key_type}, {value_type}>"
+        return "OrderedHashMap<i64, i64>"
 
     def _infer_set_comp(self, value: ast.SetComp, context: InferenceContext) -> str:
         """Infer type from set comprehension."""
@@ -205,7 +205,7 @@ class RustCallInferenceStrategy(CallInferenceStrategy):
         elif func_name == "set":
             return "std::collections::HashSet<i64>"
         elif func_name == "dict":
-            return "std::collections::HashMap<i64, i64>"
+            return "OrderedHashMap<i64, i64>"
         else:
             return "i64"  # Default for unknown functions
 
@@ -272,8 +272,8 @@ class RustSubscriptInferenceStrategy(TypeInferenceStrategy):
                     return container_type[4:-1]  # Extract T
 
                 # Extract value type from HashMap<K, V>
-                elif container_type.startswith("std::collections::HashMap<"):
-                    inner = container_type[26:-1]  # Remove prefix and ">"
+                elif container_type.startswith("OrderedHashMap<"):
+                    inner = container_type[len("OrderedHashMap<") : -1]  # Remove prefix and ">"
                     parts = inner.split(", ", 1)
                     if len(parts) == 2:
                         return parts[1]  # Return value type

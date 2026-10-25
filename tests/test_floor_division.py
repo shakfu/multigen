@@ -160,3 +160,67 @@ def test_rust_floor_ops_accept_closure_references(tmp_path: Path) -> None:
     _, exe = _convert(tmp_path, source, BuildMode.DIRECT, "rust")
     run = subprocess.run([exe], capture_output=True, text=True, timeout=30)
     assert run.stdout.split() == ["5"]  # -6, -3, 0, 3, 6
+
+
+ZERO_DIVISOR_SOURCE = """\
+def floordiv(a: int, b: int) -> int:
+    return a // b
+
+
+def main() -> int:
+    print(7 // 2)
+    print(floordiv(1, 0))
+    return 0
+"""
+
+
+@pytest.mark.skipif(shutil.which("clang") is None, reason="clang not available")
+def test_llvm_zero_divisor_exits_like_uncaught_exception(tmp_path: Path) -> None:
+    """sdiv by zero is undefined behaviour; the program must stop with Python's error and status."""
+    _, exe = _convert(tmp_path, ZERO_DIVISOR_SOURCE, BuildMode.DIRECT, "llvm")
+    run = subprocess.run([exe], capture_output=True, text=True, timeout=10)
+    assert run.returncode == 1
+    assert run.stdout.split() == ["3"]
+    assert "ZeroDivisionError" in run.stderr
+
+
+C_FLOAT_SOURCE = """\
+def fdiv(a: float, b: float) -> float:
+    return a // b
+
+
+def main() -> int:
+    x: float = 7.0
+    print(x // 2)
+    print(-7.5 // 2.0)
+    print(-7.5 % 2.0)
+    print(7.5 % -2.0)
+    y: float = 7.0
+    y //= 2.0
+    print(y)
+    z: float = -1.0
+    z %= 3.0
+    print(z)
+    print(fdiv(1.0, {divisor}))
+    return 0
+"""
+
+
+@pytest.mark.skipif(shutil.which("gcc") is None, reason="gcc not available")
+def test_c_float_floor_ops_match_python(tmp_path: Path) -> None:
+    code, exe = _convert(tmp_path, C_FLOAT_SOURCE.format(divisor="4.0"), BuildMode.DIRECT)
+    assert "y = multigen_floordiv_float(y, 2.0);" in code
+    assert "z = multigen_mod_float(z, 3.0);" in code
+
+    run = subprocess.run([exe], capture_output=True, text=True, timeout=10)
+    assert run.returncode == 0, run.stderr
+    # CPython: 7.0 // 2, -7.5 // 2.0, -7.5 % 2.0, 7.5 % -2.0, 7.0 // 2.0, -1.0 % 3.0, 1.0 // 4.0
+    assert [float(v) for v in run.stdout.split()] == [3.0, -4.0, 0.5, -0.5, 3.0, 2.0, 0.0]
+
+
+@pytest.mark.skipif(shutil.which("gcc") is None, reason="gcc not available")
+def test_c_float_floor_div_by_zero_raises(tmp_path: Path) -> None:
+    _, exe = _convert(tmp_path, C_FLOAT_SOURCE.format(divisor="0.0"), BuildMode.DIRECT)
+    run = subprocess.run([exe], capture_output=True, text=True, timeout=10)
+    assert run.returncode != 0
+    assert "float division by zero" in run.stderr

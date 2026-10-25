@@ -174,7 +174,7 @@ def create_account() -> BankAccount:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "return NewBankAccount(1000)" in go_code
+        assert "return NewBankAccount(1000.0)" in go_code
         assert "func NewBankAccount(balance float64) BankAccount" in go_code
 
     def test_method_calls_on_objects(self):

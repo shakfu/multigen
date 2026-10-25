@@ -7,7 +7,8 @@ from multigen.pipeline import MultiGenPipeline, PipelineConfig, PipelinePhase
 # Union is the remaining experimental construct, and the parameter's type
 # cannot be pinned down, so this exercises both policy switches. Do not
 # substitute a construct whose status may change: that is what broke these
-# tests when generics were reclassified.
+# tests when generics were reclassified. The target is C++, which emits Union;
+# the C backend refuses it at generation.
 SOURCE = "from typing import Union\n\n\ndef pick(x: Union[int, float]) -> int:\n    return 1\n"
 
 
@@ -20,7 +21,7 @@ def program(tmp_path):
 
 def _convert(tmp_path, program, profile):
     config = PipelineConfig(
-        target_language="c",
+        target_language="cpp",
         validation_profile=profile,
         output_dir=str(tmp_path / profile),
     )
@@ -48,7 +49,7 @@ class TestProfileDrivenPhaseOne:
 
         assert result.success
         assert phase.is_valid
-        assert "c_source" in result.output_files
+        assert "cpp_source" in result.output_files
 
     def test_strict_static_blocks_generation(self, tmp_path, program):
         """Blocking diagnostics stop the run before anything is generated."""
@@ -56,7 +57,7 @@ class TestProfileDrivenPhaseOne:
 
         assert not result.success
         assert not phase.is_valid
-        assert "c_source" not in result.output_files
+        assert "cpp_source" not in result.output_files
         assert result.errors
 
     def test_phase_result_records_the_profile(self, tmp_path, program):
@@ -85,5 +86,5 @@ class TestProfileDrivenPhaseOne:
 
         assert not result.success
         assert not phase.is_valid
-        assert "c_source" not in result.output_files
+        assert "cpp_source" not in result.output_files
         assert any("AsyncFunctionDef" in v for v in phase.violations)

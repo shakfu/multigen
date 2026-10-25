@@ -173,12 +173,12 @@ class TestGoExpressions:
     def test_binary_operations(self):
         """Test binary operations."""
         python_code = """
-def test_ops(a: int, b: int) -> int:
+def test_ops(a: int, b: int) -> float:
     return a + b - a * b / a
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "return ((a + b) - ((a * b) / a))" in go_code
+        assert "return (float64((a + b)) - (float64((a * b)) / float64(a)))" in go_code
 
     def test_comparison_operations(self):
         """Test comparison operations."""

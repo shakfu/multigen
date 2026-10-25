@@ -52,7 +52,7 @@ class OCamlSimpleAssignmentStrategy(ForLoopStrategy):
             return "(* Complex for loop target not supported *)"
 
         target = converter._to_ocaml_var_name(node.target.id)
-        iter_expr = converter._convert_expression(node.iter)
+        iter_expr = converter._list_source(node.iter)
 
         stmt = node.body[0]
         assert isinstance(stmt, ast.Assign)
@@ -105,7 +105,7 @@ class OCamlAccumulationStrategy(ForLoopStrategy):
             return "(* Complex for loop target not supported *)"
 
         target = converter._to_ocaml_var_name(node.target.id)
-        iter_expr = converter._convert_expression(node.iter)
+        iter_expr = converter._list_source(node.iter)
 
         stmt = node.body[0]
         assert isinstance(stmt, ast.AugAssign)
@@ -163,7 +163,7 @@ class OCamlGeneralLoopStrategy(ForLoopStrategy):
         converter: MultiGenPythonToOCamlConverter = context.converter  # type: ignore
 
         target = _loop_target_pattern(node.target, converter)
-        iter_expr = converter._convert_expression(node.iter)
+        iter_expr = converter._list_source(node.iter)
 
         # Convert body to let expressions
         body_lines = []

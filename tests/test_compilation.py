@@ -171,25 +171,19 @@ KNOWN_FAILURES: dict[tuple[str, str], str] = {
     ("c", "comprehension_filters.py"): "generation: Non-range iterables in dict comprehensions not yet supported",
     ("c", "assignment_targets.py"): "compile: expected expression before '{' token",
     ("cpp", "int_width.py"): "int is 32-bit: 2**40 wraps to 0",
-    ("cpp", "test_dataclass_basic.py"): "compile: no matching function for call to 'Point::Point(int, int)'",
     ("cpp", "test_dict_comprehension.py"): "compile: 'str' was not declared in this scope; did you mean 'std'?",
     ("cpp", "test_math_import.py"): "compile: 'math' was not declared in this scope",
-    ("cpp", "test_namedtuple_basic.py"): "compile: no matching function for call to 'Coordinate::Coordinate(int, int)'",
     ("cpp", "test_string_membership.py"): "compile: 'std::string' has no member named 'count'",
     ("cpp", "test_string_membership_simple.py"): "compile: 'std::string' has no member named 'count'",
     ("cpp", "test_string_methods.py"): "compile: 'std::string' has no member named 'count'",
     ("cpp", "test_string_methods_new.py"): "compile: 'std::string' has no member named 'count'",
-    ("cpp", "test_struct_field_access.py"): "compile: 'class Rectangle' has no member named 'width'",
-    ("go", "container_iteration_test.py"): 'compile: "multigenproject/multigen" imported and not used',
     ("go", "test_container_iteration.py"): 'compile: "multigenproject/multigen" imported and not used',
-    ("go", "test_dataclass_basic.py"): 'compile: "multigenproject/multigen" imported and not used',
     (
         "go",
         "test_dict_comprehension.py",
     ): "compile: cannot use multigen.DictComprehensionFromRange[int, int](multigen.NewRange(3), func(x int)",
     ("go", "test_list_comprehension.py"): "compile: declared and not used: count1",
     ("go", "test_math_import.py"): 'compile: "multigenproject/multigen" imported and not used',
-    ("go", "test_namedtuple_basic.py"): 'compile: "multigenproject/multigen" imported and not used',
     ("go", "test_set_support.py"): "compile: numbers.Add undefined (type map[int]bool has no field or method Add)",
     ("go", "test_string_membership.py"): 'compile: "multigenproject/multigen" imported and not used',
     ("go", "test_string_membership_simple.py"): 'compile: "multigenproject/multigen" imported and not used',
@@ -197,21 +191,7 @@ KNOWN_FAILURES: dict[tuple[str, str], str] = {
     ("go", "test_string_methods_new.py"): "compile: assignment mismatch: 2 variables but 1 value",
     ("go", "test_struct_field_access.py"): 'compile: "multigenproject/multigen" imported and not used',
     ("haskell", "class_mutation.py"): "compile: type mismatch",
-    (
-        "haskell",
-        "container_iteration_test.py",
-    ): "generation: for loop at line 9 in pure function 'testContainerIteration' matches no fold pattern",
-    ("haskell", "containers.py"): "generation: for loop at line 6 in pure function 'wordCount' matches no fold pattern",
-    ("haskell", "exceptions.py"): "compile: parse error",
-    ("haskell", "int_width.py"): "generation: for loop at line 6 in pure function 'big' matches no fold pattern",
-    (
-        "haskell",
-        "nested_2d_params.py",
-    ): "generation: for loop at line 7 in pure function 'sumMatrix' matches no fold pattern",
-    (
-        "haskell",
-        "nested_2d_return.py",
-    ): "generation: for loop at line 9 in pure function 'createIdentity' matches no fold pattern",
+    ("haskell", "exceptions.py"): "generation: Haskell backend does not support try/except",
     (
         "haskell",
         "nested_containers_comprehensive.py",
@@ -222,9 +202,7 @@ KNOWN_FAILURES: dict[tuple[str, str], str] = {
         "test_container_iteration.py",
     ): "generation: for loop at line 9 in pure function 'testListIteration' matches no fold pattern",
     ("haskell", "test_control_flow.py"): "generation: While loops not directly supported in Haskell",
-    ("haskell", "test_dataclass_basic.py"): "compile: multiple declarations",
     ("haskell", "test_math_import.py"): "compile: parse error",
-    ("haskell", "test_namedtuple_basic.py"): "compile: multiple declarations",
     ("haskell", "test_set_support.py"): "compile: parse error",
     ("haskell", "test_simple_string_ops.py"): "compile: parse error",
     ("haskell", "test_string_membership.py"): "compile: no instance",
@@ -233,24 +211,19 @@ KNOWN_FAILURES: dict[tuple[str, str], str] = {
     ("haskell", "test_string_methods_new.py"): "compile: type mismatch",
     ("haskell", "test_string_split_simple.py"): "compile: parse error",
     ("haskell", "test_struct_field_access.py"): "compile: multiple declarations",
-    ("haskell", "loop_rebinding.py"): "generation: for loop in pure function 'doubled' matches no fold pattern",
     ("ocaml", "class_mutation.py"): "compile: Unbound value self",
-    ("ocaml", "container_iteration_test.py"): "compile: This expression has type int array",
     ("ocaml", "containers.py"): "compile: This function has type int -> string",
     (
         "ocaml",
         "nested_containers_comprehensive.py",
     ): "compile: This function has type int -> Multigen_runtime.Range.range",
-    ("ocaml", "recursion_and_lists.py"): "compile: This expression has type int array",
     ("ocaml", "simple_infer_test.py"): "compile: This expression has type int array",
     ("ocaml", "test_container_iteration.py"): "compile: This expression has type int array",
-    ("ocaml", "test_control_flow.py"): "compile: This expression has type unit but an expression was expected of type",
     (
         "ocaml",
         "test_dataclass_basic.py",
     ): "generation: OCaml backend does not support class 'Point': fields declared in the class body (dataclass",
     ("ocaml", "test_dict_comprehension.py"): "compile: Unbound value str",
-    ("ocaml", "test_list_comprehension.py"): "compile: This expression has type int list",
     ("ocaml", "test_math_import.py"): "generation: Unsupported statement: Import",
     (
         "ocaml",
@@ -276,7 +249,6 @@ KNOWN_FAILURES: dict[tuple[str, str], str] = {
     ("ocaml", "test_string_split_simple.py"): "compile: This expression has type string list",
     ("ocaml", "comprehensions.py"): "compile: This expression has type int array",
     ("ocaml", "comprehension_filters.py"): "compile: This expression has type int array",
-    ("ocaml", "assignment_targets.py"): "compile: This function has type int -> string",
     (
         "ocaml",
         "test_struct_field_access.py",
@@ -284,13 +256,12 @@ KNOWN_FAILURES: dict[tuple[str, str], str] = {
     ("llvm", "class_mutation.py"): "generation: LLVM backend does not support module-level ClassDef",
     ("llvm", "container_iteration_test.py"): "generation: LLVM backend does not support statement type: Assert",
     ("llvm", "containers.py"): "generation: LLVM backend does not support expression type: Slice",
-    ("llvm", "exceptions.py"): "generation: LLVM backend does not support module-level If",
-    ("llvm", "int_width.py"): "generation: LLVM backend does not support module-level If",
+    ("llvm", "exceptions.py"): "generation: LLVM backend does not support try/except",
     ("llvm", "nested_2d_params.py"): 'generation: Type of #1 arg mismatch: %"struct.vec_int"* != i64',
     ("llvm", "nested_2d_return.py"): 'generation: Type of #2 arg mismatch: i64 != %"struct.vec_int"*',
     ("llvm", "nested_2d_simple.py"): 'generation: Type of #2 arg mismatch: i64 != %"struct.vec_int"*',
     ("llvm", "nested_containers_comprehensive.py"): 'generation: Type of #2 arg mismatch: i64 != %"struct.vec_int"*',
-    ("llvm", "recursion_and_lists.py"): "generation: LLVM backend does not support module-level If",
+    ("llvm", "recursion_and_lists.py"): "generation: Print for type IRDataType.VOID not implemented",
     ("llvm", "simple_infer_test.py"): "generation: LLVM backend cannot translate this Assign at line 2: numbers = []",
     ("llvm", "simple_test.py"): "generation: LLVM backend does not support statement type: Assert",
     ("llvm", "string_methods_test.py"): "generation: LLVM backend does not support statement type: Assert",
@@ -359,6 +330,52 @@ def test_compiled_output_matches_cpython(backend: str, program: Path, tmp_path: 
 
     proc = subprocess.run([str(executable)], capture_output=True, text=True, timeout=30, cwd=tmp_path)
     assert (proc.stdout, proc.returncode) == (expected, 0), proc.stderr
+
+
+# Programs that end in an uncaught exception. CPython prints the stdout produced
+# so far, writes the exception to stderr, and exits with status 1.
+ERROR_PROGRAMS = sorted((TESTS_DIR / "fixtures" / "differential_errors").glob("*.py"))
+
+# Known (backend, program) deviations, strict like KNOWN_FAILURES.
+
+KNOWN_ERROR_FAILURES: dict[tuple[str, str], str] = {}
+
+
+def _error_params() -> list:
+    params = []
+    for backend in DIFFERENTIAL_BACKENDS:
+        for program in ERROR_PROGRAMS:
+            reason = KNOWN_ERROR_FAILURES.get((backend, program.name))
+            marks = [pytest.mark.xfail(strict=True, reason=reason)] if reason else []
+            params.append(pytest.param(backend, program, marks=marks, id=f"{backend}-{program.stem}"))
+    return params
+
+
+def cpython_failure(program: Path) -> tuple[str, int, str]:
+    """Run a failing program under CPython; return its stdout, exit status and exception name."""
+    proc = subprocess.run([sys.executable, str(program)], capture_output=True, text=True, timeout=30)
+    assert proc.returncode != 0, "error fixture exited 0"
+    return proc.stdout, proc.returncode, proc.stderr.strip().splitlines()[-1].split(":")[0]
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("backend,program", _error_params())
+def test_uncaught_exception_matches_cpython(backend: str, program: Path, tmp_path: Path) -> None:
+    """Compiled stdout and exit status must equal CPython's, and stderr must name the exception."""
+    if not toolchain_available(backend):
+        pytest.skip(f"Toolchain for backend {backend} not installed")
+    expected_stdout, expected_status, exception = cpython_failure(program)
+
+    result = MultiGenPipeline(config=PipelineConfig(target_language=backend, build_mode=BuildMode.DIRECT)).convert(
+        program, output_path=tmp_path
+    )
+    assert result.success, result.errors
+    executable = Path(result.executable_path or "")
+    assert executable.is_file(), f"no executable at {executable}"
+
+    proc = subprocess.run([str(executable)], capture_output=True, text=True, timeout=30, cwd=tmp_path)
+    assert (proc.stdout, proc.returncode) == (expected_stdout, expected_status), proc.stderr
+    assert exception in proc.stderr
 
 
 class TestCBackendCompilation:

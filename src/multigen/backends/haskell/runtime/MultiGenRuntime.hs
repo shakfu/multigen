@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE ForeignFunctionInterface #-}
 
 {-|
 Module      : MultiGenRuntime
@@ -37,9 +38,13 @@ module MultiGenRuntime
       -- * Container Types
     , Dict, Set
       -- * List Operations
-    , updateAt
+    , updateAt, pyIndex
+      -- * Program Entry
+    , runMain
+      -- * Arithmetic
+    , PyNum(..)
       -- * Dictionary Operations
-    , items, values, keys
+    , items, values, keys, pyLookup
       -- * Exception Types
     , ValueError(..)
     , TypeError(..)
@@ -48,15 +53,19 @@ module MultiGenRuntime
     , IndexError(..)
     , RuntimeError(..)
     , tryCatch
+    , throw
     ) where
 
 import qualified Data.Char as Char
+import Numeric (floatToDigits)
 import qualified Data.List as List
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Map (Map)
 import Data.Set (Set)
-import Control.Exception (Exception, throw, catch, SomeException, fromException)
+import Control.Exception (Exception, throw, throwIO, catch, SomeException, fromException, ArithException(DivideByZero))
+import System.Exit (ExitCode(ExitFailure), exitWith)
+import System.IO (hFlush, hPutStrLn, stdout, stderr)
 import Data.Typeable (Typeable)
 
 -- | Python-like exception types
@@ -197,6 +206,85 @@ rangeList (Range start stop step)
     | otherwise = []
 
 
+-- | Python // and %: both floor, and a zero divisor throws ZeroDivisionError.
+-- One class covers Int and Double, since the converter does not know operand types.
+class PyNum a where
+    pyFloorDiv :: a -> a -> a
+    pyMod :: a -> a -> a
+
+instance PyNum Int where
+    pyFloorDiv a b = if b == 0 then throw (ZeroDivisionError intZeroDivision) else a `div` b
+    pyMod a b = if b == 0 then throw (ZeroDivisionError intZeroDivision) else a `mod` b
+
+instance PyNum Integer where
+    pyFloorDiv a b = if b == 0 then throw (ZeroDivisionError intZeroDivision) else a `div` b
+    pyMod a b = if b == 0 then throw (ZeroDivisionError intZeroDivision) else a `mod` b
+
+instance PyNum Double where
+    pyFloorDiv a b = fst (floatDivMod a b)
+    pyMod a b = snd (floatDivMod a b)
+
+intZeroDivision :: String
+intZeroDivision = "integer division or modulo by zero"
+
+foreign import ccall unsafe "math.h fmod" cFmod :: Double -> Double -> Double
+
+-- | CPython's float_divmod: floor quotient and remainder with the divisor's sign.
+floatDivMod :: Double -> Double -> (Double, Double)
+floatDivMod a b
+    | b == 0 = throw (ZeroDivisionError "float division by zero")
+    | otherwise = (q, r)
+  where
+    m = cFmod a b
+    adjust = m /= 0 && (b < 0) /= (m < 0)
+    r | adjust = m + b
+      | m /= 0 = m
+      | otherwise = if b < 0 then -0.0 else 0.0
+    d = (a - m) / b - (if adjust then 1 else 0)
+    q | d /= 0 = let f = fromIntegral (floor d :: Integer) in if d - f > 0.5 then f + 1 else f
+      | otherwise = if a / b < 0 || isNegativeZero (a / b) then -0.0 else 0.0
+
+
+-- | Python's xs[i]: a negative index counts from the end; out of range throws IndexError.
+pyIndex :: [a] -> Int -> a
+pyIndex xs i
+    | j < 0 || j >= length xs = throw (IndexError "list index out of range")
+    | otherwise = xs !! j
+  where
+    j = if i < 0 then length xs + i else i
+
+
+-- | Python's d[k]: a missing key throws KeyError instead of Map.!'s untyped error.
+pyLookup :: Ord k => Map k v -> k -> v
+pyLookup d k = case Map.lookup k d of
+    Just v -> v
+    Nothing -> throw (KeyError "key not found")
+
+
+-- | Run the program's main: an escaping exception prints "Name: message" and exits 1,
+-- as CPython does. ExitCode is rethrown so an explicit exit keeps its status.
+runMain :: IO () -> IO ()
+runMain act = act `catch` \e -> do
+    hFlush stdout
+    case fromException e of
+        Just code -> throwIO (code :: ExitCode)
+        Nothing -> do
+            hPutStrLn stderr (describeException e)
+            exitWith (ExitFailure 1)
+
+
+describeException :: SomeException -> String
+describeException e
+    | Just (ValueError m) <- fromException e = "ValueError: " ++ m
+    | Just (TypeError m) <- fromException e = "TypeError: " ++ m
+    | Just (KeyError m) <- fromException e = "KeyError: " ++ m
+    | Just (ZeroDivisionError m) <- fromException e = "ZeroDivisionError: " ++ m
+    | Just (IndexError m) <- fromException e = "IndexError: " ++ m
+    | Just (RuntimeError m) <- fromException e = "RuntimeError: " ++ m
+    | Just DivideByZero <- fromException e = "ZeroDivisionError: integer division or modulo by zero"
+    | otherwise = "Exception: " ++ show e
+
+
 -- | Replace one element, as Python's xs[i] = v does; a negative index counts from the end.
 updateAt :: Int -> a -> [a] -> [a]
 updateAt i v xs
@@ -259,7 +347,24 @@ instance ToString Integer where
     toString = show
 
 instance ToString Double where
-    toString = show
+    toString = pyShowFloat
+
+-- | Python's float repr: shortest round-trip digits, fixed notation for exponents -4..15.
+pyShowFloat :: Double -> String
+pyShowFloat x
+    | isNaN x = "nan"
+    | isInfinite x = if x > 0 then "inf" else "-inf"
+    | x < 0 || isNegativeZero x = '-' : pyShowFloat (negate x)
+    | x == 0 = "0.0"
+    | e <= -4 || e > 16 = mantissa ++ "e" ++ (if e > 0 then "+" else "-") ++ pad2 (show (abs (e - 1)))
+    | e <= 0 = "0." ++ replicate (negate e) '0' ++ ds
+    | e >= length ds = ds ++ replicate (e - length ds) '0' ++ ".0"
+    | otherwise = take e ds ++ "." ++ drop e ds
+  where
+    (digits, e) = floatToDigits 10 x
+    ds = concatMap show digits
+    mantissa = if length ds == 1 then ds else take 1 ds ++ "." ++ drop 1 ds
+    pad2 n = if length n < 2 then '0' : n else n
 
 instance ToString Float where
     toString = show

@@ -39,7 +39,7 @@ def main() -> None:
         # Check main function
         assert "int main()" in cpp_code  # `void main` is ill-formed C++
         assert "int result = factorial(5);" in cpp_code or "auto result = factorial(5);" in cpp_code
-        assert "cout << result << endl;" in cpp_code
+        assert "cout << multigen::print_value(result) << endl;" in cpp_code
 
     def test_program_with_multiple_functions(self):
         """Test program with multiple interacting functions."""

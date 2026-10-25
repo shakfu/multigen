@@ -185,7 +185,7 @@ def string_analysis(text: str) -> dict:
 """
         haskell_code = self.converter.convert_code(python_code)
 
-        assert "len' text" in haskell_code
+        assert "(len' (text))" in haskell_code
         assert "upper text" in haskell_code
         assert "find text" in haskell_code
         assert "Map.fromList" in haskell_code

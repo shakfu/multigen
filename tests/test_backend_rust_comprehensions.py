@@ -337,7 +337,7 @@ def filtered(d: dict[int, int]) -> dict[int, int]:
 
         assert (
             f"{self.ITEMS}.filter_map(|(k, v)| if (v > 20) {{ Some((k, v)) }} else {{ None }})"
-            ".collect::<std::collections::HashMap<_, _>>()"
+            ".collect::<OrderedHashMap<_, _>>()"
         ) in rust_code
 
     def test_items_list_comprehension(self):

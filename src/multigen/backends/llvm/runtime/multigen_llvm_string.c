@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <math.h>
+#include <stdio.h>
 
 // String array implementation
 multigen_string_array_t* multigen_string_array_new(void) {
@@ -296,4 +298,27 @@ int multigen_str_endswith(const char* str, const char* suffix) {
     if (suffix_len > str_len) return 0;
 
     return strcmp(str + str_len - suffix_len, suffix) == 0;
+}
+
+void multigen_write_float(double x) {
+    char buf[32];
+    if (isnan(x)) {
+        fputs("nan", stdout);
+        return;
+    }
+    // Integral values below 1e16 print as "N.0"; others use the shortest round-trip %g.
+    if (x > -1e16 && x < 1e16 && x == (double)(long long)x) {
+        printf("%.1f", x);
+        return;
+    }
+    for (int precision = 1; precision <= 17; precision++) {
+        snprintf(buf, sizeof buf, "%.*g", precision, x);
+        if (strtod(buf, NULL) == x) break;
+    }
+    printf(strpbrk(buf, ".ein") ? "%s" : "%s.0", buf);
+}
+
+void multigen_print_float(double x) {
+    multigen_write_float(x);
+    putchar('\n');
 }

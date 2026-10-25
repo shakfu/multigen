@@ -106,7 +106,7 @@ class TestGoMapLiterals:
             "def main() -> int:\n    d: dict[str, int] = {'a': 1, 'b': 2}\n    return 0\n"
         )
 
-        assert 'map[string]int{"a": 1, "b": 2}' in go_code
+        assert 'multigen.NewDict([]string{"a", "b"}, []int{1, 2})' in go_code
         assert "{{" not in go_code
 
     def test_set_literal_keeps_its_element_type(self):

@@ -541,20 +541,8 @@ class BoundsChecker(BaseAnalyzer):
         """Check bounds for a constant index."""
         violations = []
 
-        if index < 0:
-            violations.append(
-                BoundsViolation(
-                    violation_type=BoundsViolationType.NEGATIVE_INDEX,
-                    variable_name=var_name,
-                    line_number=self._current_line,
-                    description=f"Negative index {index} for variable '{var_name}'",
-                    severity="error",
-                    confidence=1.0,
-                    suggested_fix="Use non-negative indices",
-                )
-            )
-        elif region.is_bounded() and not region.is_index_safe(index):
-            assert region.size is not None
+        # Python counts a negative index from the end: a[-1] is a[size - 1].
+        if region.size is not None and not region.is_index_safe(index if index >= 0 else region.size + index):
             violations.append(
                 BoundsViolation(
                     violation_type=BoundsViolationType.ARRAY_INDEX_OUT_OF_BOUNDS,
@@ -563,7 +551,7 @@ class BoundsChecker(BaseAnalyzer):
                     description=f"Index {index} out of bounds for '{var_name}' (size: {region.size})",
                     severity="error",
                     confidence=1.0,
-                    suggested_fix=f"Use index in range [0, {region.size - 1}]",
+                    suggested_fix=f"Use index in range [{-region.size}, {region.size - 1}]",
                 )
             )
 

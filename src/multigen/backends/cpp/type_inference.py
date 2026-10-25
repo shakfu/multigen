@@ -32,13 +32,13 @@ class CppListInferenceStrategy(ListInferenceStrategy):
 
 
 class CppDictInferenceStrategy(DictInferenceStrategy):
-    """C++-specific dict type inference with std::unordered_map<K,V> formatting."""
+    """C++-specific dict type inference with multigen::Dict<K,V> formatting."""
 
     def _format_dict_type(self, key_type: str, value_type: str, context: InferenceContext) -> str:
-        """Format as std::unordered_map<K,V> if types are concrete."""
+        """Format as multigen::Dict<K,V> if types are concrete."""
         # C++ specific: avoid auto in key/value types
         if key_type and key_type not in ["auto", ""] and value_type and value_type not in ["auto", ""]:
-            return f"std::unordered_map<{key_type}, {value_type}>"
+            return f"multigen::Dict<{key_type}, {value_type}>"
         return "auto"
 
 

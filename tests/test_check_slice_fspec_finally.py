@@ -16,6 +16,7 @@ from multigen.backends.haskell.converter import MultiGenPythonToHaskellConverter
 from multigen.backends.ocaml.converter import MultiGenPythonToOCamlConverter
 from multigen.backends.rust.converter import MultiGenPythonToRustConverter
 from multigen.cli.main import MultiGenCLI
+from multigen.errors import UnsupportedFeatureError
 from multigen.frontend.subset_validator import StaticPythonSubsetValidator
 
 # =============================================================================
@@ -586,11 +587,10 @@ class TestFinallyHaskell:
     def setup_method(self) -> None:
         self.converter = MultiGenPythonToHaskellConverter()
 
-    def test_finally_generates_code(self) -> None:
-        """Haskell should generate finally code after catch."""
-        result = self.converter.convert_code(FINALLY_BASIC)
-        assert "catch" in result
-        assert "finally" in result.lower()
+    def test_finally_is_refused(self) -> None:
+        """Haskell refuses try/except: the catch blocks it emitted did not build."""
+        with pytest.raises(UnsupportedFeatureError, match="try/except"):
+            self.converter.convert_code(FINALLY_BASIC)
 
 
 class TestFinallyOCaml:
@@ -785,11 +785,10 @@ class TestElseHaskell:
     def setup_method(self) -> None:
         self.converter = MultiGenPythonToHaskellConverter()
 
-    def test_else_generates_code(self) -> None:
-        """Haskell should emit else body in catch do-block."""
-        result = self.converter.convert_code(ELSE_BASIC)
-        assert "catch" in result
-        assert "else" in result.lower()
+    def test_else_is_refused(self) -> None:
+        """Haskell refuses try/except: the catch blocks it emitted did not build."""
+        with pytest.raises(UnsupportedFeatureError, match="try/except"):
+            self.converter.convert_code(ELSE_BASIC)
 
 
 class TestElseOCaml:

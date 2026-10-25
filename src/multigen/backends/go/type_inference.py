@@ -45,25 +45,25 @@ class GoListInferenceStrategy(ListInferenceStrategy):
 
 
 class GoDictInferenceStrategy(DictInferenceStrategy):
-    """Go-specific dict type inference with map[K]V formatting."""
+    """Go-specific dict type inference with *multigen.Dict[K, V] formatting."""
 
     def _format_dict_type(self, key_type: str, value_type: str, context: InferenceContext) -> str:
-        """Format as map[K]V."""
-        return f"map[{key_type}]{value_type}"
+        """Format as *multigen.Dict[K, V]."""
+        return f"*multigen.Dict[{key_type}, {value_type}]"
 
     def infer(self, value: ast.expr, context: InferenceContext) -> str:
         assert isinstance(value, ast.Dict), "Expected ast.Dict"
 
         if not value.keys or not value.values:
             # Empty dict - use default int keys/values
-            return "map[int]int"
+            return "*multigen.Dict[int, int]"
 
         # Use parent implementation
         result = super().infer(value, context)
 
-        # If parent returns generic "dict", convert to map[int]int default
+        # If parent returns generic "dict", convert to the int-keyed default
         if result == context.type_mapper("dict"):
-            return "map[int]int"
+            return "*multigen.Dict[int, int]"
 
         return result
 
@@ -123,8 +123,8 @@ class GoComprehensionInferenceStrategy(ComprehensionInferenceStrategy):
             loop_var_type = self.loop_var_type_inferrer(value.generators[0])
             key_type = self.element_type_inferrer(value.key, loop_var_type)
             value_type = self.element_type_inferrer(value.value, loop_var_type)
-            return f"map[{key_type}]{value_type}"
-        return "map[int]int"
+            return f"*multigen.Dict[{key_type}, {value_type}]"
+        return "*multigen.Dict[int, int]"
 
     def _infer_set_comp(self, value: ast.SetComp, context: InferenceContext) -> str:
         """Infer type from set comprehension."""

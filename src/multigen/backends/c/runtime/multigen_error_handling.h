@@ -30,7 +30,8 @@ typedef enum {
     MGEN_ERROR_IO = 7,              // IOError/OSError
     MGEN_ERROR_FILE_NOT_FOUND = 8, // FileNotFoundError
     MGEN_ERROR_PERMISSION = 9,      // PermissionError
-    MGEN_ERROR_RUNTIME = 10         // RuntimeError
+    MGEN_ERROR_RUNTIME = 10,        // RuntimeError
+    MGEN_ERROR_ZERO_DIVISION = 11   // ZeroDivisionError
 } multigen_error_t;
 
 // Error context structure
@@ -196,7 +197,7 @@ void mgen_rethrow(void);
     mgen_throw((exception_type), (message))
 
 // Map Python exception names to C error codes
-#define MGEN_ZERO_DIVISION_ERROR MGEN_ERROR_VALUE
+#define MGEN_ZERO_DIVISION_ERROR MGEN_ERROR_ZERO_DIVISION
 #define MGEN_VALUE_ERROR MGEN_ERROR_VALUE
 #define MGEN_TYPE_ERROR MGEN_ERROR_TYPE
 #define MGEN_KEY_ERROR MGEN_ERROR_KEY

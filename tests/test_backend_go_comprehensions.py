@@ -287,7 +287,7 @@ class TestGoDictItemsUnpacking:
         self.converter = MultiGenPythonToGoConverter()
 
     def test_for_loop_items(self):
-        """Loop unpacks directly from range over the map."""
+        """Loop unpacks each pair of the map's ordered items."""
         python_code = """
 def loop_sum(d: dict[int, int]) -> int:
     total: int = 0
@@ -297,7 +297,8 @@ def loop_sum(d: dict[int, int]) -> int:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "for k, v := range d {" in go_code
+        assert "for _, kv := range multigen.MapItems(d) {" in go_code
+        assert "k, v := kv.Key, kv.Value" in go_code
         assert "item" not in go_code
 
     def test_for_loop_items_unused_key(self):
@@ -311,7 +312,7 @@ def value_sum(d: dict[str, int]) -> int:
 """
         go_code = self.converter.convert_code(python_code)
 
-        assert "for _, v := range d {" in go_code
+        assert "_, v := kv.Key, kv.Value" in go_code
 
     def test_list_comprehension_items(self):
         """List comprehension iterates MapItems with the source map's KV type."""

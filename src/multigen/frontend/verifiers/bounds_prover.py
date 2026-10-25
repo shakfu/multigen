@@ -1105,7 +1105,8 @@ class MemoryOperationExtractor:
             return None
         if value[0] == "cell":
             return self._kinds[value[1]]
-        return value[1] if value[0] == "new" else value[0]
+        kind: str = value[1] if value[0] == "new" else value[0]
+        return kind
 
     def _length_of_value(self, value: _Value, state: _State) -> Any:
         if value is not None and value[0] == "cell" and self._kinds[value[1]] != "dict":
@@ -1222,7 +1223,7 @@ class MemoryOperationExtractor:
         return ("new", kind, None)
 
     def _compare(self, expr: ast.Compare, state: _State, assume: list[Any], record: bool) -> _Value:
-        operators = {
+        operators: dict[type[ast.cmpop], Callable[[Any, Any], Any]] = {
             ast.Lt: lambda a, b: a < b,
             ast.LtE: lambda a, b: a <= b,
             ast.Gt: lambda a, b: a > b,

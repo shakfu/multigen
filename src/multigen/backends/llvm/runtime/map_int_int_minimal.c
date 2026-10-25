@@ -156,21 +156,16 @@ void map_int_int_set(map_int_int* map, long long key, long long value) {
     entry->value = value;
 }
 
-// Get value by key (returns 0 if key doesn't exist)
+// Get value by key: a missing key raises KeyError, as Python's d[k] does
 long long map_int_int_get(map_int_int* map, long long key) {
-    if (!map) {
-        return 0;
+    map_int_entry* entry = NULL;
+    if (map && map->capacity > 0) {
+        entry = find_entry(map->entries, map->capacity, key);
     }
-
-    if (map->capacity == 0) {
-        return 0;
-    }
-
-    map_int_entry* entry = find_entry(map->entries, map->capacity, key);
     if (!entry || !entry->is_occupied) {
-        return 0;
+        fprintf(stderr, "KeyError: %lld\n", key);
+        exit(1);
     }
-
     return entry->value;
 }
 

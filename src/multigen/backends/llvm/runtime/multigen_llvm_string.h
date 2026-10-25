@@ -96,4 +96,10 @@ int multigen_str_startswith(const char* str, const char* prefix);
  */
 int multigen_str_endswith(const char* str, const char* suffix);
 
+/**
+ * Python print(float): repr() digits and a newline; write_float omits the newline
+ */
+void multigen_print_float(double x);
+void multigen_write_float(double x);
+
 #endif // MGEN_LLVM_STRING_H

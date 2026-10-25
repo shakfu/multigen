@@ -12,7 +12,7 @@ class GoContainerSystem(AbstractContainerSystem):
 
     def get_dict_type(self, key_type: str, value_type: str) -> str:
         """Get Go map type for key-value storage."""
-        return f"map[{key_type}]{value_type}"
+        return f"*multigen.Dict[{key_type}, {value_type}]"
 
     def get_set_type(self, element_type: str) -> str:
         """Get Go map type for set storage (using map[T]bool pattern)."""
