@@ -116,6 +116,30 @@ inline const bool uncaught_exception_handler_installed = (std::set_terminate(rep
 // Python // and %: round toward negative infinity, not zero
 // ============================================================================
 
+// Python **: exact for ints, where std::pow goes through double and loses
+// precision above 2**53. A negative exponent would be a float, so it raises.
+template <typename A, typename B>
+auto py_pow(A base, B exp) {
+    if constexpr (std::is_integral_v<A> && std::is_integral_v<B>) {
+        if (exp < 0) {
+            throw ValueError("negative exponent on an int");
+        }
+        long long result = 1, b = base, e = exp;
+        while (e > 0) {
+            if ((e & 1) && __builtin_mul_overflow(result, b, &result)) {
+                throw RuntimeError("integer overflow in **");
+            }
+            e >>= 1;
+            if (e > 0 && __builtin_mul_overflow(b, b, &b)) {
+                throw RuntimeError("integer overflow in **");
+            }
+        }
+        return result;
+    } else {
+        return std::pow(static_cast<double>(base), static_cast<double>(exp));
+    }
+}
+
 template <typename A, typename B>
 auto floordiv(A a, B b) {
     using T = std::common_type_t<A, B>;
@@ -254,9 +278,9 @@ public:
         return str.substr(start, end - start + 1);
     }
 
-    static int find(const std::string& str, const std::string& substr) {
+    static long long find(const std::string& str, const std::string& substr) {
         size_t pos = str.find(substr);
-        return (pos == std::string::npos) ? -1 : static_cast<int>(pos);
+        return (pos == std::string::npos) ? -1 : static_cast<long long>(pos);
     }
 
     static std::string replace(const std::string& str, const std::string& old_str, const std::string& new_str) {
@@ -504,22 +528,22 @@ using Set = std::unordered_set<T>;
 class Range {
 public:
     class Iterator {
-        int current;
-        int step;
+        long long current;
+        long long step;
     public:
-        Iterator(int start, int step) : current(start), step(step) {}
+        Iterator(long long start, long long step) : current(start), step(step) {}
         Iterator& operator++() { current += step; return *this; }
-        int operator*() const { return current; }
+        long long operator*() const { return current; }
         bool operator!=(const Iterator& other) const { return current != other.current; }
     };
 
 private:
-    int start_, stop_, step_;
+    long long start_, stop_, step_;
 
 public:
-    explicit Range(int stop) : start_(0), stop_(stop), step_(1) {}
-    Range(int start, int stop) : start_(start), stop_(stop), step_(1) {}
-    Range(int start, int stop, int step) : start_(start), stop_(stop), step_(step) {}
+    explicit Range(long long stop) : start_(0), stop_(stop), step_(1) {}
+    Range(long long start, long long stop) : start_(start), stop_(stop), step_(1) {}
+    Range(long long start, long long stop, long long step) : start_(start), stop_(stop), step_(step) {}
 
     Iterator begin() const { return Iterator(start_, step_); }
     Iterator end() const { return Iterator(stop_, step_); }
@@ -530,8 +554,8 @@ public:
 // ============================================================================
 
 template<typename T, typename Func>
-auto list_comprehension(const Range& range, Func transform) -> std::vector<decltype(transform(0))> {
-    std::vector<decltype(transform(0))> result;
+auto list_comprehension(const Range& range, Func transform) -> std::vector<decltype(transform(0LL))> {
+    std::vector<decltype(transform(0LL))> result;
     for (auto i : range) {
         result.push_back(transform(i));
     }
@@ -539,8 +563,8 @@ auto list_comprehension(const Range& range, Func transform) -> std::vector<declt
 }
 
 template<typename T, typename Func, typename Pred>
-auto list_comprehension(const Range& range, Func transform, Pred condition) -> std::vector<decltype(transform(0))> {
-    std::vector<decltype(transform(0))> result;
+auto list_comprehension(const Range& range, Func transform, Pred condition) -> std::vector<decltype(transform(0LL))> {
+    std::vector<decltype(transform(0LL))> result;
     for (auto i : range) {
         if (condition(i)) {
             result.push_back(transform(i));
@@ -578,8 +602,8 @@ auto list_comprehension(const Container& container, Func transform, Pred conditi
 
 template<typename Func>
 auto dict_comprehension(const Range& range, Func key_value_func)
-    -> Dict<decltype(key_value_func(0).first), decltype(key_value_func(0).second)> {
-    Dict<decltype(key_value_func(0).first), decltype(key_value_func(0).second)> result;
+    -> Dict<decltype(key_value_func(0LL).first), decltype(key_value_func(0LL).second)> {
+    Dict<decltype(key_value_func(0LL).first), decltype(key_value_func(0LL).second)> result;
     for (auto i : range) {
         auto pair = key_value_func(i);
         result[pair.first] = pair.second;
@@ -589,8 +613,8 @@ auto dict_comprehension(const Range& range, Func key_value_func)
 
 template<typename Func, typename Pred>
 auto dict_comprehension(const Range& range, Func key_value_func, Pred condition)
-    -> Dict<decltype(key_value_func(0).first), decltype(key_value_func(0).second)> {
-    Dict<decltype(key_value_func(0).first), decltype(key_value_func(0).second)> result;
+    -> Dict<decltype(key_value_func(0LL).first), decltype(key_value_func(0LL).second)> {
+    Dict<decltype(key_value_func(0LL).first), decltype(key_value_func(0LL).second)> result;
     for (auto i : range) {
         if (condition(i)) {
             auto pair = key_value_func(i);
@@ -634,8 +658,8 @@ auto dict_comprehension(const Container& container, Func key_value_func, Pred co
 // ============================================================================
 
 template<typename Func>
-auto set_comprehension(const Range& range, Func transform) -> std::unordered_set<decltype(transform(0))> {
-    std::unordered_set<decltype(transform(0))> result;
+auto set_comprehension(const Range& range, Func transform) -> std::unordered_set<decltype(transform(0LL))> {
+    std::unordered_set<decltype(transform(0LL))> result;
     for (auto i : range) {
         result.insert(transform(i));
     }
@@ -643,8 +667,8 @@ auto set_comprehension(const Range& range, Func transform) -> std::unordered_set
 }
 
 template<typename Func, typename Pred>
-auto set_comprehension(const Range& range, Func transform, Pred condition) -> std::unordered_set<decltype(transform(0))> {
-    std::unordered_set<decltype(transform(0))> result;
+auto set_comprehension(const Range& range, Func transform, Pred condition) -> std::unordered_set<decltype(transform(0LL))> {
+    std::unordered_set<decltype(transform(0LL))> result;
     for (auto i : range) {
         if (condition(i)) {
             result.insert(transform(i));

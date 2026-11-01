@@ -98,7 +98,7 @@ const char* multigen_error_name(multigen_error_t code) {
         case MGEN_OK:
             return "OK";
         case MGEN_ERROR_GENERIC:
-            return "GenericError";
+            return "Exception";
         case MGEN_ERROR_MEMORY:
             return "MemoryError";
         case MGEN_ERROR_INDEX:
@@ -130,24 +130,27 @@ const char* multigen_error_name(multigen_error_t code) {
 mgen_exception_context_t mgen_exception_stack[MGEN_MAX_TRY_DEPTH];
 int mgen_exception_depth = -1;
 
+// The exception being handled. It outlives its frame, which a throw has popped.
+static multigen_error_t mgen_current_type = MGEN_OK;
+static char mgen_current_message[256] = "";
+
 void mgen_exception_init(void) {
     mgen_exception_depth = -1;
+    mgen_current_type = MGEN_OK;
+    mgen_current_message[0] = '\0';
     for (int i = 0; i < MGEN_MAX_TRY_DEPTH; i++) {
         mgen_exception_stack[i].active = 0;
-        mgen_exception_stack[i].exception_type = MGEN_OK;
-        mgen_exception_stack[i].exception_message[0] = '\0';
     }
 }
 
 int mgen_try_push(void) {
     if (mgen_exception_depth >= MGEN_MAX_TRY_DEPTH - 1) {
+        // Continuing would run the try without a frame, so its handlers could not fire.
         fprintf(stderr, "MultiGen: Maximum try/catch nesting depth exceeded\n");
-        return -1;
+        exit(1);
     }
     mgen_exception_depth++;
     mgen_exception_stack[mgen_exception_depth].active = 1;
-    mgen_exception_stack[mgen_exception_depth].exception_type = MGEN_OK;
-    mgen_exception_stack[mgen_exception_depth].exception_message[0] = '\0';
     return mgen_exception_depth;
 }
 
@@ -159,43 +162,32 @@ void mgen_try_pop(void) {
 }
 
 void mgen_throw(multigen_error_t type, const char* message) {
-    if (mgen_exception_depth >= 0 && mgen_exception_stack[mgen_exception_depth].active) {
-        mgen_exception_stack[mgen_exception_depth].exception_type = type;
-        if (message) {
-            strncpy(mgen_exception_stack[mgen_exception_depth].exception_message,
-                    message,
-                    sizeof(mgen_exception_stack[mgen_exception_depth].exception_message) - 1);
-            mgen_exception_stack[mgen_exception_depth].exception_message[
-                sizeof(mgen_exception_stack[mgen_exception_depth].exception_message) - 1] = '\0';
-        }
-        longjmp(mgen_exception_stack[mgen_exception_depth].env, 1);
-    } else {
+    if (mgen_exception_depth < 0) {
         // No try block active: report and exit 1 like CPython. exit() flushes stdout; abort() lost it.
         fprintf(stderr, "Unhandled exception: %s: %s\n",
                 multigen_error_name(type), message ? message : "");
         exit(1);
     }
+    mgen_current_type = type;
+    if (message != mgen_current_message) {
+        snprintf(mgen_current_message, sizeof(mgen_current_message), "%s", message ? message : "");
+    }
+    int frame = mgen_exception_depth;
+    mgen_try_pop();
+    longjmp(mgen_exception_stack[frame].env, 1);
 }
 
 multigen_error_t mgen_current_exception_type(void) {
-    if (mgen_exception_depth >= 0) {
-        return mgen_exception_stack[mgen_exception_depth].exception_type;
-    }
-    return MGEN_OK;
+    return mgen_current_type;
 }
 
 const char* mgen_current_exception_message(void) {
-    if (mgen_exception_depth >= 0) {
-        return mgen_exception_stack[mgen_exception_depth].exception_message;
-    }
-    return "";
+    return mgen_current_message;
 }
 
 void mgen_rethrow(void) {
-    if (mgen_exception_depth >= 0) {
-        multigen_error_t type = mgen_exception_stack[mgen_exception_depth].exception_type;
-        const char* msg = mgen_exception_stack[mgen_exception_depth].exception_message;
-        mgen_try_pop();
-        mgen_throw(type, msg);
+    if (mgen_current_type == MGEN_OK) {
+        mgen_throw(MGEN_ERROR_RUNTIME, "No active exception to reraise");
     }
+    mgen_throw(mgen_current_type, mgen_current_message);
 }

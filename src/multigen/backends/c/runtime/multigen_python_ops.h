@@ -33,7 +33,7 @@ int multigen_bool(const void* obj, int (*is_truthy)(const void*));
 /**
  * Python bool() for integers
  */
-int multigen_bool_int(int value);
+int multigen_bool_int(long long value);
 
 /**
  * Python bool() for floats
@@ -48,35 +48,56 @@ int multigen_bool_cstring(const char* str);
 /**
  * Python abs() function
  */
-int multigen_abs_int(int value);
+long long multigen_abs_int(long long value);
 double multigen_abs_float(double value);
 
 /**
  * Python // and % on ints: round toward negative infinity, not zero.
- * Raise ZeroDivisionError on b == 0 and RuntimeError when INT_MIN // -1 overflows.
+ * Raise ZeroDivisionError on b == 0 and RuntimeError when LLONG_MIN // -1 overflows.
  */
-static inline int multigen_floordiv_int(int a, int b) {
+static inline long long multigen_floordiv_int(long long a, long long b) {
     if (b == 0) {
         mgen_throw(MGEN_ZERO_DIVISION_ERROR, "integer division or modulo by zero");
     }
-    if (a == INT_MIN && b == -1) {
+    if (a == LLONG_MIN && b == -1) {
         mgen_throw(MGEN_ERROR_RUNTIME, "integer overflow in floor division");
     }
-    int q = a / b;
+    long long q = a / b;
     if ((a % b != 0) && ((a < 0) != (b < 0))) {
         q--;
     }
     return q;
 }
 
-static inline int multigen_mod_int(int a, int b) {
+/**
+ * Python ** on ints. A negative exponent yields a float in Python, which an int
+ * result cannot hold, so it raises ValueError; overflow raises RuntimeError.
+ */
+static inline long long multigen_pow_int(long long base, long long exp) {
+    if (exp < 0) {
+        mgen_throw(MGEN_VALUE_ERROR, "negative exponent on an int");
+    }
+    long long result = 1;
+    while (exp > 0) {
+        if ((exp & 1) && __builtin_mul_overflow(result, base, &result)) {
+            mgen_throw(MGEN_ERROR_RUNTIME, "integer overflow in **");
+        }
+        exp >>= 1;
+        if (exp > 0 && __builtin_mul_overflow(base, base, &base)) {
+            mgen_throw(MGEN_ERROR_RUNTIME, "integer overflow in **");
+        }
+    }
+    return result;
+}
+
+static inline long long multigen_mod_int(long long a, long long b) {
     if (b == 0) {
         mgen_throw(MGEN_ZERO_DIVISION_ERROR, "integer division or modulo by zero");
     }
     if (b == -1) {
-        return 0;  // INT_MIN % -1 is undefined in C
+        return 0;  // LLONG_MIN % -1 is undefined in C
     }
-    int r = a % b;
+    long long r = a % b;
     if (r != 0 && ((r < 0) != (b < 0))) {
         r += b;
     }
@@ -158,32 +179,32 @@ char* multigen_float_repr(double x, char* buf);
 /**
  * Python min() and max() for arrays
  */
-int multigen_min_int_array(const int* arr, size_t size);
-int multigen_max_int_array(const int* arr, size_t size);
+long long multigen_min_int_array(const long long* arr, size_t size);
+long long multigen_max_int_array(const long long* arr, size_t size);
 double multigen_min_float_array(const double* arr, size_t size);
 double multigen_max_float_array(const double* arr, size_t size);
 
 /**
  * Python sum() for arrays
  */
-int multigen_sum_int_array(const int* arr, size_t size);
+long long multigen_sum_int_array(const long long* arr, size_t size);
 double multigen_sum_float_array(const double* arr, size_t size);
 
 /**
  * Python range() functionality
  */
 typedef struct {
-    int start;
-    int stop;
-    int step;
-    int current;
+    long long start;
+    long long stop;
+    long long step;
+    long long current;
 } multigen_range_t;
 
-multigen_range_t multigen_range(int stop);
-multigen_range_t multigen_range_start_stop(int start, int stop);
-multigen_range_t multigen_range_full(int start, int stop, int step);
+multigen_range_t multigen_range(long long stop);
+multigen_range_t multigen_range_start_stop(long long start, long long stop);
+multigen_range_t multigen_range_full(long long start, long long stop, long long step);
 
-int multigen_range_next(multigen_range_t* range);
+long long multigen_range_next(multigen_range_t* range);
 int multigen_range_has_next(const multigen_range_t* range);
 
 /**
@@ -209,7 +230,7 @@ char multigen_chr(int code);
 /**
  * Python-style comparison functions
  */
-int multigen_cmp_int(int a, int b);
+int multigen_cmp_int(long long a, long long b);
 int multigen_cmp_float(double a, double b);
 int multigen_cmp_string(const char* a, const char* b);
 

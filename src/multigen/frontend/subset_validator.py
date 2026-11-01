@@ -8,7 +8,7 @@ performance and correctness guarantees.
 import ast
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable, Optional
+from typing import Any, Callable, Optional, Union
 
 from ..common import log
 from .ast_analyzer import receiver_arg_ids
@@ -206,6 +206,112 @@ def _annotation_node_ids(tree: ast.AST) -> frozenset[int]:
     return frozenset(ids)
 
 
+# The exceptions every backend that supports try/except can name and raise.
+SUPPORTED_EXCEPTIONS = frozenset(
+    {"Exception", "ValueError", "TypeError", "RuntimeError", "IndexError", "KeyError", "ZeroDivisionError"}
+)
+_SUPPORTED_EXCEPTIONS_HINT = f"Use one of: {', '.join(sorted(SUPPORTED_EXCEPTIONS))}."
+
+
+def _annotated_as(annotation: Optional[ast.expr], name: str) -> bool:
+    return isinstance(annotation, ast.Name) and annotation.id == name
+
+
+def _spine_has_true_division(expr: ast.expr) -> bool:
+    """Report a `/` in the arithmetic of `expr`, not crossing a call such as `int(a / b)`."""
+    if isinstance(expr, ast.BinOp):
+        return (
+            isinstance(expr.op, ast.Div) or _spine_has_true_division(expr.left) or _spine_has_true_division(expr.right)
+        )
+    if isinstance(expr, ast.UnaryOp):
+        return _spine_has_true_division(expr.operand)
+    return False
+
+
+def _statements_in_scope(scope: Union[ast.FunctionDef, ast.Module]) -> list[Any]:
+    """Collect a scope's assignments in source order, excluding nested functions and classes."""
+    found: list[Any] = []
+
+    def visit(node: ast.AST) -> None:
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, (ast.FunctionDef, ast.ClassDef)):
+                continue
+            if isinstance(child, (ast.AnnAssign, ast.Assign, ast.AugAssign)):
+                found.append(child)
+            visit(child)
+
+    visit(scope)
+    return found
+
+
+def _int_true_division_ids(tree: ast.AST) -> frozenset[int]:
+    """Identify statements that store the float result of `/` into an int target.
+
+    Python rebinds the name to a float. Static targets keep the declared type, so
+    C, C++, Rust, Go and OCaml print 2 for `n = 5; n /= 2`. An `/=` target must be
+    known to be float; a plain assignment is refused only for a known int target.
+    """
+    ids: set[int] = set()
+    float_attrs = {
+        node.target.attr
+        for node in ast.walk(tree)
+        if isinstance(node, ast.AnnAssign)
+        and isinstance(node.target, ast.Attribute)
+        and _annotated_as(node.annotation, "float")
+    }
+    float_attrs |= {
+        node.target.id
+        for cls in ast.walk(tree)
+        if isinstance(cls, ast.ClassDef)
+        for node in cls.body
+        if isinstance(node, ast.AnnAssign)
+        and isinstance(node.target, ast.Name)
+        and _annotated_as(node.annotation, "float")
+    }
+    scopes = [node for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.Module))]
+    for scope in scopes:
+        ints: set[str] = set()
+        floats: set[str] = set()
+        if isinstance(scope, ast.FunctionDef):
+            for arg in scope.args.args:
+                if _annotated_as(arg.annotation, "int"):
+                    ints.add(arg.arg)
+                elif _annotated_as(arg.annotation, "float"):
+                    floats.add(arg.arg)
+        statements = _statements_in_scope(scope)
+        for node in statements:
+            if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                if _annotated_as(node.annotation, "int"):
+                    ints.add(node.target.id)
+                elif _annotated_as(node.annotation, "float"):
+                    floats.add(node.target.id)
+            elif isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
+                name = node.targets[0].id
+                if name in ints or name in floats:
+                    continue
+                if isinstance(node.value, ast.Constant) and type(node.value.value) is int:
+                    ints.add(name)
+                elif (isinstance(node.value, ast.Constant) and type(node.value.value) is float) or (
+                    _spine_has_true_division(node.value)
+                ):
+                    floats.add(name)
+        for node in statements:
+            if isinstance(node, ast.AugAssign):
+                if not isinstance(node.op, ast.Div):
+                    continue
+                target = node.target
+                known_float = (isinstance(target, ast.Name) and target.id in floats) or (
+                    isinstance(target, ast.Attribute) and target.attr in float_attrs
+                )
+                if not known_float:
+                    ids.add(id(node))
+            elif node.value is not None and _spine_has_true_division(node.value):
+                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                if any(isinstance(t, ast.Name) and t.id in ints for t in targets):
+                    ids.add(id(node))
+    return frozenset(ids)
+
+
 def _items_target_ids(tree: ast.AST) -> frozenset[int]:
     """Identify `k, v` tuples that unpack `d.items()` in a for loop or comprehension.
 
@@ -237,6 +343,7 @@ class ValidationContext:
     annotation_nodes: frozenset[int] = frozenset()
     items_targets: frozenset[int] = frozenset()
     receivers: frozenset[int] = frozenset()
+    int_true_divisions: frozenset[int] = frozenset()
 
     def in_annotation(self, node: ast.AST) -> bool:
         """Whether this node is part of a type annotation."""
@@ -305,6 +412,7 @@ class StaticPythonSubsetValidator:
             annotation_nodes=_annotation_node_ids(tree),
             items_targets=_items_target_ids(tree),
             receivers=receiver_arg_ids(tree),
+            int_true_divisions=_int_true_division_ids(tree),
         )
 
         # Check each node against our rules
@@ -737,6 +845,16 @@ class StaticPythonSubsetValidator:
             skip_in_annotations=True,
         )
 
+        rules["int_true_division"] = FeatureRule(
+            name="True Division (/ or /=) Into An Int",
+            tier=SubsetTier.TIER_4_UNSUPPORTED,
+            status=FeatureStatus.NOT_SUPPORTED,
+            description="`/` yields a float, which an int variable cannot hold: annotate the target float or use `//`",
+            ast_nodes=[ast.AugAssign, ast.Assign, ast.AnnAssign],
+            context_matcher=lambda node, context: id(node) in context.int_true_divisions,
+            priority=-1,
+        )
+
         rules["metaclasses"] = FeatureRule(
             name="Metaclasses",
             tier=SubsetTier.TIER_4_UNSUPPORTED,
@@ -788,21 +906,22 @@ class StaticPythonSubsetValidator:
         rules["exceptions"] = FeatureRule(
             name="Exception Handling",
             tier=SubsetTier.TIER_2_STRUCTURED,
-            # Measured by executing generated C against CPython: an explicit
-            # `raise` is caught and `finally` runs, but no operation raises.
-            # `10 // 0` inside a try is undefined behaviour in C, so the program
-            # dies of SIGFPE where Python returns from the except clause.
             status=FeatureStatus.PARTIALLY_SUPPORTED,
             description=(
-                "try/except/else/finally for explicitly raised exceptions. Operations do not raise: "
-                "a ZeroDivisionError or IndexError crashes instead of reaching the handler"
+                "try/except on the built-in exception names, raised as `raise ValueError(...)`. "
+                "`else`, `finally` and `except ... as e` are refused: no backend translates them correctly"
             ),
             ast_nodes=[ast.Try, ast.Raise, ast.ExceptHandler],
             diagnose=self._diagnose_exception_handling,
-            constraints=["No exception chaining (raise ... from ...)"],
+            constraints=[
+                "No exception chaining (raise ... from ...)",
+                "No else or finally clause",
+                "No except ... as name",
+                "Only built-in exception names, raised with a call",
+            ],
             c_mapping="try/catch in C++, try/with in OCaml",
             examples={
-                "valid": "try:\n    x = 1\nexcept ValueError:\n    x = 0\nelse:\n    print('ok')\nfinally:\n    cleanup()",
+                "valid": "try:\n    x = 1\nexcept ValueError:\n    x = 0",
                 "invalid": "raise ValueError('msg') from original_error",
             },
         )
@@ -1114,10 +1233,22 @@ class StaticPythonSubsetValidator:
     def _diagnose_exception_handling(self, node: ast.AST, context: ValidationContext) -> Optional[Diagnostic]:
         """Validate exception handling constraints.
 
-        Supported: try/except with optional else and finally clauses. Rejects:
-        - exception chaining (raise ... from ...)
+        Rejects each form below because at least one backend miscompiles it and
+        none translates it correctly: exception chaining, `else` (its body runs
+        under the handlers), `finally` (skipped on an unmatched exception or a
+        return), `as e`, and exception names outside SUPPORTED_EXCEPTIONS.
         """
+
+        def refuse(message: str, remediation: str) -> Diagnostic:
+            return self._diagnostic(
+                RuleId.EXCEPTION_FORM, message, node, feature="Exception Handling", remediation=remediation
+            )
+
         if isinstance(node, ast.Try):
+            if node.orelse:
+                return refuse("try/else is not supported", "Move the else body after the try statement.")
+            if node.finalbody:
+                return refuse("try/finally is not supported", "Run the cleanup explicitly on each path.")
             return None
 
         elif isinstance(node, ast.Raise):
@@ -1132,9 +1263,26 @@ class StaticPythonSubsetValidator:
                     remediation="Raise the exception without a `from` clause.",
                 )
 
+            if node.exc is None:
+                return None
+            exc = node.exc
+            if not (isinstance(exc, ast.Call) and isinstance(exc.func, ast.Name)):
+                return refuse(
+                    "raise needs an exception call", 'Write `raise ValueError("message")`, or a bare `raise`.'
+                )
+            if exc.func.id not in SUPPORTED_EXCEPTIONS:
+                return refuse(f"Unsupported exception type: {exc.func.id}", _SUPPORTED_EXCEPTIONS_HINT)
             return None
 
-        # ExceptHandler nodes are always valid if we get here
+        if isinstance(node, ast.ExceptHandler):
+            if node.name:
+                return refuse("except ... as name is not supported", "Remove the `as` binding.")
+            if node.type is None:
+                return None
+            name = node.type.id if isinstance(node.type, ast.Name) else None
+            if name not in SUPPORTED_EXCEPTIONS:
+                return refuse(f"Unsupported exception type: {name or 'expression'}", _SUPPORTED_EXCEPTIONS_HINT)
+
         return None
 
     def _diagnose_with_statement(self, node: ast.AST, context: ValidationContext) -> Optional[Diagnostic]:

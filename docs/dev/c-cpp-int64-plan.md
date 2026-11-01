@@ -1,6 +1,6 @@
 # C and C++: 64-bit `int`
 
-Status: deferred. Tracked by the `int_width.py` entries for `c` and `cpp` in `KNOWN_FAILURES` (`tests/test_compilation.py`).
+Status: done. C++ follows the approach below. C uses option A, with one change: the converter's `"int"` type strings stay as the label for a Python int, and one pass over the generated source emits `long long`. That replaced about 200 edits that had to stay consistent. Overflow is still open; see `TODO.md`.
 
 ## Problem
 

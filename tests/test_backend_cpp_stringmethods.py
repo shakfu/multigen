@@ -199,7 +199,7 @@ def find_position(text: str, target: str) -> int:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "int pos = StringOps::find(text, target);" in cpp_code
+        assert "long long pos = StringOps::find(text, target);" in cpp_code
         assert "if ((pos >= 0))" in cpp_code
 
     def test_string_literal_method_call(self):
@@ -244,5 +244,5 @@ def test_returns(text: str) -> int:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert 'int pos = StringOps::find(text, "test");' in cpp_code
+        assert 'long long pos = StringOps::find(text, "test");' in cpp_code
         assert "return pos;" in cpp_code

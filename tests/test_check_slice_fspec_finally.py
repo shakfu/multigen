@@ -503,13 +503,13 @@ class TestFinallyValidation:
     def setup_method(self) -> None:
         self.validator = StaticPythonSubsetValidator()
 
-    def test_finally_valid(self) -> None:
-        """try/except/finally should be valid."""
+    def test_finally_rejected(self) -> None:
+        """`finally` was skipped on an unmatched exception in C++, Rust and Go."""
         result = self.validator.validate_code(FINALLY_BASIC)
-        assert result.is_valid
+        assert not result.is_valid
 
-    def test_else_now_accepted(self) -> None:
-        """try/except/else should now be accepted."""
+    def test_else_rejected(self) -> None:
+        """`else` ran under the handlers in C, C++, Rust and Go."""
         code = """
 def with_else() -> int:
     try:
@@ -520,12 +520,12 @@ def with_else() -> int:
         return 0
 """
         result = self.validator.validate_code(code)
-        assert result.is_valid
+        assert not result.is_valid
 
-    def test_finally_with_cleanup(self) -> None:
-        """try/except/finally with cleanup code should be valid."""
+    def test_finally_with_cleanup_rejected(self) -> None:
+        """`finally` was skipped on an unmatched exception in C++, Rust and Go."""
         result = self.validator.validate_code(FINALLY_WITH_CLEANUP)
-        assert result.is_valid
+        assert not result.is_valid
 
 
 class TestFinallyCpp:
@@ -705,15 +705,15 @@ class TestElseValidation:
     def setup_method(self) -> None:
         self.validator = StaticPythonSubsetValidator()
 
-    def test_else_valid(self) -> None:
-        """try/except/else should be valid."""
+    def test_else_basic_rejected(self) -> None:
+        """`else` ran under the handlers in C, C++, Rust and Go."""
         result = self.validator.validate_code(ELSE_BASIC)
-        assert result.is_valid
+        assert not result.is_valid
 
-    def test_else_with_finally_valid(self) -> None:
-        """try/except/else/finally should be valid."""
+    def test_else_with_finally_rejected(self) -> None:
+        """`else` and `finally` are both refused."""
         result = self.validator.validate_code(ELSE_WITH_FINALLY)
-        assert result.is_valid
+        assert not result.is_valid
 
     def test_exception_chaining_still_rejected(self) -> None:
         """raise ... from ... should still be rejected."""

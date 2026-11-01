@@ -21,7 +21,7 @@ def calc(a: int, b: int) -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "int calc(int a, int b)" in c_code
+        assert "long long calc(long long a, long long b)" in c_code
         assert "return ((a + (b * 2)) - 1);" in c_code
 
     def test_variable_declarations(self):
@@ -34,7 +34,7 @@ def test_vars(x: int) -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "int y = (x * 2);" in c_code
+        assert "long long y = (x * 2);" in c_code
         assert "double z = 3.14;" in c_code
 
     def test_comparison_operations(self):
@@ -45,7 +45,7 @@ def compare(a: int, b: int) -> bool:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "bool compare(int a, int b)" in c_code
+        assert "bool compare(long long a, long long b)" in c_code
         # Note: 'and' operation will need special handling
 
     def test_string_handling(self):
@@ -103,7 +103,7 @@ def multi_param(a: int, b: float, c: bool, d: str) -> float:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "double multi_param(int a, double b, bool c, char* d)" in c_code
+        assert "double multi_param(long long a, double b, bool c, char* d)" in c_code
 
     def test_no_parameters(self):
         """Test functions with no parameters."""
@@ -113,7 +113,7 @@ def no_params() -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "int no_params(void)" in c_code
+        assert "long long no_params(void)" in c_code
 
     def test_void_return(self):
         """Test functions with no return value."""
@@ -123,7 +123,7 @@ def void_func(x: int):
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "void void_func(int x)" in c_code
+        assert "void void_func(long long x)" in c_code
 
 
 class TestPy2CBuiltinFunctions:
@@ -180,7 +180,7 @@ def infer_int():
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "int x = 42;" in c_code
+        assert "long long x = 42;" in c_code
 
     def test_float_inference(self):
         """Test float type inference."""
@@ -315,8 +315,8 @@ def func2(y: int) -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "int func1(int x)" in c_code
-        assert "int func2(int y)" in c_code
+        assert "long long func1(long long x)" in c_code
+        assert "long long func2(long long y)" in c_code
         assert "return (x + 1);" in c_code
         assert "return (y * 2);" in c_code
 
@@ -366,7 +366,7 @@ def test_op(a: int, b: int) -> int:
 @pytest.mark.parametrize(
     "python_type,c_type",
     [
-        ("int", "int"),
+        ("int", "long long"),
         ("float", "double"),
         ("bool", "bool"),
         ("str", "char*"),

@@ -23,7 +23,7 @@ def test_list_comp() -> list:
 
         # Should contain vector initialization and loop
         assert "vec_int" in c_code
-        assert "for (int x = 0; x < 5; x += 1)" in c_code
+        assert "for (long long x = 0; x < 5; x += 1)" in c_code
         assert "vec_int_push" in c_code
 
     def test_list_comprehension_with_expression(self):
@@ -35,7 +35,7 @@ def test_list_comp_expr() -> list:
         c_code = self.converter.convert_code(python_code)
 
         assert "vec_int" in c_code
-        assert "for (int x = 0; x < 3; x += 1)" in c_code
+        assert "for (long long x = 0; x < 3; x += 1)" in c_code
         assert "(x * 2)" in c_code
 
     def test_list_comprehension_with_condition(self):
@@ -47,7 +47,7 @@ def test_list_comp_condition() -> list:
         c_code = self.converter.convert_code(python_code)
 
         assert "vec_int" in c_code
-        assert "for (int x = 0; x < 10; x += 1)" in c_code
+        assert "for (long long x = 0; x < 10; x += 1)" in c_code
         assert "if ((multigen_mod_int(x, 2) == 0))" in c_code
 
     def test_list_comprehension_with_range_start_stop(self):
@@ -59,7 +59,7 @@ def test_list_comp_range(start: int, stop: int) -> list:
         c_code = self.converter.convert_code(python_code)
 
         assert "vec_int" in c_code
-        assert "for (int i = start; i < stop; i += 1)" in c_code
+        assert "for (long long i = start; i < stop; i += 1)" in c_code
 
     def test_list_comprehension_with_range_step(self):
         """Test list comprehension with range(start, stop, step)."""
@@ -70,7 +70,7 @@ def test_list_comp_step() -> list:
         c_code = self.converter.convert_code(python_code)
 
         assert "vec_int" in c_code
-        assert "for (int i = 0; i < 10; i += 2)" in c_code
+        assert "for (long long i = 0; i < 10; i += 2)" in c_code
 
     def test_list_comprehension_complex_expression(self):
         """Test list comprehension with complex expression."""
@@ -132,7 +132,7 @@ def test_dict_comp() -> dict:
 
         # Should contain map initialization and loop
         assert "map_int_int" in c_code
-        assert "for (int x = 0; x < 3; x += 1)" in c_code
+        assert "for (long long x = 0; x < 3; x += 1)" in c_code
         assert "map_int_int_insert" in c_code
 
     def test_dict_comprehension_with_condition(self):
@@ -144,7 +144,7 @@ def test_dict_comp_condition() -> dict:
         c_code = self.converter.convert_code(python_code)
 
         assert "map_int_int" in c_code
-        assert "for (int x = 0; x < 5; x += 1)" in c_code
+        assert "for (long long x = 0; x < 5; x += 1)" in c_code
         assert "if ((multigen_mod_int(x, 2) == 1))" in c_code
         assert "(x * x)" in c_code
 
@@ -157,7 +157,7 @@ def test_dict_comp_params(n: int) -> dict:
         c_code = self.converter.convert_code(python_code)
 
         assert "map_int_int" in c_code
-        assert "for (int i = 1; i < n; i += 2)" in c_code
+        assert "for (long long i = 1; i < n; i += 2)" in c_code
         assert "(i + 10)" in c_code
 
     def test_dict_comprehension_string_keys(self):
@@ -170,7 +170,7 @@ def test_dict_string_keys() -> dict:
 
         # Should handle string conversion (though simplified)
         assert "map_" in c_code
-        assert "for (int x = 0; x < 3; x += 1)" in c_code
+        assert "for (long long x = 0; x < 3; x += 1)" in c_code
 
     def test_dict_comprehension_multiple_generators_error(self):
         """Test that multiple generators raise appropriate error."""
@@ -200,8 +200,8 @@ def loop_sum(d: dict[int, int]) -> int:
 """
         c_code = self.converter.convert_code(python_code)
         assert "for (map_int_int_iter it = map_int_int_begin(&d); it.ref; map_int_int_next(&it))" in c_code
-        assert "int k = it.ref->first;" in c_code
-        assert "int v = it.ref->second;" in c_code
+        assert "long long k = it.ref->first;" in c_code
+        assert "long long v = it.ref->second;" in c_code
         assert "typeof" not in c_code
 
     def test_dict_comprehension_items(self):
@@ -212,8 +212,8 @@ def filtered(d: dict[int, int]) -> int:
     return len(f)
 """
         c_code = self.converter.convert_code(python_code)
-        assert "int k = it.ref->first;" in c_code
-        assert "int v = it.ref->second;" in c_code
+        assert "long long k = it.ref->first;" in c_code
+        assert "long long v = it.ref->second;" in c_code
         assert "if ((v > 20)) map_int_int_insert(&dict_result, k, v);" in c_code
         assert "typeof" not in c_code
 
@@ -278,7 +278,7 @@ def test_set_comp() -> set:
 
         # Should contain set initialization and loop
         assert "set_int" in c_code
-        assert "for (int x = 0; x < 5; x += 1)" in c_code
+        assert "for (long long x = 0; x < 5; x += 1)" in c_code
         assert "set_int_insert" in c_code
 
     def test_set_comprehension_with_condition(self):
@@ -290,7 +290,7 @@ def test_set_comp_condition() -> set:
         c_code = self.converter.convert_code(python_code)
 
         assert "set_int" in c_code
-        assert "for (int x = 0; x < 10; x += 1)" in c_code
+        assert "for (long long x = 0; x < 10; x += 1)" in c_code
         assert "if ((x > 5))" in c_code
         assert "(x * 3)" in c_code
 
@@ -303,7 +303,7 @@ def test_set_comp_step() -> set:
         c_code = self.converter.convert_code(python_code)
 
         assert "set_int" in c_code
-        assert "for (int x = 2; x < 20; x += 3)" in c_code
+        assert "for (long long x = 2; x < 20; x += 3)" in c_code
 
     def test_set_comprehension_expression_transformation(self):
         """Test set comprehension with expression transformation."""
@@ -346,7 +346,7 @@ def test_assignment() -> int:
 
         # Should handle assignment and comprehension
         assert "vec_int" in c_code
-        assert "for (int x = 0; x < 3; x += 1)" in c_code
+        assert "for (long long x = 0; x < 3; x += 1)" in c_code
         assert "(x * 2)" in c_code
 
     def test_comprehension_with_function_calls(self):
@@ -362,7 +362,7 @@ def test_with_function() -> list:
 
         # Should handle function calls in comprehension
         assert "helper(x)" in c_code
-        assert "for (int x = 0; x < 3; x += 1)" in c_code
+        assert "for (long long x = 0; x < 3; x += 1)" in c_code
 
     def test_nested_comprehensions_error(self):
         """Test that nested comprehensions raise appropriate error."""
@@ -396,7 +396,7 @@ def test_class_comprehension() -> list:
 
         # Should handle class instantiation in comprehension
         assert "Point_new(i, (i * 2))" in c_code
-        assert "for (int i = 0; i < 2; i += 1)" in c_code
+        assert "for (long long i = 0; i < 2; i += 1)" in c_code
 
     def test_mixed_comprehension_types(self):
         """Test function using multiple comprehension types."""
@@ -434,7 +434,7 @@ def test_comp() -> {comp_type}:
 
     c_code = converter.convert_code(python_code)
     assert expected_container in c_code
-    assert "for (int x = 0; x < 3; x += 1)" in c_code
+    assert "for (long long x = 0; x < 3; x += 1)" in c_code
 
 
 @pytest.mark.integration

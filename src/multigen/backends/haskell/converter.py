@@ -716,7 +716,8 @@ main = printValue "Generated Haskell code executed successfully"'''
         elif isinstance(node.op, ast.Mod):
             return f"({left} `pyMod` {right})"
         elif isinstance(node.op, ast.Pow):
-            return f"({left} ** {right})"
+            # (**) needs Floating, which Int lacks; (^) raises on a negative exponent.
+            return f"({left} {'**' if self._scalar_type(node) == 'float' else '^'} {right})"
         elif isinstance(node.op, ast.BitOr):
             return f"({left} .|. {right})"
         elif isinstance(node.op, ast.BitXor):

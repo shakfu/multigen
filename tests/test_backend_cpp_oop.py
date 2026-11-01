@@ -23,11 +23,11 @@ class Point:
         # Check class definition
         assert "class Point {" in cpp_code
         assert "public:" in cpp_code
-        assert "int x;" in cpp_code
-        assert "int y;" in cpp_code
+        assert "long long x;" in cpp_code
+        assert "long long y;" in cpp_code
 
         # Check constructor
-        assert "Point(int x, int y)" in cpp_code
+        assert "Point(long long x, long long y)" in cpp_code
         assert "this->x = x;" in cpp_code
         assert "this->y = y;" in cpp_code
 
@@ -49,16 +49,16 @@ class Rectangle:
 
         # Check class structure
         assert "class Rectangle {" in cpp_code
-        assert "int width;" in cpp_code
-        assert "int height;" in cpp_code
+        assert "long long width;" in cpp_code
+        assert "long long height;" in cpp_code
 
         # Check constructor
-        assert "Rectangle(int width, int height)" in cpp_code
+        assert "Rectangle(long long width, long long height)" in cpp_code
 
         # Check methods
-        assert "int area()" in cpp_code
+        assert "long long area()" in cpp_code
         assert "return (this->width * this->height);" in cpp_code
-        assert "int perimeter()" in cpp_code
+        assert "long long perimeter()" in cpp_code
         assert "return (2 * (this->width + this->height));" in cpp_code
 
     def test_class_with_mixed_types(self):
@@ -74,11 +74,11 @@ class Person:
         cpp_code = self.converter.convert_code(python_code)
 
         assert "std::string name;" in cpp_code
-        assert "int age;" in cpp_code
+        assert "long long age;" in cpp_code
         assert "double height;" in cpp_code
         assert "bool active;" in cpp_code
 
-        assert "Person(std::string name, int age, double height, bool active)" in cpp_code
+        assert "Person(std::string name, long long age, double height, bool active)" in cpp_code
 
     def test_class_method_with_parameters(self):
         """Test class method that takes parameters."""
@@ -93,7 +93,7 @@ class Calculator:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "int add(int x)" in cpp_code
+        assert "long long add(long long x)" in cpp_code
         assert "this->value = (this->value + x);" in cpp_code
         assert "return this->value;" in cpp_code
 
@@ -114,8 +114,8 @@ class Counter:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "int increment()" in cpp_code
-        assert "int double_increment()" in cpp_code
+        assert "long long increment()" in cpp_code
+        assert "long long double_increment()" in cpp_code
         assert "this->count = (this->count + 1);" in cpp_code
 
 
@@ -153,7 +153,7 @@ class InferredTypes:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "int number;" in cpp_code
+        assert "long long number;" in cpp_code
         assert "std::string text;" in cpp_code
         assert "bool flag;" in cpp_code
         assert "this->number = 42;" in cpp_code
@@ -189,11 +189,11 @@ class ControlFlow:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "int process(int x)" in cpp_code
+        assert "long long process(long long x)" in cpp_code
         assert "if ((x > this->limit))" in cpp_code
-        assert "int result = (x * 2);" in cpp_code or "auto result = (x * 2);" in cpp_code
+        assert "long long result = (x * 2);" in cpp_code or "auto result = (x * 2);" in cpp_code
         assert "} else {" in cpp_code
-        assert "int result = x;" in cpp_code or "auto result = x;" in cpp_code
+        assert "long long result = x;" in cpp_code or "auto result = x;" in cpp_code
 
     def test_method_with_local_variables(self):
         """Test method that declares local variables."""
@@ -209,8 +209,8 @@ class LocalVars:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "int temp = (this->value * factor);" in cpp_code
-        assert "int result = (temp + 10);" in cpp_code
+        assert "long long temp = (this->value * factor);" in cpp_code
+        assert "long long result = (temp + 10);" in cpp_code
         assert "return result;" in cpp_code
 
 
@@ -245,14 +245,14 @@ class Circle:
         assert "class Circle {" in cpp_code
 
         # Check Point class
-        assert "Point(int x, int y)" in cpp_code
-        assert "int x;" in cpp_code and "int y;" in cpp_code
+        assert "Point(long long x, long long y)" in cpp_code
+        assert "long long x;" in cpp_code and "long long y;" in cpp_code
 
         # Check Circle class
-        assert "Circle(int center_x, int center_y, int radius)" in cpp_code
-        assert "int center_x;" in cpp_code
-        assert "int center_y;" in cpp_code
-        assert "int radius;" in cpp_code
+        assert "Circle(long long center_x, long long center_y, long long radius)" in cpp_code
+        assert "long long center_x;" in cpp_code
+        assert "long long center_y;" in cpp_code
+        assert "long long radius;" in cpp_code
         assert "double area()" in cpp_code
         assert "return ((3.14 * this->radius) * this->radius);" in cpp_code
 
@@ -270,8 +270,8 @@ def process_data(d: Data) -> int:
 
         # Check class
         assert "class Data {" in cpp_code
-        assert "Data(int value)" in cpp_code
+        assert "Data(long long value)" in cpp_code
 
         # Check function (simplified - attribute access)
-        assert "int process_data(Data d)" in cpp_code
+        assert "long long process_data(Data d)" in cpp_code
         # Note: Complex object interactions would need more sophisticated handling

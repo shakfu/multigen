@@ -1,5 +1,5 @@
 /**
- * Simple hash map for int → int mappings
+ * Simple hash map for long long → long long mappings
  * Clean, type-safe implementation for code generation
  * stb-library style: static functions for single-file output
  */
@@ -16,8 +16,8 @@ extern "C" {
 
 // Hash map entry for separate chaining
 typedef struct multigen_map_int_int_entry {
-    int key;
-    int value;
+    long long key;
+    long long value;
     struct multigen_map_int_int_entry* next;
 } multigen_map_int_int_entry_t;
 
@@ -29,7 +29,7 @@ typedef struct {
 } map_int_int;
 
 /**
- * Create a new int→int map
+ * Create a new long long→long long map
  * Initial capacity defaults to 16 buckets
  */
 
@@ -69,7 +69,7 @@ typedef struct {
  */
 
 /**
- * Simple hash map for int → int - Implementation
+ * Simple hash map for long long → long long - Implementation
  * STC-compatible naming for drop-in replacement
  */
 
@@ -81,16 +81,16 @@ typedef struct {
 /**
  * Simple hash function for integers
  */
-static size_t map_int_int_hash(int key, size_t bucket_count) {
+static size_t map_int_int_hash(long long key, size_t bucket_count) {
     // For integers, use modulo with handling for negative values
-    unsigned int u = (key < 0) ? (unsigned int)(-key) : (unsigned int)key;
+    unsigned long long u = (key < 0) ? (unsigned long long)(-key) : (unsigned long long)key;
     return u % bucket_count;
 }
 
 /**
  * Create a new entry
  */
-static multigen_map_int_int_entry_t* map_int_int_entry_new(int key, int value) {
+static multigen_map_int_int_entry_t* map_int_int_entry_new(long long key, long long value) {
     multigen_map_int_int_entry_t* entry = malloc(sizeof(multigen_map_int_int_entry_t));
     if (!entry) {
         MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Failed to allocate map entry");
@@ -125,7 +125,7 @@ static map_int_int map_int_int_init(void) {
     return map;
 }
 
-static bool map_int_int_insert(map_int_int* map, int key, int value) {
+static bool map_int_int_insert(map_int_int* map, long long key, long long value) {
     if (!map) {
         MGEN_SET_ERROR(MGEN_ERROR_VALUE, "NULL map");
         return false;
@@ -168,7 +168,7 @@ static bool map_int_int_insert(map_int_int* map, int key, int value) {
     return true; // Inserted
 }
 
-static int* map_int_int_get(map_int_int* map, int key) {
+static long long* map_int_int_get(map_int_int* map, long long key) {
     if (!map || !map->buckets) {
         return NULL;
     }
@@ -186,7 +186,7 @@ static int* map_int_int_get(map_int_int* map, int key) {
     return NULL;
 }
 
-static bool map_int_int_contains(const map_int_int* map, int key) {
+static bool map_int_int_contains(const map_int_int* map, long long key) {
     if (!map || !map->buckets) {
         return false;
     }
@@ -204,7 +204,7 @@ static bool map_int_int_contains(const map_int_int* map, int key) {
     return false;
 }
 
-static bool map_int_int_remove(map_int_int* map, int key) {
+static bool map_int_int_remove(map_int_int* map, long long key) {
     if (!map || !map->buckets) {
         MGEN_SET_ERROR(MGEN_ERROR_VALUE, "NULL or uninitialized map");
         return false;

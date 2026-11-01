@@ -1,5 +1,5 @@
 /**
- * Simple hash table for string -> int mappings
+ * Simple hash table for string -> long long mappings
  * Owns string keys (uses strdup/free)
  * Clean, understandable implementation without macro magic
  */
@@ -17,7 +17,7 @@ extern "C" {
 // Hash table entry
 typedef struct multigen_str_int_entry {
     char* key;                          // Owned string (strdup'd)
-    int value;
+    long long value;
     struct multigen_str_int_entry* next;    // For collision chaining
 } multigen_str_int_entry_t;
 
@@ -29,7 +29,7 @@ typedef struct {
 } multigen_str_int_map_t;
 
 /**
- * Create a new string-to-int map
+ * Create a new string-to-long long map
  * Initial capacity defaults to 16 buckets
  */
 
@@ -71,7 +71,7 @@ typedef struct {
  */
 
 /**
- * Simple hash table for string -> int mappings
+ * Simple hash table for string -> long long mappings
  * Implementation using separate chaining for collision resolution
  */
 
@@ -87,7 +87,7 @@ typedef struct {
  */
 static unsigned long hash_string(const char* str) {
     unsigned long hash = 5381;
-    int c;
+    long long c;
     while ((c = *str++)) {
         hash = ((hash << 5) + hash) + c; // hash * 33 + c
     }
@@ -97,7 +97,7 @@ static unsigned long hash_string(const char* str) {
 /**
  * Create a new entry
  */
-static multigen_str_int_entry_t* entry_new(const char* key, int value) {
+static multigen_str_int_entry_t* entry_new(const char* key, long long value) {
     multigen_str_int_entry_t* entry = malloc(sizeof(multigen_str_int_entry_t));
     if (!entry) {
         MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Failed to allocate map entry");
@@ -151,7 +151,7 @@ static multigen_str_int_map_t* multigen_str_int_map_new(void) {
     return multigen_str_int_map_new_with_capacity(DEFAULT_BUCKET_COUNT);
 }
 
-static bool multigen_str_int_map_insert(multigen_str_int_map_t* map, const char* key, int value) {
+static bool multigen_str_int_map_insert(multigen_str_int_map_t* map, const char* key, long long value) {
     if (!map || !key) {
         MGEN_SET_ERROR(MGEN_ERROR_VALUE, "NULL map or key");
         return false;
@@ -184,7 +184,7 @@ static bool multigen_str_int_map_insert(multigen_str_int_map_t* map, const char*
     return true; // Inserted
 }
 
-static int* multigen_str_int_map_get(multigen_str_int_map_t* map, const char* key) {
+static long long* multigen_str_int_map_get(multigen_str_int_map_t* map, const char* key) {
     if (!map || !key) {
         return NULL;
     }

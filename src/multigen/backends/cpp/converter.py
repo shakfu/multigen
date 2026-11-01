@@ -47,7 +47,7 @@ class MultiGenPythonToCppConverter:
     def __init__(self) -> None:
         """Initialize converter with MultiGen STL runtime support."""
         self.type_mapping = {
-            "int": "int",
+            "int": "long long",
             "float": "double",
             "bool": "bool",
             "str": "std::string",
@@ -174,7 +174,7 @@ class MultiGenPythonToCppConverter:
         return_type = "int" if node.name == "main" else self._get_return_type(node)
 
         # For generators, determine the yielded element type and rewrite return type
-        gen_element_type = "int"  # default
+        gen_element_type = "long long"  # default
         if is_generator:
             gen_element_type = self._get_generator_element_type(node, return_type)
             return_type = f"std::vector<{gen_element_type}>"
@@ -189,8 +189,8 @@ class MultiGenPythonToCppConverter:
             param_type = self._get_param_type(arg)
 
             # If parameter is used with nested subscripting and is bare list, make it nested
-            if param_name in nested_params and param_type == "std::vector<int>":
-                param_type = "std::vector<std::vector<int>>"
+            if param_name in nested_params and param_type == "std::vector<long long>":
+                param_type = "std::vector<std::vector<long long>>"
 
             self.variable_context[param_name] = param_type
             # Python callers see in-place mutation of a list, dict or set argument.
@@ -238,10 +238,10 @@ class MultiGenPythonToCppConverter:
         # Check return annotation first (e.g., -> int means yields int)
         if node.returns:
             ann_type = self._convert_type_annotation(node.returns)
-            if ann_type in ("int", "double", "bool", "std::string"):
+            if ann_type in ("long long", "double", "bool", "std::string"):
                 return ann_type
         # Default to int
-        return "int"
+        return "long long"
 
     def _analyze_nested_subscripts(self, stmts: list[ast.stmt]) -> set[str]:
         """Detect variables used with nested subscripts like a[i][j]."""
@@ -321,9 +321,9 @@ class MultiGenPythonToCppConverter:
                         if inferred != "auto":
                             var_type = inferred
                         elif isinstance(stmt.value, ast.List) and not stmt.value.elts:
-                            var_type = "std::vector<int>"  # Default for now
+                            var_type = "std::vector<long long>"  # Default for now
                         elif isinstance(stmt.value, ast.Dict) and not stmt.value.keys:
-                            var_type = "multigen::Dict<int, int>"
+                            var_type = "multigen::Dict<long long, long long>"
 
                     initial_types[var_name] = var_type
 
@@ -353,8 +353,8 @@ class MultiGenPythonToCppConverter:
             if var_name in initial_types:
                 current_type = initial_types[var_name]
                 # Upgrade both vector<int> and auto to nested vectors
-                if current_type == "std::vector<int>" or current_type == "auto":
-                    initial_types[var_name] = "std::vector<std::vector<int>>"
+                if current_type == "std::vector<long long>" or current_type == "auto":
+                    initial_types[var_name] = "std::vector<std::vector<long long>>"
 
         # Fourth pass: detect string-keyed dict usage
         string_keyed_dicts = self._analyze_dict_key_types(stmts)
@@ -362,8 +362,8 @@ class MultiGenPythonToCppConverter:
             if var_name in initial_types:
                 current_type = initial_types[var_name]
                 # If it's a default dict<int, int>, upgrade to dict<string, int>
-                if current_type == "multigen::Dict<int, int>" and key_type == "std::string":
-                    initial_types[var_name] = "multigen::Dict<std::string, int>"
+                if current_type == "multigen::Dict<long long, long long>" and key_type == "std::string":
+                    initial_types[var_name] = "multigen::Dict<std::string, long long>"
 
         # Store in variable_context
         self.variable_context.update(initial_types)
@@ -744,7 +744,7 @@ class MultiGenPythonToCppConverter:
             right = self._convert_method_expression(expr.right, class_name)
 
             if isinstance(expr.op, ast.Pow):
-                return f"pow({left}, {right})"
+                return f"py_pow({left}, {right})"
             elif isinstance(expr.op, (ast.FloorDiv, ast.Mod)):
                 return self._floor_op_call(expr.op, left, right)
             elif isinstance(expr.op, ast.Div):
@@ -968,16 +968,16 @@ class MultiGenPythonToCppConverter:
                 args = node.value.args
                 if len(args) == 1:
                     end = self._convert_expression(args[0])
-                    return f"for (int __mgen_yf = 0; __mgen_yf < {end}; __mgen_yf++) {{ __mgen_result.push_back(__mgen_yf); }}"
+                    return f"for (long long __mgen_yf = 0; __mgen_yf < {end}; __mgen_yf++) {{ __mgen_result.push_back(__mgen_yf); }}"
                 elif len(args) == 2:
                     start = self._convert_expression(args[0])
                     end = self._convert_expression(args[1])
-                    return f"for (int __mgen_yf = {start}; __mgen_yf < {end}; __mgen_yf++) {{ __mgen_result.push_back(__mgen_yf); }}"
+                    return f"for (long long __mgen_yf = {start}; __mgen_yf < {end}; __mgen_yf++) {{ __mgen_result.push_back(__mgen_yf); }}"
                 elif len(args) == 3:
                     start = self._convert_expression(args[0])
                     end = self._convert_expression(args[1])
                     step = self._convert_expression(args[2])
-                    return f"for (int __mgen_yf = {start}; __mgen_yf < {end}; __mgen_yf += {step}) {{ __mgen_result.push_back(__mgen_yf); }}"
+                    return f"for (long long __mgen_yf = {start}; __mgen_yf < {end}; __mgen_yf += {step}) {{ __mgen_result.push_back(__mgen_yf); }}"
         # For function calls and variables, use range-based for loop
         expr = self._convert_expression(node.value)
         return f"for (auto __mgen_yf : {expr}) {{ __mgen_result.push_back(__mgen_yf); }}"
@@ -1254,9 +1254,9 @@ class MultiGenPythonToCppConverter:
                     # For empty containers with "auto", use default concrete types
                     elif isinstance(stmt.value, (ast.List, ast.Dict)):
                         if isinstance(stmt.value, ast.List) and not stmt.value.elts:
-                            var_type = "std::vector<int>"
+                            var_type = "std::vector<long long>"
                         elif isinstance(stmt.value, ast.Dict) and not stmt.value.keys:
-                            var_type = "multigen::Dict<int, int>"
+                            var_type = "multigen::Dict<long long, long long>"
 
                 self.variable_context[var_name] = var_type
 
@@ -1385,14 +1385,14 @@ class MultiGenPythonToCppConverter:
             if len(args) == 1:
                 # range(n)
                 limit = self._convert_expression(args[0])
-                init = f"int {target_name} = 0"
+                init = f"long long {target_name} = 0"
                 condition = f"{target_name} < {limit}"
                 update = f"{target_name}++"
             elif len(args) == 2:
                 # range(start, stop)
                 start = self._convert_expression(args[0])
                 stop = self._convert_expression(args[1])
-                init = f"int {target_name} = {start}"
+                init = f"long long {target_name} = {start}"
                 condition = f"{target_name} < {stop}"
                 update = f"{target_name}++"
             elif len(args) == 3:
@@ -1400,7 +1400,7 @@ class MultiGenPythonToCppConverter:
                 start = self._convert_expression(args[0])
                 stop = self._convert_expression(args[1])
                 step = self._convert_expression(args[2])
-                init = f"int {target_name} = {start}"
+                init = f"long long {target_name} = {start}"
                 condition = f"{target_name} < {stop}"
                 update = f"{target_name} += {step}"
             else:
@@ -1479,7 +1479,7 @@ class MultiGenPythonToCppConverter:
         right = self._convert_expression(expr.right)
 
         if isinstance(expr.op, ast.Pow):
-            return f"pow({left}, {right})"
+            return f"py_pow({left}, {right})"
         elif isinstance(expr.op, (ast.FloorDiv, ast.Mod)):
             return self._floor_op_call(expr.op, left, right)
         elif isinstance(expr.op, ast.Div):
@@ -1546,14 +1546,14 @@ class MultiGenPythonToCppConverter:
 
             # Handle empty container constructors
             if func_name == "set" and len(args) == 0:
-                # set() with no args -> std::unordered_set<int>{}
-                return "std::unordered_set<int>{}"
+                # set() with no args -> std::unordered_set<long long>{}
+                return "std::unordered_set<long long>{}"
             elif func_name == "dict" and len(args) == 0:
-                # dict() with no args -> multigen::Dict<int, int>{}
-                return "multigen::Dict<int, int>{}"
+                # dict() with no args -> multigen::Dict<long long, long long>{}
+                return "multigen::Dict<long long, long long>{}"
             elif func_name == "list" and len(args) == 0:
-                # list() with no args -> std::vector<int>{}
-                return "std::vector<int>{}"
+                # list() with no args -> std::vector<long long>{}
+                return "std::vector<long long>{}"
 
             # Map Python built-ins to C++ equivalents
             builtin_map = {
@@ -1643,7 +1643,10 @@ class MultiGenPythonToCppConverter:
                             # upgrade it to vector<vector<...>>
                             if container_name in self.variable_context:
                                 current_type = self.variable_context[container_name]
-                                if appended_type.startswith("std::vector<") and current_type == "std::vector<int>":
+                                if (
+                                    appended_type.startswith("std::vector<")
+                                    and current_type == "std::vector<long long>"
+                                ):
                                     # This is likely a case where we defaulted to vector<int> but it's really nested
                                     # Update the type in our context
                                     self.variable_context[container_name] = f"std::vector<{appended_type}>"
@@ -2029,11 +2032,11 @@ class MultiGenPythonToCppConverter:
                 inferred_type = self._infer_type_from_value(stmt.value)
                 # If we get an incomplete type like "std::vector", default to int specialization
                 if inferred_type == "std::vector":
-                    return "std::vector<int>"
+                    return "std::vector<long long>"
                 elif inferred_type == "multigen::Dict":
-                    return "multigen::Dict<int, int>"  # Default to int keys
+                    return "multigen::Dict<long long, long long>"  # Default to int keys
                 elif inferred_type == "std::unordered_set":
-                    return "std::unordered_set<int>"
+                    return "std::unordered_set<long long>"
                 elif inferred_type and inferred_type != "auto":
                     return inferred_type
 
@@ -2062,11 +2065,11 @@ class MultiGenPythonToCppConverter:
             # For function parameters, use concrete types for bare containers
             if isinstance(arg.annotation, ast.Name) and arg.annotation.id in ("list", "dict", "set"):
                 if arg.annotation.id == "list":
-                    return "std::vector<int>"
+                    return "std::vector<long long>"
                 elif arg.annotation.id == "dict":
-                    return "multigen::Dict<int, int>"  # Default to int keys
+                    return "multigen::Dict<long long, long long>"  # Default to int keys
                 elif arg.annotation.id == "set":
-                    return "std::unordered_set<int>"
+                    return "std::unordered_set<long long>"
             return self._convert_type_annotation(arg.annotation)
         return "auto"
 
@@ -2136,17 +2139,17 @@ class MultiGenPythonToCppConverter:
             python_type: Python type name (e.g., "int", "str", "list")
 
         Returns:
-            C++ type name (e.g., "int", "std::string", "std::vector<int>")
+            C++ type name (e.g., "int", "std::string", "std::vector<long long>")
         """
         mapped = self.type_mapping.get(python_type, "auto")
 
         # If we get an incomplete container type, add default template arguments
         if mapped == "std::vector":
-            return "std::vector<int>"
+            return "std::vector<long long>"
         elif mapped == "multigen::Dict":
-            return "multigen::Dict<int, int>"
+            return "multigen::Dict<long long, long long>"
         elif mapped == "std::unordered_set":
-            return "std::unordered_set<int>"
+            return "std::unordered_set<long long>"
 
         return mapped
 

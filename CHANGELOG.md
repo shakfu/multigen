@@ -24,6 +24,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
+- **Integer `**`** on all seven compiled backends. It failed to build on Rust, Go, Haskell, OCaml and LLVM, and went through `double` on C and C++, which printed `2147483647` for `2**40`. Results are exact. A negative exponent exits with an error because Python's float result does not fit an int; C, C++ and Rust also raise on overflow.
+
+- **LLVM `assert`**, lowered to `if not test: raise AssertionError(msg)`.
+
 - **`floats.py` and `print_args.py` differential fixtures**: int promotion, true division, float comparison, float and bool printing, and `print` with several arguments. All seven backends pass both.
 
 - **Differential tests for uncaught exceptions.** `test_uncaught_exception_matches_cpython` runs the programs in `tests/fixtures/differential_errors/` on seven backends. Each must print CPython's stdout, exit with its status, and name the exception on stderr. The success-path tests required exit status 0, so no backend's failure behaviour was compared. 34 of the 42 pairs failed at first; all now pass, and `KNOWN_ERROR_FAILURES` is empty.
@@ -78,6 +82,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Changed
 
+- **C and C++: Python `int` is now `long long`.** `2**31 - 1 + 1` printed `-2147483648`. The design is in `docs/dev/c-cpp-int64-plan.md`.
+
+- **Validation rejects storing `/` into an int.** `n: int = 5; n /= 2` printed `2` on C, C++, Rust, Go and OCaml, where Python prints `2.5`. An `/=` target must be known to be float, and plain assignment is refused for a known int target. Rejection over translation because a static variable cannot change type.
+
+- **Validation rejects exception forms no backend translated correctly**: `try/else`, `finally`, `except ... as e`, `raise ValueError` without a call, and exception names outside the seven built-ins. `else` ran under the handlers on C, C++, Rust and Go, `finally` was skipped on an unmatched exception on C++, Rust and Go, and `as e` printed an address on C. New rule id: `STATIC.EXCEPTION_FORM`.
+
 - **`make check` now verifies the generated artifacts; the wheel check is `make check-dist`.** It regenerates `docs/supported_syntax.md` and `backend_capabilities.json` and fails if either differs from the index, as the CI job does. `make test` cannot catch a stale matrix: it re-measures emission only, so the Rust fixes below shipped with three cells still recorded as `build_failed`.
 
 - **Validation rejects a negative constant index.** `xs[-1]` failed on all seven backends: C++ read out of bounds and printed `0`, Rust and Go did not compile, the rest crashed. Rejecting it gives one clear error until the backends translate it. Write `xs[len(xs) - 1]`. Slices are unaffected.
@@ -117,6 +127,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   The model over-approximates: an untracked value is a fresh symbol, a loop havocs what its body changes, and a list passed to a call or stored in a container has an unknown length. DISPROVED now means the access fails on every execution that reaches it. An access that fails only for some inputs (`a[i]` with unconstrained parameters) is UNKNOWN, since the caller may exclude those inputs. Without this rule every parameter-indexed access would be reported unsafe.
 
 ### Fixed
+
+- **C exceptions.** An exception no handler matched was dropped, so the program continued and exited 0. `except Exception` caught only `raise Exception`. A `raise` inside a handler jumped back to that handler's own frame. A `return` inside `try` left its frame active. Locals assigned in `try` read stale values at `-O2`, because C leaves non-`volatile` locals indeterminate after `longjmp`.
+
+- **Rust.** A bare `raise` emitted `panic!()`, a new payload no typed handler matched. `except Exception` did not compile. A rebound by-value parameter was not declared `mut`.
+
+- **OCaml.** A bare `raise` and `except Exception` did not compile.
+
+- **Go.** The runtime import was emitted when unused, which Go rejects.
 
 - **Haskell: pure functions with loops or rebindings outside the fold patterns.** The where-clause form cannot order rebindings, so `for` loops matching no fold pattern, `while` loops, item stores and `if` statements that assign were refused, or for an assigning `if`, emitted code that did not parse. Such a function is now translated statement by statement: each assignment is `case e of x -> rest`, which binds without recursion, so `x = x * 2` reads the old `x`. A `for` loop folds the variables its body updates, and a `while` loop is a local recursive function over them. `break`, `continue` and a `return` inside a loop are still refused. Six differential known failures pass, and the capability matrix's Haskell `control_flow` cell now matches CPython. Four tests that asserted the old refusals are replaced by `tests/test_haskell_sequential.py`, which builds each case with GHC and compares it with CPython.
 

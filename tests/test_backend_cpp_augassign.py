@@ -248,7 +248,7 @@ class Processor:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "int result = input_val;" in cpp_code
+        assert "long long result = input_val;" in cpp_code
         assert "result *= 2;" in cpp_code
         assert "result += 10;" in cpp_code
 
@@ -271,9 +271,9 @@ def test_in_loop(n: int) -> int:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "int total = 0;" in cpp_code
+        assert "long long total = 0;" in cpp_code
         assert "total += i;" in cpp_code
-        assert "for (int i = 0; i < n; i++)" in cpp_code
+        assert "for (long long i = 0; i < n; i++)" in cpp_code
 
     def test_augassign_in_conditional(self):
         """Test augmented assignment in conditional blocks."""

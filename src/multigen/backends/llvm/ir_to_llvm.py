@@ -299,6 +299,8 @@ class IRToLLVMConverter(IRVisitor):
             elif node.operator == "/":
                 # Only `n /= d` on an int variable reaches here; Python rebinds n to a float.
                 raise UnsupportedFeatureError("LLVM backend does not support `/=` on an int variable")
+            elif node.operator == "**":
+                return self.builder.call(self._int_pow_function(left.type), [left, right], name="pow_tmp")
             elif node.operator == "//":
                 return self._floored_divmod(left, right)[0]
             elif node.operator == "%":
@@ -331,6 +333,9 @@ class IRToLLVMConverter(IRVisitor):
                 return self._float_floored_divmod(left, right)[0]
             elif node.operator == "%":
                 return self._float_floored_divmod(left, right)[1]
+            elif node.operator == "**":
+                pow_func = self.module.declare_intrinsic("llvm.pow", [double])
+                return self.builder.call(pow_func, [left, right], name="fpow_tmp")
 
         # Boolean operations (comparisons)
         elif node.result_type.base_type == IRDataType.BOOL:
@@ -1576,6 +1581,47 @@ class IRToLLVMConverter(IRVisitor):
         self.builder.call(strcat_func, [result_ptr, right], name="strcat_tmp")
 
         return result_ptr
+
+    def _int_pow_function(self, int_type: ir.Type) -> ir.Function:
+        """Define Python's ** on ints once per module; a negative exponent exits with status 1."""
+        name = "__multigen_int_pow"
+        existing = self.module.globals.get(name)
+        if existing is not None:
+            return existing
+        func = ir.Function(self.module, ir.FunctionType(int_type, [int_type, int_type]), name=name)
+        func.linkage = "internal"
+        base, exp = func.args
+        saved = self.builder
+        self.builder = ir.IRBuilder(func.append_basic_block("entry"))
+        zero, one = ir.Constant(int_type, 0), ir.Constant(int_type, 1)
+        with self.builder.if_then(self.builder.icmp_signed("<", exp, zero), likely=False):
+            self._exit_with_error("ValueError: negative exponent on an int\n")
+        entry = self.builder.block
+        loop = func.append_basic_block("loop")
+        body = func.append_basic_block("body")
+        done = func.append_basic_block("done")
+        self.builder.branch(loop)
+        self.builder.position_at_end(loop)
+        result_phi = self.builder.phi(int_type)
+        base_phi = self.builder.phi(int_type)
+        exp_phi = self.builder.phi(int_type)
+        self.builder.cbranch(self.builder.icmp_signed(">", exp_phi, zero), body, done)
+        self.builder.position_at_end(body)
+        odd = self.builder.icmp_signed("!=", self.builder.and_(exp_phi, one), zero)
+        next_result = self.builder.select(odd, self.builder.mul(result_phi, base_phi), result_phi)
+        next_base = self.builder.mul(base_phi, base_phi)
+        next_exp = self.builder.ashr(exp_phi, one)
+        self.builder.branch(loop)
+        result_phi.add_incoming(one, entry)
+        result_phi.add_incoming(next_result, body)
+        base_phi.add_incoming(base, entry)
+        base_phi.add_incoming(next_base, body)
+        exp_phi.add_incoming(exp, entry)
+        exp_phi.add_incoming(next_exp, body)
+        self.builder.position_at_end(done)
+        self.builder.ret(result_phi)
+        self.builder = saved
+        return func
 
     def _floored_divmod(self, left: ir.Value, right: ir.Value) -> tuple[ir.Value, ir.Value]:
         """Return Python's (left // right, left % right) for signed integers.

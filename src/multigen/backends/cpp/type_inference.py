@@ -60,7 +60,7 @@ class CppCallInferenceStrategy(CallInferenceStrategy):
         """Infer return type from function name (C++ specific)."""
         # Standard built-ins
         if func_name in ["abs", "len", "sum", "min", "max"]:
-            return "int"
+            return "long long"
         elif func_name == "bool":
             return "bool"
         elif func_name in ["str", "upper", "lower", "strip", "replace"]:
@@ -76,7 +76,7 @@ class CppCallInferenceStrategy(CallInferenceStrategy):
             "subtract",
             "multiply",
         ]:
-            return "int"
+            return "long long"
         elif func_name.endswith("_str") or func_name in ["format", "get_name", "to_string"]:
             return "std::string"
         elif func_name.endswith("_float") or func_name in ["average", "mean"]:
@@ -93,7 +93,7 @@ class CppCallInferenceStrategy(CallInferenceStrategy):
             return "std::string"
         # Search methods
         elif method_name == "find":
-            return "int"
+            return "long long"
         # String split
         elif method_name == "split":
             return "std::vector<std::string>"
@@ -125,7 +125,9 @@ class CppBinOpInferenceStrategy(TypeInferenceStrategy):
             return left_type
 
         # Type promotion: int + float = float
-        if (left_type == "int" and right_type == "double") or (left_type == "double" and right_type == "int"):
+        if (left_type == "long long" and right_type == "double") or (
+            left_type == "double" and right_type == "long long"
+        ):
             return "double"
 
         # String concatenation

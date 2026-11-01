@@ -19,7 +19,7 @@ def infer_int():
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "int x = 42;" in c_code
+        assert "long long x = 42;" in c_code
 
     def test_float_inference(self):
         """Test float type inference."""

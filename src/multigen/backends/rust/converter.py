@@ -50,6 +50,7 @@ class MultiGenPythonToRustConverter:
         self.function_return_types: dict[str, str] = {}  # Track function return types
         self._try_counter = 0  # Unique suffixes for try-block temporaries
         self._try_return_depth = 0  # Nesting depth of catch_unwind closures being emitted
+        self._handler_depth = 0  # Nesting depth of except bodies being emitted
         self.variable_types: dict[str, str] = {}  # Track variable types in current function scope
         self.function_mut_params: dict[str, set[str]] = {}  # Track mutable parameters for each function
         self._function_defs: dict[str, dict[str, ast.FunctionDef]] = {}  # Top-level function by name, then param
@@ -708,8 +709,16 @@ class MultiGenPythonToRustConverter:
                     # Immutable reference for read-only parameters
                     param_type = f"&{param_type}"
                 # else: take ownership (fallback for UNKNOWN with no usage)
+                params.append(f"{arg.arg}: {param_type}")
+                continue
 
-            params.append(f"{arg.arg}: {param_type}")
+            # A by-value parameter needs `mut` to be rebound, as in `n = n + 1`.
+            rebound = any(
+                (isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == arg.arg for t in n.targets))
+                or (isinstance(n, ast.AugAssign) and isinstance(n.target, ast.Name) and n.target.id == arg.arg)
+                for n in ast.walk(node)
+            )
+            params.append(f"{'mut ' if rebound else ''}{arg.arg}: {param_type}")
 
         params_str = ", ".join(params)
 
@@ -1084,13 +1093,12 @@ class MultiGenPythonToRustConverter:
         # Convert exception handlers
         first_handler = True
         for handler in stmt.handlers:
-            if handler.type is None:
-                # Bare except: - catch all
-                if first_handler:
-                    lines.append("            // Catch all exceptions")
-                else:
-                    lines.append("            } else {")
-                    lines.append("                // Catch all exceptions")
+            is_exception = isinstance(handler.type, ast.Name) and handler.type.id == "Exception"
+            self._handler_depth += 1
+            if handler.type is None or is_exception:
+                # Catch all. `if true` keeps the if/else chain and its closing else well formed.
+                lines.append("            if true {" if first_handler else "            } else if true {")
+                lines.append("                // Catch all exceptions")
                 for s in handler.body:
                     body_line = self._convert_statement(s)
                     if body_line:
@@ -1117,16 +1125,13 @@ class MultiGenPythonToRustConverter:
                         for line in body_line.split("\n"):
                             lines.append(f"            {line}")
                 first_handler = False
+            self._handler_depth -= 1
 
         # Close handler blocks and add re-panic for unhandled exceptions
-        if stmt.handlers and stmt.handlers[-1].type is not None:
-            # If last handler wasn't a bare except, add re-panic
+        if stmt.handlers:
             lines.append("            } else {")
             lines.append("                std::panic::resume_unwind(e);")
             lines.append("            }")
-        elif not first_handler:
-            # Close the else block from bare except
-            pass
 
         if body_returns:
             # A handler that falls through has not returned either.
@@ -1156,12 +1161,13 @@ class MultiGenPythonToRustConverter:
 
         Example:
             raise ValueError("message")  ->  panic!(ValueError::new("message"));
-            raise  (bare raise)          ->  panic!();  // re-raise current exception
+            raise  (bare raise)          ->  std::panic::resume_unwind(e);
         """
         if stmt.exc is None:
-            # Bare raise - re-raise current exception
-            # In Rust, this would need to be inside a catch block
-            return "    panic!();"
+            # panic!() would raise a new payload that no typed handler matches.
+            if self._handler_depth:
+                return "    std::panic::resume_unwind(e);"
+            return '    std::panic::panic_any(RuntimeError::new("No active exception to reraise"));'
 
         if isinstance(stmt.exc, ast.Call) and isinstance(stmt.exc.func, ast.Name):
             exc_type = stmt.exc.func.id
@@ -1553,7 +1559,7 @@ class MultiGenPythonToRustConverter:
 
         # Handle Rust-specific operators
         if isinstance(expr.op, ast.Pow):
-            return f"{left}.pow({right} as u32)"
+            return f"int_pow({left}, {right})"
         elif isinstance(expr.op, (ast.FloorDiv, ast.Mod)):
             return self._floor_op_call(expr.op, left, right)
         elif isinstance(expr.op, ast.Add) and self._is_string_expr(expr):

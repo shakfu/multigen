@@ -324,7 +324,7 @@ def test_loop() -> str:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "for (int i = 0; i < 3; i += 1)" in c_code
+        assert "for (long long i = 0; i < 3; i += 1)" in c_code
         assert "result = multigen_str_upper(result);" in c_code
 
     def test_string_methods_with_oop(self):

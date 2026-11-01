@@ -23,20 +23,20 @@ extern "C" {
 
 // Dynamic integer array structure (STC-compatible naming)
 typedef struct {
-    int* data;           // Array data
+    long long* data;           // Array data
     size_t size;         // Number of elements
     size_t capacity;     // Allocated capacity
 } vec_int;
 
 // Internal helper function
 static bool vec_int_grow(vec_int* vec) {
-    if (vec->capacity > SIZE_MAX / VEC_INT_GROWTH_FACTOR / sizeof(int)) {
+    if (vec->capacity > SIZE_MAX / VEC_INT_GROWTH_FACTOR / sizeof(long long)) {
         MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Vector capacity overflow");
         return false;
     }
     // Handle first allocation if capacity is 0
     size_t new_capacity = (vec->capacity == 0) ? VEC_INT_DEFAULT_CAPACITY : vec->capacity * VEC_INT_GROWTH_FACTOR;
-    int* new_data = realloc(vec->data, new_capacity * sizeof(int));
+    long long* new_data = realloc(vec->data, new_capacity * sizeof(long long));
     if (!new_data) {
         MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Failed to grow vector");
         return false;
@@ -54,7 +54,7 @@ static vec_int vec_int_init(void) {
     vec_int vec;
     vec.capacity = VEC_INT_DEFAULT_CAPACITY;
     vec.size = 0;
-    vec.data = malloc(VEC_INT_DEFAULT_CAPACITY * sizeof(int));
+    vec.data = malloc(VEC_INT_DEFAULT_CAPACITY * sizeof(long long));
     if (!vec.data) {
         MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Failed to allocate vector");
         vec.capacity = 0;
@@ -66,7 +66,7 @@ static vec_int vec_int_init(void) {
  * Append an element to the end (STC-compatible)
  * No return value - for compatibility with STC vec_int_push(&vec, value)
  */
-static void vec_int_push(vec_int* vec, int value) {
+static void vec_int_push(vec_int* vec, long long value) {
     if (!vec) {
         MGEN_SET_ERROR(MGEN_ERROR_VALUE, "NULL vector");
         return;
@@ -85,7 +85,7 @@ static void vec_int_push(vec_int* vec, int value) {
  * Get pointer to element at index (STC-compatible)
  * Returns pointer to element if valid, NULL if out of bounds
  */
-static int* vec_int_at(vec_int* vec, size_t index) {
+static long long* vec_int_at(vec_int* vec, size_t index) {
     if (!vec) {
         MGEN_SET_ERROR(MGEN_ERROR_VALUE, "NULL vector");
         return NULL;
@@ -166,12 +166,12 @@ static void vec_int_reserve(vec_int* vec, size_t new_capacity) {
         return; // Already have enough capacity
     }
 
-    if (new_capacity > SIZE_MAX / sizeof(int)) {
+    if (new_capacity > SIZE_MAX / sizeof(long long)) {
         MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Vector capacity overflow");
         return;
     }
 
-    int* new_data = realloc(vec->data, new_capacity * sizeof(int));
+    long long* new_data = realloc(vec->data, new_capacity * sizeof(long long));
     if (!new_data) {
         MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Failed to reserve capacity");
         return;

@@ -25,12 +25,12 @@ class Point:
 
         # Check struct definition
         assert "typedef struct Point {" in c_code
-        assert "int x;" in c_code
-        assert "int y;" in c_code
+        assert "long long x;" in c_code
+        assert "long long y;" in c_code
         assert "} Point;" in c_code
 
         # Check constructor
-        assert "Point Point_new(int x, int y)" in c_code
+        assert "Point Point_new(long long x, long long y)" in c_code
         assert "obj.x = x;" in c_code
         assert "obj.y = y;" in c_code
         assert "return obj;" in c_code
@@ -53,18 +53,18 @@ class Calculator:
 
         # Check struct definition
         assert "typedef struct Calculator {" in c_code
-        assert "int value;" in c_code
+        assert "long long value;" in c_code
 
         # Check constructor
-        assert "Calculator Calculator_new(int initial)" in c_code
+        assert "Calculator Calculator_new(long long initial)" in c_code
         assert "obj.value = initial;" in c_code
 
         # Check methods
-        assert "int Calculator_add(Calculator* self, int x)" in c_code
+        assert "long long Calculator_add(Calculator* self, long long x)" in c_code
         assert "self->value = (self->value + x);" in c_code
         assert "return self->value;" in c_code
 
-        assert "int Calculator_get_value(Calculator* self)" in c_code
+        assert "long long Calculator_get_value(Calculator* self)" in c_code
         assert "return self->value;" in c_code
 
     def test_empty_class(self):
@@ -87,7 +87,7 @@ class Empty:
         assert "Empty Empty_new(void)" in c_code
 
         # Check method
-        assert "int Empty_do_nothing(Empty* self)" in c_code
+        assert "long long Empty_do_nothing(Empty* self)" in c_code
         assert "return 42;" in c_code
 
     def test_class_instantiation(self):
@@ -151,7 +151,7 @@ class DataHolder:
         c_code = self.converter.convert_code(python_code)
 
         # Check inferred types
-        assert "int number;" in c_code
+        assert "long long number;" in c_code
         assert "char* text;" in c_code
         assert "bool flag;" in c_code
         assert "double decimal;" in c_code
@@ -167,7 +167,7 @@ class Mixed:
         c_code = self.converter.convert_code(python_code)
 
         assert "double typed_var;" in c_code
-        assert "int inferred_var;" in c_code
+        assert "long long inferred_var;" in c_code
         assert "obj.typed_var = 1.5;" in c_code
         assert "obj.inferred_var = (param * 2);" in c_code
 
@@ -197,12 +197,12 @@ class Rectangle:
         c_code = self.converter.convert_code(python_code)
 
         # Check method with parameters
-        assert "void Rectangle_resize(Rectangle* self, int new_width, int new_height)" in c_code
+        assert "void Rectangle_resize(Rectangle* self, long long new_width, long long new_height)" in c_code
         assert "self->width = new_width;" in c_code
         assert "self->height = new_height;" in c_code
 
         # Check method returning calculation
-        assert "int Rectangle_area(Rectangle* self)" in c_code
+        assert "long long Rectangle_area(Rectangle* self)" in c_code
         assert "return (self->width * self->height);" in c_code
 
     def test_method_with_control_flow(self):
@@ -224,7 +224,7 @@ class Validator:
         c_code = self.converter.convert_code(python_code)
 
         # Check method with control flow
-        assert "bool Validator_is_valid(Validator* self, int value)" in c_code
+        assert "bool Validator_is_valid(Validator* self, long long value)" in c_code
         assert "if ((value < self->min_val))" in c_code
         assert "return false;" in c_code
         assert "} else {" in c_code
@@ -255,12 +255,12 @@ def create_circle() -> Circle:
 
         # Check Point class
         assert "typedef struct Point {" in c_code
-        assert "Point Point_new(int x, int y)" in c_code
+        assert "Point Point_new(long long x, long long y)" in c_code
 
         # Check Circle class with Point member
         assert "typedef struct Circle {" in c_code
         assert "Point center;" in c_code
-        assert "int radius;" in c_code
+        assert "long long radius;" in c_code
 
         # Check function usage
         assert "Point p = Point_new(3, 4);" in c_code
@@ -286,7 +286,7 @@ class NoInit:
         # Should still generate struct and method
         assert "typedef struct NoInit {" in c_code
         assert "char _dummy;" in c_code  # Empty struct placeholder
-        assert "int NoInit_method(NoInit* self)" in c_code
+        assert "long long NoInit_method(NoInit* self)" in c_code
 
     def test_complex_inheritance_unsupported(self):
         """Test that complex inheritance patterns raise appropriate errors."""
@@ -332,8 +332,8 @@ class Accumulator:
         c_code = self.converter.convert_code(python_code)
 
         # Check method with for loop
-        assert "int Accumulator_sum_to_n(Accumulator* self, int n)" in c_code
-        assert "for (int i = 0; i < n; i += 1)" in c_code
+        assert "long long Accumulator_sum_to_n(Accumulator* self, long long n)" in c_code
+        assert "for (long long i = 0; i < n; i += 1)" in c_code
         assert "self->total = (self->total + i);" in c_code
 
     def test_class_with_function_calls(self):
@@ -353,8 +353,8 @@ class Calculator:
         c_code = self.converter.convert_code(python_code)
 
         # Check that both function and class method are generated
-        assert "int helper_function(int x)" in c_code
-        assert "int Calculator_calculate(Calculator* self, int input)" in c_code
+        assert "long long helper_function(long long x)" in c_code
+        assert "long long Calculator_calculate(Calculator* self, long long input)" in c_code
         assert "result = helper_function(input);" in c_code
         assert "return (self->base + result);" in c_code
 
@@ -362,7 +362,7 @@ class Calculator:
 @pytest.mark.parametrize(
     "python_type,c_type",
     [
-        ("int", "int"),
+        ("int", "long long"),
         ("float", "double"),
         ("bool", "bool"),
         ("str", "char*"),

@@ -68,7 +68,7 @@ reported but not fatal, and **rejected** when it fails validation.
 | Data Classes | 2 - structured | FULLY_SUPPORTED | accepted | accepted | Dataclasses mapped to C structs |
 | Dict Items Unpacking | 2 - structured | FULLY_SUPPORTED | accepted | accepted | `for k, v in d.items()` in loops and comprehensions; no tuple value is built |
 | Enumerations | 2 - structured | PLANNED | rejected | rejected | Python enums mapped to C enums |
-| Exception Handling | 2 - structured | PARTIALLY_SUPPORTED | accepted | accepted | try/except/else/finally for explicitly raised exceptions. Operations do not raise: a ZeroDivisionError or IndexError crashes instead of reaching the handler. No exception chaining (raise ... from ...) |
+| Exception Handling | 2 - structured | PARTIALLY_SUPPORTED | accepted | accepted | try/except on the built-in exception names, raised as `raise ValueError(...)`. `else`, `finally` and `except ... as e` are refused: no backend translates them correctly. No exception chaining (raise ... from ...); No else or finally clause; No except ... as name; Only built-in exception names, raised with a call |
 | Generator Expressions | 2 - structured | FULLY_SUPPORTED | accepted | accepted | Generator expressions normalized to list comprehensions (eager collection) |
 | Generator Functions | 2 - structured | PARTIALLY_SUPPORTED | accepted | accepted | Generator functions with yield/yield from (eager collection to list). No .send() or .throw() |
 | Lists | 2 - structured | PARTIALLY_SUPPORTED | accepted | accepted | Lists as arrays with size tracking. Fixed size or bounded growth; Homogeneous element types |
@@ -83,6 +83,7 @@ reported but not fatal, and **rejected** when it fails validation.
 | Lambda Functions | 4 - unsupported | NOT_SUPPORTED | rejected | rejected | Lambda functions require function pointer support |
 | Metaclasses | 4 - unsupported | NOT_SUPPORTED | rejected | rejected | Metaclasses require runtime introspection |
 | Negative Indexing | 4 - unsupported | NOT_SUPPORTED | rejected | rejected | Index from the end with len(xs) - k: no backend translates xs[-k] |
+| True Division (/ or /=) Into An Int | 4 - unsupported | NOT_SUPPORTED | rejected | rejected | `/` yields a float, which an int variable cannot hold: annotate the target float or use `//` |
 
 ### Diagnostic identifiers
 
@@ -97,6 +98,7 @@ and are safe to filter on.
 | `STATIC.CONSTRAINT_VIOLATION` | Constraint violation |
 | `STATIC.CONTEXT_MANAGER_BINDING` | Context manager binding |
 | `STATIC.EXCEPTION_CHAINING` | Exception chaining |
+| `STATIC.EXCEPTION_FORM` | Exception form |
 | `STATIC.EXPERIMENTAL_FEATURE` | Experimental feature |
 | `STATIC.FEATURE_NOT_IMPLEMENTED` | Feature not implemented |
 | `STATIC.FSTRING_CONVERSION_FLAG` | Fstring conversion flag |

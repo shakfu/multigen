@@ -3,16 +3,25 @@
 ## Medium
 
 - [ ] **Float gaps left after int promotion.** Each backend now passes `floats.py`; these forms do not:
-  - `n /= 2` on an int variable: Python rebinds `n` to a float. C and C++ keep int division; LLVM refuses.
   - An int argument to a float parameter is not promoted in Go or LLVM.
   - `str(float)` and f-string floats use the native format in C and C++.
   - Class methods get no promotion in Rust, Go or Haskell.
-  - Go emits `math.Pow` for `**` without importing `math`, and folds the literal `-0.0` to `0.0`.
+  - Go folds the literal `-0.0` to `0.0`.
   - The LLVM JIT does not link the C runtime, so a JIT-run program that prints a float fails on `multigen_print_float`.
 
 - [ ] **LLVM negative list indices raise IndexError.** The runtime takes `size_t` indices, so `xs[i]` with `i = -1` is out of range instead of the last element. C, C++, Rust and Go count from the end.
 
-- [ ] **C `try`/`except` matches exact error codes.** `MGEN_END_TRY` drops an exception that no handler matched instead of re-raising it, and `except Exception` catches only `MGEN_ERROR_GENERIC`.
+- [ ] **`try/else`, `finally`, `except ... as e`, and other exception names are refused.** No backend translated them correctly: `else` ran under the handlers, `finally` was skipped on an unmatched exception or a return. C's handler state supports `else` and `finally` once each backend does.
+
+- [ ] **Integer overflow is not uniform.** Python ints are unbounded. C, C++ and Rust raise only in `**`; other arithmetic wraps in C and C++ (undefined behaviour), panics or wraps in Rust by build profile, and wraps in Go, Haskell, OCaml and LLVM. Decide a contract, such as `int` is 64-bit and overflow traps.
+
+- [ ] **`break` and `continue` pass validation but no backend translates them.** C, C++, Rust, Go and OCaml refuse them during generation.
+
+- [ ] **A bare `raise` after a nested `try` in the same C handler re-raises the nested exception**: the runtime holds one current exception.
+
+- [ ] **`**=` is not translated.** Only the binary `**` has integer helpers.
+
+- [ ] **LLVM uses the return value of `main` as the exit status**, so `main() -> int` returning non-zero fails where CPython exits 0.
 
 - [ ] **Function names that are target keywords are not escaped.** A Python function named `mod` does not compile in Rust (`expected identifier, found keyword`).
 

@@ -75,10 +75,10 @@ def test_cpp_takes_mutated_containers_by_reference(tmp_path: Path) -> None:
     assert result.success, result.errors
     code = result.generated_code or ""
 
-    assert "int set_first(std::vector<int>& a, int v)" in code
-    assert "int via_helper(std::vector<int>& a)" in code
-    assert "int rebind(std::vector<int> a)" in code
-    assert "int total(std::vector<int> a)" in code
+    assert "long long set_first(std::vector<long long>& a, long long v)" in code
+    assert "long long via_helper(std::vector<long long>& a)" in code
+    assert "long long rebind(std::vector<long long> a)" in code
+    assert "long long total(std::vector<long long> a)" in code
 
 
 # Reassigning a container parameter does not yet compile in C or Rust (TODO.md).

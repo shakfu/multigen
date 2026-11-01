@@ -34,10 +34,10 @@ class TestVecTemplateInstantiation:
 
         # Check basic structure
         assert "typedef struct {" in result
-        assert "int* data;" in result
+        assert "long long* data;" in result
         assert "vec_int" in result
         assert "vec_int_init(void)" in result
-        assert "vec_int_push(vec_int* vec, int value)" in result
+        assert "vec_int_push(vec_int* vec, long long value)" in result
         assert "vec_int_at(vec_int* vec, size_t index)" in result
         assert "vec_int_drop(vec_int* vec)" in result
 
@@ -76,10 +76,10 @@ class TestVecTemplateInstantiation:
 
         # Check init function
         assert "vec_int vec_int_init(void)" in result
-        assert "malloc(DEFAULT_CAPACITY * sizeof(int))" in result
+        assert "malloc(DEFAULT_CAPACITY * sizeof(long long))" in result
 
         # Check push function - should use simple assignment for int
-        assert "vec_int_push(vec_int* vec, int value)" in result
+        assert "vec_int_push(vec_int* vec, long long value)" in result
         assert "vec->data[vec->size++] = value;" in result
         # Should NOT have strdup for int
         assert "strdup" not in result

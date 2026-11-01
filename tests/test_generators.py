@@ -121,7 +121,7 @@ class TestCppGenerators:
     def test_simple_generator(self) -> None:
         """Test while-loop generator produces vector with push_back."""
         cpp = self.converter.convert_code(SIMPLE_WHILE_GENERATOR)
-        assert "std::vector<int>" in cpp
+        assert "std::vector<long long>" in cpp
         assert "__mgen_result" in cpp
         assert "push_back" in cpp
         assert "return __mgen_result" in cpp
@@ -129,19 +129,19 @@ class TestCppGenerators:
     def test_generator_with_for_loop(self) -> None:
         """Test for-loop based generator."""
         cpp = self.converter.convert_code(FOR_LOOP_GENERATOR)
-        assert "std::vector<int>" in cpp
+        assert "std::vector<long long>" in cpp
         assert "push_back" in cpp
 
     def test_generator_with_conditional_yield(self) -> None:
         """Test yield inside if/else."""
         cpp = self.converter.convert_code(CONDITIONAL_YIELD)
-        assert "std::vector<int>" in cpp
+        assert "std::vector<long long>" in cpp
         assert "push_back" in cpp
 
     def test_generator_return_type(self) -> None:
         """Test that return type is std::vector."""
         cpp = self.converter.convert_code(SIMPLE_WHILE_GENERATOR)
-        assert "std::vector<int> count_up" in cpp
+        assert "std::vector<long long> count_up" in cpp
 
     def test_generator_multiple_yields(self) -> None:
         """Test multiple yield points."""
@@ -422,7 +422,7 @@ class TestCppYieldFrom:
     def test_yield_from_range(self) -> None:
         """Test yield from range produces a counting loop."""
         cpp = self.converter.convert_code(YIELD_FROM_RANGE)
-        assert "std::vector<int>" in cpp
+        assert "std::vector<long long>" in cpp
         assert "__mgen_result" in cpp
         assert "__mgen_yf" in cpp
         assert "push_back" in cpp

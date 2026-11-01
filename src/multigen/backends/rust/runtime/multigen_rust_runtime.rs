@@ -693,3 +693,14 @@ pub fn new_range_with_start(start: i64, stop: i64) -> Range {
 pub fn new_range_with_step(start: i64, stop: i64, step: i64) -> Range {
     Range::new_with_step(start, stop, step)
 }
+
+/// Python ** on ints. A negative exponent would be a float, so it raises.
+pub fn int_pow(base: i64, exp: i64) -> i64 {
+    if exp < 0 {
+        std::panic::panic_any(ValueError::new("negative exponent on an int"));
+    }
+    u32::try_from(exp)
+        .ok()
+        .and_then(|e| base.checked_pow(e))
+        .unwrap_or_else(|| std::panic::panic_any(RuntimeError::new("integer overflow in **")))
+}

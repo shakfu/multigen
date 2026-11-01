@@ -27,7 +27,7 @@ def add(x: int, y: int) -> int:
 """
         c_code = self.emitter.emit_module(python_code)
 
-        assert "int add(int x, int y)" in c_code
+        assert "long long add(long long x, long long y)" in c_code
         assert '#include "multigen_error_handling.h"' in c_code
 
     def test_emit_module_fallback(self):
@@ -220,7 +220,7 @@ def fibonacci(n: int) -> int:
         c_code = emitter.emit_module(python_code)
 
         # Should contain proper C function
-        assert "int fibonacci(int n)" in c_code
+        assert "long long fibonacci(long long n)" in c_code
         assert "if (n <= 1)" in c_code or "if ((n <= 1))" in c_code
         assert "return n;" in c_code
         assert "fibonacci((n - 1))" in c_code

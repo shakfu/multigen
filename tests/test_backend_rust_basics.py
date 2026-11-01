@@ -513,7 +513,7 @@ def test_power(base: int, exp: int) -> int:
 """
         rust_code = self.converter.convert_code(python_code)
 
-        assert "base.pow(exp as u32)" in rust_code
+        assert "int_pow(base, exp)" in rust_code
 
     def test_complex_conditions(self):
         """Test complex conditional expressions."""

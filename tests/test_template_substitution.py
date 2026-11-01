@@ -17,7 +17,7 @@ class TestTemplateSubstitutionEngine:
         """Test simple placeholder substitution in vector template."""
         template = "typedef struct { {{T}}* data; } vec_{{T_SUFFIX}};"
         result = self.engine.substitute_vec_template(template, "int")
-        assert result == "typedef struct { int* data; } vec_int;"
+        assert result == "typedef struct { long long* data; } vec_int;"
 
     def test_substitute_vec_multiple_placeholders(self):
         """Test multiple placeholders in vector template."""
@@ -29,7 +29,7 @@ class TestTemplateSubstitutionEngine:
         """Test zero value placeholder substitution."""
         template = "{{T}} default_val = {{T_ZERO}};"
         result_int = self.engine.substitute_vec_template(template, "int")
-        assert result_int == "int default_val = 0;"
+        assert result_int == "long long default_val = 0;"
 
         result_float = self.engine.substitute_vec_template(template, "float")
         assert result_float == "float default_val = 0.0f;"
@@ -41,7 +41,7 @@ class TestTemplateSubstitutionEngine:
         """Test printf format placeholder substitution."""
         template = 'printf("Value: {{T_PRINTF}}\\n", val);'
         result_int = self.engine.substitute_vec_template(template, "int")
-        assert result_int == 'printf("Value: %d\\n", val);'
+        assert result_int == 'printf("Value: %lld\\n", val);'
 
         result_str = self.engine.substitute_vec_template(template, "str")
         assert result_str == 'printf("Value: %s\\n", val);'
@@ -82,13 +82,13 @@ class TestTemplateSubstitutionEngine:
         """Test simple placeholder substitution in map template."""
         template = "typedef struct { {{K}} key; {{V}} value; } entry_{{KV_SUFFIX}};"
         result = self.engine.substitute_map_template(template, "str", "int")
-        assert result == "typedef struct { char* key; int value; } entry_str_int;"
+        assert result == "typedef struct { char* key; long long value; } entry_str_int;"
 
     def test_substitute_map_key_value_types(self):
         """Test key and value type placeholders."""
         template = "{{V}} map_{{KV_SUFFIX}}_get(map_{{KV_SUFFIX}}* m, {{K}} key);"
         result = self.engine.substitute_map_template(template, "int", "float")
-        assert result == "float map_int_float_get(map_int_float* m, int key);"
+        assert result == "float map_int_float_get(map_int_float* m, long long key);"
 
     def test_substitute_map_key_value_properties(self):
         """Test key and value type-specific properties."""
@@ -98,7 +98,7 @@ class TestTemplateSubstitutionEngine:
         assert (
             result
             == """char* key = NULL;
-int val = 0;"""
+long long val = 0;"""
         )
 
     def test_substitute_map_compare_operations(self):
@@ -146,7 +146,7 @@ int val = 0;"""
         """Test that set template uses same logic as vector template."""
         template = "typedef struct { {{T}}* data; } set_{{T_SUFFIX}};"
         result = self.engine.substitute_set_template(template, "int")
-        assert result == "typedef struct { int* data; } set_int;"
+        assert result == "typedef struct { long long* data; } set_int;"
 
     def test_substitute_from_container_info_vec(self):
         """Test substitution using ContainerTypeInfo for vectors."""
@@ -156,7 +156,7 @@ int val = 0;"""
 
         template = "typedef struct { {{T}}* data; } vec_{{T_SUFFIX}};"
         result = self.engine.substitute_from_container_info(template, info)
-        assert result == "typedef struct { int* data; } vec_int;"
+        assert result == "typedef struct { long long* data; } vec_int;"
 
     def test_substitute_from_container_info_map(self):
         """Test substitution using ContainerTypeInfo for maps."""
@@ -166,7 +166,7 @@ int val = 0;"""
 
         template = "{{V}} get({{K}} key) { ... }"
         result = self.engine.substitute_from_container_info(template, info)
-        assert "int get(char* key)" in result
+        assert "long long get(char* key)" in result
 
     def test_substitute_from_container_info_set(self):
         """Test substitution using ContainerTypeInfo for sets."""
@@ -186,7 +186,7 @@ int val = 0;"""
 
         template = "{{T}} get_elem(vec_vec_{{T_SUFFIX}}* v, size_t i, size_t j);"
         result = self.engine.substitute_from_container_info(template, info)
-        assert result == "int get_elem(vec_vec_int* v, size_t i, size_t j);"
+        assert result == "long long get_elem(vec_vec_int* v, size_t i, size_t j);"
 
     def test_unknown_placeholder_preserved(self):
         """Test that unknown placeholders are preserved."""
@@ -259,7 +259,7 @@ class TestComplexTemplates:
     vec->size++;
 }"""
         result_int = self.engine.substitute_vec_template(template, "int")
-        assert "void vec_int_push(vec_int* vec, int elem)" in result_int
+        assert "void vec_int_push(vec_int* vec, long long elem)" in result_int
         assert "vec->data[vec->size] = elem;" in result_int
         assert "strdup" not in result_int
 
@@ -293,6 +293,6 @@ class TestComplexTemplates:
     return false;
 }"""
         result = self.engine.substitute_set_template(template, "int")
-        assert "bool set_int_contains(set_int* set, int elem)" in result
+        assert "bool set_int_contains(set_int* set, long long elem)" in result
         assert "hash_int(elem)" in result
         assert "set->data[i] == elem" in result

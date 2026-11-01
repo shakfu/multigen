@@ -21,7 +21,7 @@ def add_numbers(a: int, b: int) -> int:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "int add_numbers(int a, int b)" in cpp_code
+        assert "long long add_numbers(long long a, long long b)" in cpp_code
         assert "return (a + b);" in cpp_code
         assert "#include <iostream>" in cpp_code
         assert "using namespace std;" in cpp_code
@@ -45,7 +45,7 @@ def process(count: int, rate: float, active: bool, name: str) -> str:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "std::string process(int count, double rate, bool active, std::string name)" in cpp_code
+        assert "std::string process(long long count, double rate, bool active, std::string name)" in cpp_code
         assert "return name;" in cpp_code
 
     def test_void_return_function(self):
@@ -82,8 +82,8 @@ class Box:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "    template <typename MgenT0>\n    Box(int v, MgenT0 tag)" in cpp_code
-        assert "    template <typename MgenT0>\n    int put(MgenT0 w)" in cpp_code
+        assert "    template <typename MgenT0>\n    Box(long long v, MgenT0 tag)" in cpp_code
+        assert "    template <typename MgenT0>\n    long long put(MgenT0 w)" in cpp_code
         assert "(auto " not in cpp_code
 
     def test_attribute_takes_its_type_from_the_constructor_parameter(self):
@@ -96,7 +96,7 @@ class Box:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "    int v;\n    std::vector<int> xs;\n    int k;" in cpp_code
+        assert "    long long v;\n    std::vector<long long> xs;\n    long long k;" in cpp_code
         assert "auto " not in cpp_code
 
     def test_attribute_of_unknown_type_is_refused(self):
@@ -128,7 +128,7 @@ def test_assignment() -> int:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "int x = 5;" in cpp_code
+        assert "long long x = 5;" in cpp_code
         assert 'std::string y = "hello";' in cpp_code
         assert "double z = 3.14;" in cpp_code
 
@@ -142,7 +142,7 @@ def test_annotated() -> int:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "int count = 10;" in cpp_code
+        assert "long long count = 10;" in cpp_code
         assert 'std::string name = "test";' in cpp_code
 
     def test_if_statement(self):
@@ -173,7 +173,7 @@ def test_while(n: int) -> int:
         cpp_code = self.converter.convert_code(python_code)
 
         assert "while ((i < n))" in cpp_code
-        assert "int i = 0;" in cpp_code
+        assert "long long i = 0;" in cpp_code
         assert "i = (i + 1);" in cpp_code
 
     def test_for_range_loop(self):
@@ -187,8 +187,8 @@ def test_for(n: int) -> int:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "for (int i = 0; i < n; i++)" in cpp_code
-        assert "int total = 0;" in cpp_code
+        assert "for (long long i = 0; i < n; i++)" in cpp_code
+        assert "long long total = 0;" in cpp_code
         assert "total = (total + i);" in cpp_code
 
     def test_for_range_with_start_stop(self):
@@ -202,7 +202,7 @@ def test_for_range(start: int, stop: int) -> int:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "for (int i = start; i < stop; i++)" in cpp_code
+        assert "for (long long i = start; i < stop; i++)" in cpp_code
 
 
 class TestCppExpressions:

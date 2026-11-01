@@ -308,7 +308,7 @@ def test_complex_expressions(x: int, y: int, z: int) -> int:
 """
         rust_code = self.converter.convert_code(python_code)
 
-        assert "result += ((x * y) + z.pow(2 as u32));" in rust_code
+        assert "result += ((x * y) + int_pow(z, 2));" in rust_code
         assert "result *= Builtins::abs_i64((x - y));" in rust_code
 
     def test_augassign_with_function_calls(self):

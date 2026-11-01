@@ -15,8 +15,8 @@ class TestContainerCodeGenTemplate:
         code = self.codegen.generate_from_template("vec_int")
         assert code is not None
         assert "vec_int" in code
-        assert "int* data;" in code
-        assert "void vec_int_push(vec_int* vec, int value)" in code
+        assert "long long* data;" in code
+        assert "void vec_int_push(vec_int* vec, long long value)" in code
         assert "vec_int_drop" in code
         assert "Generated Container: vec_int" in code
 
@@ -46,7 +46,7 @@ class TestContainerCodeGenTemplate:
         assert code is not None
         assert "map_str_int" in code
         assert "char* key;" in code
-        assert "int value;" in code
+        assert "long long value;" in code
         assert "void map_str_int_insert" in code
         assert "map_str_int_get" in code
         assert "map_str_int_drop" in code
@@ -56,8 +56,8 @@ class TestContainerCodeGenTemplate:
         code = self.codegen.generate_from_template("map_int_int")
         assert code is not None
         assert "map_int_int" in code
-        assert "int key;" in code
-        assert "int value;" in code
+        assert "long long key;" in code
+        assert "long long value;" in code
         assert "void map_int_int_insert" in code
 
     def test_generate_from_template_set_int(self):
@@ -65,7 +65,7 @@ class TestContainerCodeGenTemplate:
         code = self.codegen.generate_from_template("set_int")
         assert code is not None
         assert "set_int" in code
-        assert "int value;" in code
+        assert "long long value;" in code
         assert "bool set_int_insert" in code
         assert "set_int_contains" in code
         assert "set_int_drop" in code

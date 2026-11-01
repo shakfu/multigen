@@ -278,8 +278,8 @@ def safe_divide(a: int, b: int) -> int:
         result = self.validator.validate_code(code)
         assert result.is_valid
 
-    def test_try_except_with_variable_valid(self) -> None:
-        """Test that try/except with 'as e' is valid."""
+    def test_try_except_with_variable_rejected(self) -> None:
+        """`as e` printed garbage in C and failed to build in C++ and OCaml."""
         code = """
 def handle_error() -> int:
     try:
@@ -288,7 +288,7 @@ def handle_error() -> int:
         return -1
 """
         result = self.validator.validate_code(code)
-        assert result.is_valid
+        assert not result.is_valid
 
     def test_multiple_handlers_valid(self) -> None:
         """Test that multiple exception handlers are valid."""
@@ -304,8 +304,8 @@ def multi_handler(x: int) -> int:
         result = self.validator.validate_code(code)
         assert result.is_valid
 
-    def test_else_clause_accepted(self) -> None:
-        """Test that try/except/else is accepted."""
+    def test_else_clause_rejected(self) -> None:
+        """`else` ran under the handlers in C, C++, Rust and Go."""
         code = """
 def with_else() -> int:
     try:
@@ -316,10 +316,10 @@ def with_else() -> int:
         return 0
 """
         result = self.validator.validate_code(code)
-        assert result.is_valid
+        assert not result.is_valid
 
-    def test_finally_clause_accepted(self) -> None:
-        """Test that try/except/finally is accepted."""
+    def test_finally_clause_rejected(self) -> None:
+        """`finally` was skipped on an unmatched exception in C++, Rust and Go."""
         code = """
 def with_finally() -> int:
     try:
@@ -330,7 +330,7 @@ def with_finally() -> int:
         print(0)
 """
         result = self.validator.validate_code(code)
-        assert result.is_valid
+        assert not result.is_valid
 
     def test_exception_chaining_rejected(self) -> None:
         """Test that exception chaining (raise ... from ...) is rejected."""
@@ -512,8 +512,9 @@ def reraise_error() -> int:
 """
         rust_code = self.converter.convert_code(python_code)
 
-        # Should have a bare panic! for re-raise
-        assert "panic!();" in rust_code
+        # panic!() would raise a new payload that no typed handler matches.
+        assert "std::panic::resume_unwind(e);" in rust_code
+        assert "panic!();" not in rust_code
 
 
 class TestGoExceptionHandling:

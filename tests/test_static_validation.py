@@ -169,3 +169,52 @@ class TestStaticValidator:
             d.message for d in report.diagnostics if (d.is_error if attribute == "violations" else not d.is_error)
         ]
         assert getattr(report, attribute) == expected
+
+
+INT_DIV = "def f(n: int, w: float) -> None:\n    k: int = 5\n    v: float = 1.5\n    u = 2.5\n    {}\n"
+
+
+@pytest.mark.parametrize(
+    "statement,valid",
+    [
+        ("n /= 2", False),
+        ("k /= 2", False),
+        ("n = n / 2", False),
+        ("k = (n / 2) + 1", False),
+        ("w /= 2", True),
+        ("v /= 2", True),
+        ("u /= 2", True),
+        ("w = n / 2", True),
+        ("n //= 2", True),
+        ("n = int(n / 2)", True),
+    ],
+)
+def test_true_division_into_int_is_rejected(statement, valid):
+    """C, C++, Rust, Go and OCaml printed 2 where Python rebinds n to 2.5."""
+    assert StaticValidator().validate_code(INT_DIV.format(statement)).is_valid is valid
+
+
+def test_slash_equals_on_unknown_target_is_rejected():
+    code = "def f(xs: list[float]) -> None:\n    xs[0] /= 2\n"
+    assert StaticValidator().validate_code(code).is_valid is False
+
+
+@pytest.mark.parametrize(
+    "body,valid",
+    [
+        ("try:\n    pass\nexcept ValueError:\n    pass\n", True),
+        ("try:\n    pass\nexcept Exception:\n    pass\n", True),
+        ("try:\n    pass\nexcept:\n    raise\n", True),
+        ('raise KeyError("x")\n', True),
+        ("try:\n    pass\nexcept ValueError:\n    pass\nelse:\n    pass\n", False),
+        ("try:\n    pass\nfinally:\n    pass\n", False),
+        ("try:\n    pass\nexcept ValueError as e:\n    pass\n", False),
+        ("try:\n    pass\nexcept OSError:\n    pass\n", False),
+        ('raise OSError("x")\n', False),
+        ("raise ValueError\n", False),
+    ],
+)
+def test_exception_forms(body, valid):
+    """Each refused form miscompiled or failed to build on every backend measured."""
+    code = "def f() -> None:\n" + "".join(f"    {line}\n" for line in body.splitlines())
+    assert StaticValidator().validate_code(code).is_valid is valid

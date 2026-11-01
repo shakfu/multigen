@@ -235,6 +235,26 @@ var StrOps = StringOps{}
 // Python // and %: round toward negative infinity, not zero.
 // Go's / and % truncate toward zero.
 
+// IntPow implements Python a ** b on ints. A negative exponent would be a float, so it panics.
+func IntPow(base, exp int) int {
+	if exp < 0 {
+		panic(NewValueError("negative exponent on an int"))
+	}
+	result := 1
+	for ; exp > 0; exp >>= 1 {
+		if exp&1 == 1 {
+			result *= base
+		}
+		base *= base
+	}
+	return result
+}
+
+// FloatPow implements Python a ** b when either operand is a float.
+func FloatPow(base, exp float64) float64 {
+	return math.Pow(base, exp)
+}
+
 // FloorDiv implements Python a // b
 func FloorDiv[T int | int32 | int64 | float64](a, b T) T {
 	if b == 0 {

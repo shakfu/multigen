@@ -107,7 +107,7 @@ class CppFactory(AbstractFactory):
     def get_type_mapping(self) -> dict[str, str]:
         """Get Python to C++ type mappings."""
         return {
-            "int": "int",
+            "int": "long long",
             "float": "double",
             "str": "std::string",
             "bool": "bool",

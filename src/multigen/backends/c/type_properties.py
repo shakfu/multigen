@@ -40,12 +40,12 @@ class TypeProperties:
 TYPE_REGISTRY: dict[str, TypeProperties] = {
     "int": TypeProperties(
         name="int",
-        c_type="int",
+        c_type="long long",
         suffix="int",
         is_pointer=False,
         needs_drop=False,
         needs_copy=False,
-        printf_fmt="%d",
+        printf_fmt="%lld",
         zero_value="0",
         compare_op="==",
         hash_fn="hash_int",

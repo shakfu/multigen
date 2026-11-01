@@ -30,7 +30,7 @@ def format_number(x: int) -> str:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "std::string format_number(int x)" in cpp_code
+        assert "std::string format_number(long long x)" in cpp_code
         # Should use std::to_string for int
         assert "std::to_string(x)" in cpp_code
         assert '"Result: "' in cpp_code
@@ -43,7 +43,7 @@ def format_info(count: int, name: str) -> str:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "std::string format_info(int count, std::string name)" in cpp_code
+        assert "std::string format_info(long long count, std::string name)" in cpp_code
         assert "std::to_string(count)" in cpp_code
         assert '"Count: "' in cpp_code
         assert '" items for "' in cpp_code
@@ -56,7 +56,7 @@ def calculate_message(x: int, y: int) -> str:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "std::string calculate_message(int x, int y)" in cpp_code
+        assert "std::string calculate_message(long long x, long long y)" in cpp_code
         # Expression should be wrapped in std::to_string
         assert "std::to_string((x + y))" in cpp_code
         assert '"Sum: "' in cpp_code
@@ -106,7 +106,7 @@ def format_length(items: list[int]) -> str:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "std::string format_length(std::vector<int> items)" in cpp_code
+        assert "std::string format_length(std::vector<long long> items)" in cpp_code
         assert "std::to_string(multigen::len(items))" in cpp_code
         assert '"Length: "' in cpp_code
 
@@ -119,7 +119,7 @@ def create_message(x: int) -> str:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "std::string create_message(int x)" in cpp_code
+        assert "std::string create_message(long long x)" in cpp_code
         assert "std::string msg" in cpp_code
         assert "std::to_string(x)" in cpp_code
         assert '"Number: "' in cpp_code
@@ -132,7 +132,7 @@ def complex_format(a: int, b: int, c: int) -> str:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "std::string complex_format(int a, int b, int c)" in cpp_code
+        assert "std::string complex_format(long long a, long long b, long long c)" in cpp_code
         # Expression should be properly parenthesized
         assert "std::to_string((a + (b * c)))" in cpp_code
         assert '"Result: "' in cpp_code

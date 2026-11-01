@@ -20,7 +20,7 @@ extern "C" {
 
 // Hash set entry for separate chaining
 typedef struct multigen_set_int_entry {
-    int value;
+    long long value;
     struct multigen_set_int_entry* next;
 } multigen_set_int_entry_t;
 
@@ -36,7 +36,7 @@ typedef struct {
     const set_int* set;
     size_t bucket_index;
     multigen_set_int_entry_t* current_entry;
-    int* ref;  // Pointer to current value (STC-compatible)
+    long long* ref;  // Pointer to current value (STC-compatible)
 } set_int_iter;
 
 // Internal helper functions
@@ -44,17 +44,17 @@ typedef struct {
 /**
  * Simple hash function for integers
  */
-static size_t set_int_hash(int value, size_t bucket_count) {
+static size_t set_int_hash(long long value, size_t bucket_count) {
     // For integers, we can use identity with modulo
     // Handle negative values by taking absolute value
-    unsigned int u = (value < 0) ? (unsigned int)(-value) : (unsigned int)value;
+    unsigned long long u = (value < 0) ? (unsigned long long)(-value) : (unsigned long long)value;
     return u % bucket_count;
 }
 
 /**
  * Create a new entry
  */
-static multigen_set_int_entry_t* set_int_entry_new(int value) {
+static multigen_set_int_entry_t* set_int_entry_new(long long value) {
     multigen_set_int_entry_t* entry = malloc(sizeof(multigen_set_int_entry_t));
     if (!entry) {
         MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Failed to allocate set entry");
@@ -96,7 +96,7 @@ static set_int set_int_init(void) {
  * Insert an element into the set
  * Returns true if inserted (new), false if already present
  */
-static bool set_int_insert(set_int* set, int value) {
+static bool set_int_insert(set_int* set, long long value) {
     if (!set) {
         MGEN_SET_ERROR(MGEN_ERROR_VALUE, "NULL set");
         return false;
@@ -140,7 +140,7 @@ static bool set_int_insert(set_int* set, int value) {
 /**
  * Check if element is in the set
  */
-static bool set_int_contains(const set_int* set, int value) {
+static bool set_int_contains(const set_int* set, long long value) {
     if (!set || !set->buckets) {
         return false;
     }
@@ -162,7 +162,7 @@ static bool set_int_contains(const set_int* set, int value) {
  * Remove an element from the set
  * Returns true if removed, false if not found
  */
-static bool set_int_remove(set_int* set, int value) {
+static bool set_int_remove(set_int* set, long long value) {
     if (!set || !set->buckets) {
         MGEN_SET_ERROR(MGEN_ERROR_VALUE, "NULL or uninitialized set");
         return false;

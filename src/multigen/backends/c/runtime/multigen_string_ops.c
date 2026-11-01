@@ -345,15 +345,15 @@ multigen_string_array_t* multigen_str_split(const char* str, const char* delimit
 
 // F-string support functions
 
-char* multigen_int_to_string(int value) {
+char* multigen_int_to_string(long long value) {
     // Allocate enough space for the string representation
-    // Max int is 11 chars (-2147483648) + null terminator
-    char* result = malloc(12);
+    // Max is 20 chars (-9223372036854775808) + null terminator
+    char* result = malloc(21);
     if (!result) {
         MGEN_SET_ERROR(MGEN_ERROR_MEMORY, "Failed to allocate memory for int to string");
         return NULL;
     }
-    snprintf(result, 12, "%d", value);
+    snprintf(result, 21, "%lld", value);
     return result;
 }
 

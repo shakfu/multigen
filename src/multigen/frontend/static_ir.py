@@ -1073,6 +1073,13 @@ class IRBuilder:
             return self._build_try(node)
         elif isinstance(node, ast.Raise):
             return self._build_raise(node)
+        elif isinstance(node, ast.Assert):
+            # Same behaviour as Python: `if not test: raise AssertionError(msg)`.
+            error = ast.Call(ast.Name("AssertionError", ast.Load()), [node.msg] if node.msg else [], [])
+            desugared = ast.If(ast.UnaryOp(ast.Not(), node.test), [ast.Raise(error, None)], [])
+            return self._build_if(
+                ast.copy_location(ast.fix_missing_locations(ast.copy_location(desugared, node)), node)
+            )
         elif isinstance(node, _NO_OP_STATEMENTS):
             # Nothing to emit, and nothing is lost by emitting nothing. `global`
             # only restates where a name already lives: module variables are in

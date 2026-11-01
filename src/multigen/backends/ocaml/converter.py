@@ -257,9 +257,12 @@ class MultiGenPythonToOCamlConverter:
 
         # Convert exception handlers
         for handler in node.handlers:
-            if handler.type is None:
-                # Bare except: catches everything
-                pattern = "| _ ->"
+            # A bare raise needs the caught value: OCaml has no implicit current exception.
+            reraises = any(isinstance(n, ast.Raise) and n.exc is None for s in handler.body for n in ast.walk(s))
+            is_exception = isinstance(handler.type, ast.Name) and handler.type.id == "Exception"
+            if handler.type is None or is_exception:
+                # Bare except and `except Exception` catch everything
+                pattern = "| __exc ->" if reraises else "| _ ->"
             else:
                 # Get exception type name
                 exc_type_name = ""
@@ -276,7 +279,7 @@ class MultiGenPythonToOCamlConverter:
                     pattern = f"| {ocaml_exc_type} {handler.name} ->"
                 else:
                     # except ValueError:
-                    pattern = f"| {ocaml_exc_type} _ ->"
+                    pattern = f"| {ocaml_exc_type} _ as __exc ->" if reraises else f"| {ocaml_exc_type} _ ->"
 
             lines.append(pattern)
 
@@ -340,8 +343,8 @@ class MultiGenPythonToOCamlConverter:
             raise (Value_error "invalid value")
         """
         if node.exc is None:
-            # Re-raise current exception - use reraise
-            return "raise"
+            # Every enclosing handler binds __exc when its body holds a bare raise.
+            return "raise __exc"
 
         if isinstance(node.exc, ast.Call) and isinstance(node.exc.func, ast.Name):
             # raise ValueError("message")
@@ -1047,6 +1050,10 @@ class MultiGenPythonToOCamlConverter:
 
         left = self._convert_expression(node.left)
         right = self._convert_expression(node.right)
+
+        # (**) is float-only in OCaml.
+        if isinstance(node.op, ast.Pow):
+            return f"(int_pow ({left}) ({right}))"
 
         # Handle OCaml-specific operators
         # Runtime operators: OCaml / and mod truncate toward zero; Python floors.

@@ -20,6 +20,7 @@ Supported Features:
 from __future__ import annotations
 
 import ast
+import re
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any
@@ -42,6 +43,51 @@ from .containers import CContainerSystem
 from .enhanced_type_inference import EnhancedTypeInferenceEngine, InferredType, TypeConfidence
 from .ext.stc.nested_containers import NestedContainerManager
 from .string_methods import CStringMethodConverter
+
+# C leaves a non-volatile local indeterminate after longjmp if it changed since setjmp.
+_VOLATILE_SCALARS = ("int", "long long", "double", "bool", "char*", "const char*")
+_SCALAR_DECLARATION = re.compile(r"^(\s*)(long long|const char\*|char\*|int|double|bool) (\w+)\b(?! *\()")
+
+
+# Skips string literals and comments; `int main` is required by C.
+_C_INT_KEYWORD = re.compile(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|//[^\n]*|/\*.*?\*/|\bint\b(?!\s+main\b)', re.S)
+
+
+def _widen_python_int(code: str) -> str:
+    """Emit Python int as `long long`.
+
+    The converter's type strings keep "int" as the label for a Python int, so
+    its comparisons and the vec_int container names stay valid.
+    """
+    return _C_INT_KEYWORD.sub(lambda m: "long long" if m.group() == "int" else m.group(), code)
+
+
+def _names_assigned_in_try(function: ast.FunctionDef) -> set[str]:
+    """Collect the names a try body assigns, which a handler or later code may read."""
+    names: set[str] = set()
+    for node in ast.walk(function):
+        if isinstance(node, ast.Try):
+            for stmt in node.body:
+                for inner in ast.walk(stmt):
+                    if isinstance(inner, ast.Assign):
+                        targets = inner.targets
+                    elif isinstance(inner, (ast.AugAssign, ast.AnnAssign)):
+                        targets = [inner.target]
+                    else:
+                        continue
+                    names.update(t.id for t in targets if isinstance(t, ast.Name))
+    return names
+
+
+def _qualify_try_assigned(line: str, names: set[str]) -> str:
+    """Declare a scalar local volatile if a try body assigns it."""
+    match = _SCALAR_DECLARATION.match(line)
+    if not match or match.group(3) not in names:
+        return line
+    indent, c_type, name = match.groups()
+    # The pointer itself is what changes, so the qualifier follows the star.
+    declared = f"{c_type} volatile" if c_type.endswith("*") else f"volatile {c_type}"
+    return f"{indent}{declared} {name}{line[match.end() :]}"
 
 
 class MultiGenPythonToCConverter:
@@ -88,6 +134,7 @@ class MultiGenPythonToCConverter:
         self.variable_context: dict[str, str] = {}  # var_name -> c_type
         self.defined_structs: dict[str, dict[str, Any]] = {}
         self.iterator_variables: dict[str, str] = {}
+        self._try_frames = 0  # MGEN_TRY frames active at the statement being converted
         self.includes_needed: set[str] = set()
         self.use_runtime = True
 
@@ -193,7 +240,7 @@ class MultiGenPythonToCConverter:
         if not any("main" in part for part in parts):
             parts.append(self._generate_main_function())
 
-        return "\n".join(parts)
+        return _widen_python_int("\n".join(parts))
 
     def _detect_string_methods(self, node: ast.AST) -> None:
         """Pre-scan AST to detect string usage for include generation.
@@ -639,6 +686,7 @@ class MultiGenPythonToCConverter:
         self._writeback = []
         ref_names: list[str | None] = []
         self._ref_param_names[node.name] = ref_names
+        try_assigned = _names_assigned_in_try(node)
         for arg in node.args.args:
             param_type = self._get_type_annotation(arg.annotation) if arg.annotation else "int"
             # Use enhanced type inference for complex types like list[list[int]]
@@ -665,7 +713,8 @@ class MultiGenPythonToCConverter:
                 self._writeback.append(f"*{arg.arg}__ref = {arg.arg};")
                 ref_names.append(arg.arg)
             else:
-                params.append(f"{c_type} {arg.arg}")
+                qualifier = "volatile " if arg.arg in try_assigned and c_type in _VOLATILE_SCALARS else ""
+                params.append(f"{qualifier}{c_type} {arg.arg}")
                 ref_names.append(None)
 
         # Get return type
@@ -723,6 +772,8 @@ class MultiGenPythonToCConverter:
             converted = self._convert_statement(stmt)
             if converted:
                 body_lines.extend(converted.split("\n"))
+
+        body_lines = [_qualify_try_assigned(line, try_assigned) for line in body_lines]
 
         # For generators, add return at end
         if is_generator:
@@ -831,19 +882,22 @@ class MultiGenPythonToCConverter:
         0 = success, non-zero = failure.
         """
         writeback = " ".join(self._writeback)
+        # A leaked frame would send a later throw to this function's dead stack.
+        pops = " ".join(["mgen_try_pop();"] * self._try_frames)
         # Special case: main() should always return 0 for Unix compatibility
         if self.current_function == "main":
             # If returning a value from main, just return 0 instead
-            return "return 0;"
+            return f"{{ {pops} return 0; }}" if pops else "return 0;"
 
+        leaving = " ".join(part for part in (pops, writeback) if part)
         if stmt.value is None:
-            return f"{{ {writeback} return; }}" if writeback else "return;"
+            return f"{{ {leaving} return; }}" if leaving else "return;"
 
         value_expr = self._convert_expression(stmt.value)
-        if writeback:
-            # Evaluate the result before writing the parameters back.
+        if leaving:
+            # Evaluate the result first: it may raise, and it may read the parameters.
             ret_type = self.function_return_types.get(self.current_function or "", "int")
-            return f"{{ {ret_type} __mgen_ret = {value_expr}; {writeback} return __mgen_ret; }}"
+            return f"{{ {ret_type} __mgen_ret = {value_expr}; {leaving} return __mgen_ret; }}"
         return f"return {value_expr};"
 
     def _is_ref_param(self, func: str, param: str, c_type: str) -> bool:
@@ -1246,6 +1300,9 @@ class MultiGenPythonToCConverter:
 
         # Handle C-specific operators
         if isinstance(expr.op, ast.Pow):
+            if self._is_int_operation(expr.left, expr.right):
+                # pow() goes through double, which loses precision above 2**53.
+                return f"multigen_pow_int({left}, {right})"
             # Pow requires math.h
             self.includes_needed.add("#include <math.h>")
             return f"pow({left}, {right})"
@@ -1281,7 +1338,7 @@ class MultiGenPythonToCConverter:
         passed to the int helpers would be truncated, so recurse instead.
         """
         if isinstance(expr, ast.BinOp):
-            return not isinstance(expr.op, (ast.Div, ast.Pow)) and self._is_int_operation(expr.left, expr.right)
+            return not isinstance(expr.op, ast.Div) and self._is_int_operation(expr.left, expr.right)
         if isinstance(expr, ast.UnaryOp):
             return self._is_int_expr(expr.operand)
         if isinstance(expr, ast.Subscript) and isinstance(expr.value, ast.Name):
@@ -1610,7 +1667,8 @@ class MultiGenPythonToCConverter:
             return "%s", f'({c_arg}) ? "True" : "False"'
         if self._is_float_expr(arg_expr):
             return "%s", f"multigen_float_repr({c_arg}, (char[32]){{0}})"
-        return "%d", c_arg
+        # The cast covers size_t from len() and int-returning runtime helpers.
+        return "%lld", f"(long long)({c_arg})"
 
     def _convert_method_call(self, expr: ast.Call) -> str:
         """Convert method calls: obj.method(args) -> ClassName_method(&obj, args)."""
@@ -2482,11 +2540,13 @@ class MultiGenPythonToCConverter:
         # Start the try block
         lines.append("MGEN_TRY {")
 
-        # Convert try body
+        # Convert try body. A return in here leaves this frame; a handler runs without it.
+        self._try_frames += 1
         for s in stmt.body:
             body_line = self._convert_statement(s)
             if body_line:
                 lines.append(f"    {body_line}")
+        self._try_frames -= 1
 
         # else clause: runs if no exception (appended to try body)
         if stmt.orelse:
@@ -2498,8 +2558,9 @@ class MultiGenPythonToCConverter:
 
         # Convert exception handlers
         for handler in stmt.handlers:
-            if handler.type is None:
-                # Bare except: - catch all
+            is_exception = isinstance(handler.type, ast.Name) and handler.type.id == "Exception"
+            if handler.type is None or is_exception:
+                # Every exception this runtime raises derives from Exception.
                 lines.append("} MGEN_CATCH_ALL {")
             else:
                 # Specific exception type

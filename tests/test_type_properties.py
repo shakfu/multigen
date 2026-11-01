@@ -17,12 +17,12 @@ class TestTypeProperties:
         """Test integer type properties."""
         props = get_type_properties("int")
         assert props.name == "int"
-        assert props.c_type == "int"
+        assert props.c_type == "long long"
         assert props.suffix == "int"
         assert props.is_pointer is False
         assert props.needs_drop is False
         assert props.needs_copy is False
-        assert props.printf_fmt == "%d"
+        assert props.printf_fmt == "%lld"
         assert props.zero_value == "0"
         assert props.compare_op == "=="
         assert props.hash_fn == "hash_int"

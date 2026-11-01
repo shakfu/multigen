@@ -37,6 +37,14 @@ let py_index i n =
 let py_assoc k d = try List.assoc k d with Not_found -> raise (Key_error "key not found")
 
 (* Python // and %: round toward negative infinity. OCaml's / and mod truncate toward zero. *)
+(* Python ** on ints. A negative exponent would be a float, so it raises. *)
+let int_pow base exp =
+  if exp < 0 then raise (Value_error "negative exponent on an int");
+  let rec go acc b e =
+    if e = 0 then acc else go (if e land 1 = 1 then acc * b else acc) (b * b) (e lsr 1)
+  in
+  go 1 base exp
+
 let ( /// ) a b =
   if b = 0 then raise (Zero_division_error "integer division or modulo by zero");
   let q = a / b in

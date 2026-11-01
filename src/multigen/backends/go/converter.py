@@ -169,7 +169,8 @@ class MultiGenPythonToGoConverter:
         Go rejects both a missing and an unused import, so the list is read off the body.
         """
         stdlib = sorted(set(re.findall(r"\b(fmt|math|os|strconv|strings)\.[A-Z]", body)))
-        return ["multigenproject/multigen", *stdlib]
+        runtime = ["multigenproject/multigen"] if re.search(r"\bmultigen\.[A-Z]", body) else []
+        return [*runtime, *stdlib]
 
     def _convert_class(self, node: ast.ClassDef) -> str:
         """Convert Python class to Go struct with methods."""
@@ -455,7 +456,7 @@ class MultiGenPythonToGoConverter:
 
             # Handle Go-specific operators
             if isinstance(expr.op, ast.Pow):
-                return f"math.Pow({left}, {right})"
+                return self._pow_call(expr, left, right)
             elif isinstance(expr.op, (ast.FloorDiv, ast.Mod)):
                 return self._floor_op_call(expr.op, left, right)
 
@@ -1889,6 +1890,11 @@ class MultiGenPythonToGoConverter:
         else:
             return str(expr.value)
 
+    def _pow_call(self, expr: ast.BinOp, left: str, right: str) -> str:
+        """Call the runtime: math.Pow returns float64, which does not convert to int implicitly."""
+        func = "FloatPow" if self._is_float_expr(expr) else "IntPow"
+        return f"multigen.{func}({left}, {right})"
+
     def _is_float_expr(self, node: ast.expr) -> bool:
         """Report whether an expression is a Python float."""
         if isinstance(node, ast.Constant):
@@ -1914,7 +1920,7 @@ class MultiGenPythonToGoConverter:
 
     def _convert_binop(self, expr: ast.BinOp) -> str:
         """Convert binary operations."""
-        arith = (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.FloorDiv, ast.Mod)
+        arith = (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.FloorDiv, ast.Mod, ast.Pow)
         if isinstance(expr.op, ast.Div) and not (self._is_float_expr(expr.left) or self._is_float_expr(expr.right)):
             # Python's / is true division even for two ints.
             left = f"float64({self._convert_expression(expr.left)})"
@@ -1928,7 +1934,7 @@ class MultiGenPythonToGoConverter:
 
         # Handle Go-specific operators
         if isinstance(expr.op, ast.Pow):
-            return f"math.Pow({left}, {right})"
+            return self._pow_call(expr, left, right)
         elif isinstance(expr.op, (ast.FloorDiv, ast.Mod)):
             return self._floor_op_call(expr.op, left, right)
 

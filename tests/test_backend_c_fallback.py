@@ -175,7 +175,7 @@ class TestCContainerSystemFallback:
 
         # Check for example usage
         assert "multigen_dyn_array_new" in code
-        assert "sizeof(int)" in code
+        assert "sizeof(long long)" in code
         assert "multigen_dyn_array_free" in code
 
 

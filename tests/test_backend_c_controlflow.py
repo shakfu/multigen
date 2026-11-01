@@ -53,7 +53,7 @@ def sum_n(n: int) -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "for (int i = 0; i < n; i += 1)" in c_code
+        assert "for (long long i = 0; i < n; i += 1)" in c_code
         assert "total = (total + i);" in c_code
 
     def test_for_range_with_start_stop(self):
@@ -67,7 +67,7 @@ def sum_range(start: int, stop: int) -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "for (int i = start; i < stop; i += 1)" in c_code
+        assert "for (long long i = start; i < stop; i += 1)" in c_code
 
     def test_for_range_with_step(self):
         """Test for range with step."""
@@ -80,7 +80,7 @@ def sum_step(n: int) -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "for (int i = 0; i < n; i += 2)" in c_code
+        assert "for (long long i = 0; i < n; i += 2)" in c_code
 
     def test_nested_control_flow(self):
         """Test nested control structures."""
@@ -94,5 +94,5 @@ def nested_test(n: int) -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "for (int i = 0; i < n; i += 1)" in c_code
+        assert "for (long long i = 0; i < n; i += 1)" in c_code
         assert "if ((multigen_mod_int(i, 2) == 0))" in c_code

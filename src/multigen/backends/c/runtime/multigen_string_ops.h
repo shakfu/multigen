@@ -108,7 +108,7 @@ char* multigen_strdup(const char* str);
  * Convert integer to string (caller must free result)
  * Used for f-string formatting
  */
-char* multigen_int_to_string(int value);
+char* multigen_int_to_string(long long value);
 
 /**
  * Convert float to string (caller must free result)

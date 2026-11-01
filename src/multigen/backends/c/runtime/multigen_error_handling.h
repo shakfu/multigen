@@ -128,11 +128,10 @@ const char* multigen_error_name(multigen_error_t code);
 // Maximum nesting depth for try/catch blocks
 #define MGEN_MAX_TRY_DEPTH 16
 
-// Exception context for setjmp/longjmp-based try/catch
+// One active try block. A throw pops its frame before jumping, so a raise inside
+// a handler reaches the enclosing try and not the handler's own.
 typedef struct {
     jmp_buf env;
-    multigen_error_t exception_type;
-    char exception_message[256];
     int active;
 } mgen_exception_context_t;
 
@@ -179,17 +178,22 @@ void mgen_rethrow(void);
 #define MGEN_TRY \
     do { \
         int _mgen_try_idx = mgen_try_push(); \
-        if (_mgen_try_idx >= 0 && setjmp(mgen_exception_stack[_mgen_try_idx].env) == 0) {
+        if (setjmp(mgen_exception_stack[_mgen_try_idx].env) == 0) {
 
 #define MGEN_CATCH(exception_type) \
         } else if (mgen_current_exception_type() == (exception_type)) {
 
 #define MGEN_CATCH_ALL \
-        } else if (mgen_exception_depth >= 0) {
+        } else if (1) {
 
+// No handler matched: propagate. Only the no-exception path still holds the frame.
 #define MGEN_END_TRY \
+        } else { \
+            mgen_rethrow(); \
         } \
-        mgen_try_pop(); \
+        if (mgen_exception_depth == _mgen_try_idx) { \
+            mgen_try_pop(); \
+        } \
     } while(0)
 
 // Convenience macro for raising exceptions

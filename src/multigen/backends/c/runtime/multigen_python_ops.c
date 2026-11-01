@@ -36,7 +36,7 @@ int multigen_bool(const void* obj, int (*is_truthy)(const void*)) {
     return is_truthy(obj);
 }
 
-int multigen_bool_int(int value) {
+int multigen_bool_int(long long value) {
     return value != 0;
 }
 
@@ -51,7 +51,7 @@ int multigen_bool_cstring(const char* str) {
 /**
  * Python abs() function implementations
  */
-int multigen_abs_int(int value) {
+long long multigen_abs_int(long long value) {
     return value < 0 ? -value : value;
 }
 
@@ -62,13 +62,13 @@ double multigen_abs_float(double value) {
 /**
  * Python min() and max() implementations
  */
-int multigen_min_int_array(const int* arr, size_t size) {
+long long multigen_min_int_array(const long long* arr, size_t size) {
     if (!arr || size == 0) {
         multigen_raise_exception(MGEN_ERROR_VALUE, "min() arg is an empty sequence");
         return 0;
     }
 
-    int min_val = arr[0];
+    long long min_val = arr[0];
     for (size_t i = 1; i < size; i++) {
         if (arr[i] < min_val) {
             min_val = arr[i];
@@ -77,13 +77,13 @@ int multigen_min_int_array(const int* arr, size_t size) {
     return min_val;
 }
 
-int multigen_max_int_array(const int* arr, size_t size) {
+long long multigen_max_int_array(const long long* arr, size_t size) {
     if (!arr || size == 0) {
         multigen_raise_exception(MGEN_ERROR_VALUE, "max() arg is an empty sequence");
         return 0;
     }
 
-    int max_val = arr[0];
+    long long max_val = arr[0];
     for (size_t i = 1; i < size; i++) {
         if (arr[i] > max_val) {
             max_val = arr[i];
@@ -125,14 +125,14 @@ double multigen_max_float_array(const double* arr, size_t size) {
 /**
  * Python sum() implementations
  */
-int multigen_sum_int_array(const int* arr, size_t size) {
+long long multigen_sum_int_array(const long long* arr, size_t size) {
     if (!arr) return 0;
 
-    int sum = 0;
+    long long sum = 0;
     for (size_t i = 0; i < size; i++) {
         // Check for overflow
-        if ((sum > 0 && arr[i] > INT_MAX - sum) ||
-            (sum < 0 && arr[i] < INT_MIN - sum)) {
+        if ((sum > 0 && arr[i] > LLONG_MAX - sum) ||
+            (sum < 0 && arr[i] < LLONG_MIN - sum)) {
             multigen_raise_exception(MGEN_ERROR_VALUE, "Integer overflow in sum()");
             return 0;
         }
@@ -154,15 +154,15 @@ double multigen_sum_float_array(const double* arr, size_t size) {
 /**
  * Python range() implementations
  */
-multigen_range_t multigen_range(int stop) {
+multigen_range_t multigen_range(long long stop) {
     return multigen_range_full(0, stop, 1);
 }
 
-multigen_range_t multigen_range_start_stop(int start, int stop) {
+multigen_range_t multigen_range_start_stop(long long start, long long stop) {
     return multigen_range_full(start, stop, 1);
 }
 
-multigen_range_t multigen_range_full(int start, int stop, int step) {
+multigen_range_t multigen_range_full(long long start, long long stop, long long step) {
     multigen_range_t range;
     range.start = start;
     range.stop = stop;
@@ -176,12 +176,12 @@ multigen_range_t multigen_range_full(int start, int stop, int step) {
     return range;
 }
 
-int multigen_range_next(multigen_range_t* range) {
+long long multigen_range_next(multigen_range_t* range) {
     if (!range || !multigen_range_has_next(range)) {
         return 0;
     }
 
-    int current = range->current;
+    long long current = range->current;
     range->current += range->step;
     return current;
 }
@@ -244,7 +244,7 @@ char multigen_chr(int code) {
 /**
  * Comparison functions
  */
-int multigen_cmp_int(int a, int b) {
+int multigen_cmp_int(long long a, long long b) {
     if (a < b) return -1;
     if (a > b) return 1;
     return 0;

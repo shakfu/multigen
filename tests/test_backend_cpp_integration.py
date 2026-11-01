@@ -31,14 +31,14 @@ def main() -> None:
         assert "using namespace multigen;" in cpp_code
 
         # Check factorial function
-        assert "int factorial(int n)" in cpp_code
+        assert "long long factorial(long long n)" in cpp_code
         assert "if ((n <= 1))" in cpp_code
         assert "return 1;" in cpp_code
         assert "return (n * factorial((n - 1)));" in cpp_code
 
         # Check main function
         assert "int main()" in cpp_code  # `void main` is ill-formed C++
-        assert "int result = factorial(5);" in cpp_code or "auto result = factorial(5);" in cpp_code
+        assert "long long result = factorial(5);" in cpp_code or "auto result = factorial(5);" in cpp_code
         assert "cout << multigen::print_value(result) << endl;" in cpp_code
 
     def test_program_with_multiple_functions(self):
@@ -57,11 +57,14 @@ def calculate(x: int, y: int) -> int:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "int add(int a, int b)" in cpp_code
-        assert "int multiply(int a, int b)" in cpp_code
-        assert "int calculate(int x, int y)" in cpp_code
-        assert "int sum_val = add(x, y);" in cpp_code or "auto sum_val = add(x, y);" in cpp_code
-        assert "int product = multiply(sum_val, 2);" in cpp_code or "auto product = multiply(sum_val, 2);" in cpp_code
+        assert "long long add(long long a, long long b)" in cpp_code
+        assert "long long multiply(long long a, long long b)" in cpp_code
+        assert "long long calculate(long long x, long long y)" in cpp_code
+        assert "long long sum_val = add(x, y);" in cpp_code or "auto sum_val = add(x, y);" in cpp_code
+        assert (
+            "long long product = multiply(sum_val, 2);" in cpp_code
+            or "auto product = multiply(sum_val, 2);" in cpp_code
+        )
 
     def test_program_with_string_processing(self):
         """Test program with string operations."""
@@ -166,12 +169,12 @@ class Rectangle:
         assert "class Rectangle {" in cpp_code
 
         # Check Point class
-        assert "Point(int x, int y)" in cpp_code
+        assert "Point(long long x, long long y)" in cpp_code
         assert "double distance_from_origin()" in cpp_code
 
         # Check Rectangle class (simplified object composition)
         assert "Rectangle(" in cpp_code
-        assert "int area()" in cpp_code
+        assert "long long area()" in cpp_code
 
 
 class TestCppIntegrationAdvanced:
@@ -255,9 +258,9 @@ def count_primes_up_to(n: int) -> int:
 """
         cpp_code = self.converter.convert_code(python_code)
 
-        assert "bool is_prime(int n)" in cpp_code
+        assert "bool is_prime(long long n)" in cpp_code
         assert "if ((n < 2))" in cpp_code
-        assert "for (int i = 2; i < n; i++)" in cpp_code
+        assert "for (long long i = 2; i < n; i++)" in cpp_code
         assert "if ((multigen::pymod(n, i) == 0))" in cpp_code
 
         # Note: Complex list operations would need more sophisticated handling

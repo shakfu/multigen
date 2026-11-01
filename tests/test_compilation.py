@@ -168,29 +168,27 @@ KNOWN_FAILURES: dict[tuple[str, str], str] = {
         "c",
         "containers.py",
     ): "generation: C backend does not support: Only for loops with range() or container iteration supported",
-    ("c", "int_width.py"): "int is 32-bit: 2**40 wraps to 0",
     ("c", "comprehension_filters.py"): "generation: Non-range iterables in dict comprehensions not yet supported",
     ("c", "assignment_targets.py"): "compile: expected expression before '{' token",
-    ("cpp", "int_width.py"): "int is 32-bit: 2**40 wraps to 0",
     ("cpp", "test_dict_comprehension.py"): "compile: 'str' was not declared in this scope; did you mean 'std'?",
     ("cpp", "test_math_import.py"): "compile: 'math' was not declared in this scope",
     ("cpp", "test_string_membership.py"): "compile: 'std::string' has no member named 'count'",
     ("cpp", "test_string_membership_simple.py"): "compile: 'std::string' has no member named 'count'",
     ("cpp", "test_string_methods.py"): "compile: 'std::string' has no member named 'count'",
     ("cpp", "test_string_methods_new.py"): "compile: 'std::string' has no member named 'count'",
-    ("go", "test_container_iteration.py"): 'compile: "multigenproject/multigen" imported and not used',
+    ("go", "test_container_iteration.py"): "compile: declared and not used: name",
     (
         "go",
         "test_dict_comprehension.py",
     ): "compile: cannot use multigen.DictComprehensionFromRange[int, int](multigen.NewRange(3), func(x int)",
     ("go", "test_list_comprehension.py"): "compile: declared and not used: count1",
-    ("go", "test_math_import.py"): 'compile: "multigenproject/multigen" imported and not used',
+    ("go", "test_math_import.py"): "compile: undefined: result",
     ("go", "test_set_support.py"): "compile: numbers.Add undefined (type map[int]bool has no field or method Add)",
-    ("go", "test_string_membership.py"): 'compile: "multigenproject/multigen" imported and not used',
-    ("go", "test_string_membership_simple.py"): 'compile: "multigenproject/multigen" imported and not used',
+    ("go", "test_string_membership.py"): 'compile: cannot convert "xyz" (untyped string constant) to type int',
+    ("go", "test_string_membership_simple.py"): "compile: assignment mismatch: 2 variables but 1 value",
     ("go", "test_string_methods.py"): "compile: assignment mismatch: 2 variables but 1 value",
     ("go", "test_string_methods_new.py"): "compile: assignment mismatch: 2 variables but 1 value",
-    ("go", "test_struct_field_access.py"): 'compile: "multigenproject/multigen" imported and not used',
+    ("go", "test_struct_field_access.py"): "compile: declared and not used: area",
     ("haskell", "class_mutation.py"): "compile: type mismatch",
     ("haskell", "exceptions.py"): "generation: Haskell backend does not support try/except",
     (
@@ -255,7 +253,7 @@ KNOWN_FAILURES: dict[tuple[str, str], str] = {
         "test_struct_field_access.py",
     ): "generation: OCaml backend does not support class 'Rectangle': fields declared in the class body (datac",
     ("llvm", "class_mutation.py"): "generation: LLVM backend does not support module-level ClassDef",
-    ("llvm", "container_iteration_test.py"): "generation: LLVM backend does not support statement type: Assert",
+    ("llvm", "container_iteration_test.py"): "exits 60 with correct stdout",
     ("llvm", "containers.py"): "generation: LLVM backend does not support expression type: Slice",
     ("llvm", "exceptions.py"): "generation: LLVM backend does not support try/except",
     ("llvm", "nested_2d_params.py"): 'generation: Type of #1 arg mismatch: %"struct.vec_int"* != i64',
@@ -264,28 +262,44 @@ KNOWN_FAILURES: dict[tuple[str, str], str] = {
     ("llvm", "nested_containers_comprehensive.py"): 'generation: Type of #2 arg mismatch: i64 != %"struct.vec_int"*',
     ("llvm", "recursion_and_lists.py"): "generation: Print for type IRDataType.VOID not implemented",
     ("llvm", "simple_infer_test.py"): "generation: LLVM backend cannot translate this Assign at line 2: numbers = []",
-    ("llvm", "simple_test.py"): "generation: LLVM backend does not support statement type: Assert",
-    ("llvm", "string_methods_test.py"): "generation: LLVM backend does not support statement type: Assert",
-    ("llvm", "test_container_iteration.py"): "generation: LLVM backend does not support statement type: Assert",
-    ("llvm", "test_control_flow.py"): "generation: LLVM backend does not support statement type: Assert",
+    ("llvm", "simple_test.py"): "exits 1 with correct stdout",
+    ("llvm", "string_methods_test.py"): "generation: Function '__method_find__' not found in symbol table",
+    ("llvm", "test_container_iteration.py"): "generation: fails with an empty error message",
     ("llvm", "test_dataclass_basic.py"): "generation: LLVM backend does not support module-level ClassDef",
     ("llvm", "test_dict_comprehension.py"): "generation: AST expression Call not implemented in comprehensions",
     ("llvm", "test_list_comprehension.py"): "exits 13 with correct stdout",
     ("llvm", "test_list_slicing.py"): "generation: LLVM backend does not support expression type: Slice",
-    ("llvm", "test_math_import.py"): "generation: LLVM backend does not support statement type: Assert",
+    ("llvm", "test_math_import.py"): "generation: Function '__method_sqrt__' not found in symbol table",
     ("llvm", "test_namedtuple_basic.py"): "generation: LLVM backend does not support module-level ClassDef",
     ("llvm", "test_set_support.py"): "generation: LLVM backend does not support expression type: Set",
     ("llvm", "test_simple_slice.py"): "generation: LLVM backend does not support expression type: Slice",
-    ("llvm", "test_simple_string_ops.py"): "generation: LLVM backend does not support statement type: Assert",
-    ("llvm", "test_string_membership.py"): "generation: LLVM backend does not support statement type: Assert",
-    ("llvm", "test_string_membership_simple.py"): "generation: LLVM backend does not support statement type: Assert",
-    ("llvm", "test_string_methods.py"): "generation: LLVM backend does not support statement type: Assert",
-    ("llvm", "test_string_methods_new.py"): "generation: LLVM backend does not support statement type: Assert",
-    ("llvm", "test_string_split_simple.py"): "generation: LLVM backend does not support statement type: Assert",
+    ("llvm", "test_simple_string_ops.py"): "generation: Binary operator '==' not implemented for type IRDataType.BOOL",
+    ("llvm", "test_string_membership.py"): "generation: Binary operator 'in' not implemented for type IRDataType.BOOL",
+    (
+        "llvm",
+        "test_string_membership_simple.py",
+    ): "generation: Binary operator 'in' not implemented for type IRDataType.BOOL",
+    ("llvm", "test_string_methods.py"): "generation: Function '__method_find__' not found in symbol table",
+    ("llvm", "test_string_methods_new.py"): "generation: Binary operator 'in' not implemented for type IRDataType.BOOL",
+    (
+        "llvm",
+        "test_string_split_simple.py",
+    ): "generation: Binary operator '==' not implemented for type IRDataType.BOOL",
     ("llvm", "test_struct_field_access.py"): "generation: LLVM backend does not support expression type: Attribute",
     ("llvm", "comprehensions.py"): "generation: LLVM backend does not support expression type: Set",
     ("llvm", "comprehension_filters.py"): "generation: fails with an empty error message",
 }
+
+for _program in (
+    "exc_bare_raise.py",
+    "exc_catch_exception.py",
+    "exc_locals_survive.py",
+    "exc_raise_in_handler.py",
+    "exc_unmatched_propagates.py",
+):
+    KNOWN_FAILURES[("haskell", _program)] = "generation: Haskell backend does not support try/except"
+    KNOWN_FAILURES[("llvm", _program)] = "generation: LLVM backend does not support try/except"
+KNOWN_FAILURES[("ocaml", "exc_locals_survive.py")] = "compile: a parameter assigned in a try body is not a ref"
 
 
 def _differential_params() -> list:
@@ -339,7 +353,11 @@ ERROR_PROGRAMS = sorted((TESTS_DIR / "fixtures" / "differential_errors").glob("*
 
 # Known (backend, program) deviations, strict like KNOWN_FAILURES.
 
-KNOWN_ERROR_FAILURES: dict[tuple[str, str], str] = {}
+KNOWN_ERROR_FAILURES: dict[tuple[str, str], str] = {
+    (backend, program): f"generation: {backend} backend does not support try/except"
+    for backend in ("haskell", "llvm")
+    for program in ("raise_after_return_in_try.py", "unmatched_handler.py")
+}
 
 
 def _error_params() -> list:
@@ -379,6 +397,26 @@ def test_uncaught_exception_matches_cpython(backend: str, program: Path, tmp_pat
     proc = subprocess.run([str(executable)], capture_output=True, text=True, timeout=30, cwd=tmp_path)
     assert (proc.stdout, proc.returncode) == (expected_stdout, expected_status), proc.stderr
     assert exception in proc.stderr
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("backend", DIFFERENTIAL_BACKENDS)
+def test_negative_int_exponent_is_not_a_wrong_int(backend: str, tmp_path: Path) -> None:
+    """Python yields the float 0.5. A static int result cannot hold it, so the run must fail."""
+    if not toolchain_available(backend):
+        pytest.skip(f"Toolchain for backend {backend} not installed")
+    source = tmp_path / "negative_exp.py"
+    source.write_text(
+        "def power(base: int, exp: int) -> int:\n    return base**exp\n\n\n"
+        'def main() -> None:\n    print(power(2, -1))\n\n\nif __name__ == "__main__":\n    main()\n'
+    )
+    result = MultiGenPipeline(config=PipelineConfig(target_language=backend, build_mode=BuildMode.DIRECT)).convert(
+        source, output_path=tmp_path
+    )
+    assert result.success, result.errors
+    proc = subprocess.run([str(result.executable_path)], capture_output=True, text=True, timeout=30, cwd=tmp_path)
+    assert proc.returncode != 0
+    assert proc.stdout == ""
 
 
 class TestCBackendCompilation:

@@ -23,7 +23,7 @@ def test_add_assignment() -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "int x = 5;" in c_code
+        assert "long long x = 5;" in c_code
         assert "x += 3;" in c_code
 
     def test_simple_sub_assignment(self):
@@ -36,7 +36,7 @@ def test_sub_assignment() -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "int y = 10;" in c_code
+        assert "long long y = 10;" in c_code
         assert "y -= 4;" in c_code
 
     def test_simple_mult_assignment(self):
@@ -49,7 +49,7 @@ def test_mult_assignment() -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "int z = 3;" in c_code
+        assert "long long z = 3;" in c_code
         assert "z *= 7;" in c_code
 
     def test_simple_div_assignment(self):
@@ -75,7 +75,7 @@ def test_floor_div_assignment() -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "int x = 15;" in c_code
+        assert "long long x = 15;" in c_code
         assert "x = multigen_floordiv_int(x, 4);" in c_code
 
     def test_mod_assignment(self):
@@ -88,7 +88,7 @@ def test_mod_assignment() -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "int value = 17;" in c_code
+        assert "long long value = 17;" in c_code
         assert "value = multigen_mod_int(value, 5);" in c_code
 
 
@@ -109,7 +109,7 @@ def test_bitwise_or() -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "int flags = 1;" in c_code  # 0x01 becomes 1
+        assert "long long flags = 1;" in c_code  # 0x01 becomes 1
         assert "flags |= 4;" in c_code  # 0x04 becomes 4
 
     def test_bitwise_xor_assignment(self):
@@ -122,7 +122,7 @@ def test_bitwise_xor() -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "int data = 255;" in c_code  # 0xFF becomes 255
+        assert "long long data = 255;" in c_code  # 0xFF becomes 255
         assert "data ^= 15;" in c_code  # 0x0F becomes 15
 
     def test_bitwise_and_assignment(self):
@@ -135,7 +135,7 @@ def test_bitwise_and() -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "int mask = 63;" in c_code  # 0x3F becomes 63
+        assert "long long mask = 63;" in c_code  # 0x3F becomes 63
         assert "mask &= 31;" in c_code  # 0x1F becomes 31
 
     def test_left_shift_assignment(self):
@@ -148,7 +148,7 @@ def test_left_shift() -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "int value = 3;" in c_code
+        assert "long long value = 3;" in c_code
         assert "value <<= 2;" in c_code
 
     def test_right_shift_assignment(self):
@@ -161,7 +161,7 @@ def test_right_shift() -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "int value = 16;" in c_code
+        assert "long long value = 16;" in c_code
         assert "value >>= 3;" in c_code
 
 
@@ -182,7 +182,7 @@ def test_with_variable(a: int, b: int) -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "int total = 10;" in c_code
+        assert "long long total = 10;" in c_code
         assert "total += (a + b);" in c_code
 
     def test_augassign_with_function_call(self):
@@ -198,7 +198,7 @@ def test_with_function_call() -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "int result = 5;" in c_code
+        assert "long long result = 5;" in c_code
         assert "result += helper(3);" in c_code
 
     def test_augassign_with_complex_expression(self):
@@ -211,7 +211,7 @@ def test_complex_expression(x: int, y: int) -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "int value = 1;" in c_code
+        assert "long long value = 1;" in c_code
         assert "value *= (((x * 2) + y) - 3);" in c_code
 
 
@@ -239,13 +239,13 @@ class Counter:
 
         # Check struct definition
         assert "typedef struct Counter {" in c_code
-        assert "int count;" in c_code
+        assert "long long count;" in c_code
 
         # Check augmented assignment in methods
-        assert "void Counter_increment_by(Counter* self, int amount)" in c_code
+        assert "void Counter_increment_by(Counter* self, long long amount)" in c_code
         assert "self->count += amount;" in c_code
 
-        assert "void Counter_multiply_by(Counter* self, int factor)" in c_code
+        assert "void Counter_multiply_by(Counter* self, long long factor)" in c_code
         assert "self->count *= factor;" in c_code
 
     def test_augassign_object_attribute(self):
@@ -328,8 +328,8 @@ def sum_to_n(n: int) -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "int total = 0;" in c_code
-        assert "for (int i = 0; i < n; i += 1)" in c_code
+        assert "long long total = 0;" in c_code
+        assert "for (long long i = 0; i < n; i += 1)" in c_code
         assert "total += i;" in c_code
 
     def test_augassign_with_conditionals(self):
@@ -363,7 +363,7 @@ def multiple_operations() -> int:
 """
         c_code = self.converter.convert_code(python_code)
 
-        assert "int value = 10;" in c_code
+        assert "long long value = 10;" in c_code
         assert "value += 5;" in c_code
         assert "value *= 2;" in c_code
         assert "value -= 8;" in c_code

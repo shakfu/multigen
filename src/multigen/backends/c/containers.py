@@ -250,7 +250,7 @@ class CContainerSystem(AbstractContainerSystem):
 
         operations_code.append("")
         operations_code.append("// Example: Creating a typed dynamic array")
-        operations_code.append("// multigen_dyn_array_t* int_array = multigen_dyn_array_new(sizeof(int), 0);")
+        operations_code.append("// multigen_dyn_array_t* int_array = multigen_dyn_array_new(sizeof(long long), 0);")
         operations_code.append("// int value = 42;")
         operations_code.append("// multigen_dyn_array_append(int_array, &value);")
         operations_code.append("// int* retrieved = (int*)multigen_dyn_array_get(int_array, 0);")
